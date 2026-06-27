@@ -1,0 +1,19 @@
+{
+  "name": "atelierhub-backend",
+  "version": "1.0.0",
+  "description": "Backend Atelier Hub — webhooks Stripe + notificações push automáticas",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "express": "^4.19.2",
+    "node-cron": "^3.0.3",
+    "stripe": "^16.0.0",
+    "web-push": "^3.6.7"
+  }
+}
