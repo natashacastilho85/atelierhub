@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "br.com.atelierhub",
+    "sha256_cert_fingerprints": ["AE:FA:2A:38:0E:E3:2A:89:1E:8F:44:B7:E9:A6:F7:8A:32:5A:25:43:B3:F3:24:7D:51:96:02:04:D1:EC:B1:8C"]
+  }
+}]
