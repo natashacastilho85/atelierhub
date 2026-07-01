@@ -753,11 +753,8 @@
 <!-- TELA DE LOGIN -->
 <div id="login-screen">
   <div class="login-bg"></div>
-  <div class="login-ornament">gestão de atelier</div>
-  <div class="login-logo">Atelier <span style="color:var(--gold);font-style:italic">Hub</span></div>
-  <div class="login-subtitle">seu atelier, organizado</div>
-  <div class="login-divider"></div>
-
+  <img src="/icon-512.png" alt="Atelier Hub Resina" style="width:140px;height:140px;object-fit:contain;border-radius:28px;margin-bottom:1rem;position:relative;box-shadow:0 4px 20px rgba(0,0,0,0.12)">
+  <div class="login-subtitle" style="margin-bottom:2rem;font-size:0.7rem">Gestão completa do seu atelier</div>
   <!-- ABAS: Entrar / Criar conta -->
   <div id="login-tabs" style="display:flex;gap:0;width:100%;max-width:300px;margin-bottom:1.2rem;border:1px solid rgba(184,134,42,0.3);border-radius:4px;overflow:hidden;position:relative">
     <button id="tab-entrar" onclick="showLoginTab('entrar')" style="flex:1;padding:0.6rem;font-family:Calibri,sans-serif;font-size:0.72rem;letter-spacing:0.15em;text-transform:uppercase;border:none;background:var(--brown);color:white;cursor:pointer">Entrar</button>
@@ -804,12 +801,7 @@
 <!-- APP -->
 <div id="app" style="display:none">
   <header class="app-header">
-    <div class="header-logo">
-      <span class="logo-atelier">Atelier</span>
-      <span class="logo-hub">HUB</span>
-      <div class="logo-sep"></div>
-      <span class="logo-resina">Resina</span>
-    </div>
+    <img src="/icon-512.png" alt="Atelier Hub" style="height:42px;width:42px;object-fit:contain;border-radius:10px">
     <div style="display:flex;gap:0.6rem;align-items:center">
       <button class="header-btn" onclick="abrirTarefas()" title="Tarefas" style="font-size:1.1rem;position:relative">✅<span id="badge-tarefas" style="display:none;position:absolute;top:0;right:0;background:var(--brown);color:white;border-radius:50%;width:14px;height:14px;font-size:0.55rem;align-items:center;justify-content:center;font-family:sans-serif"></span></button>
       <button class="header-btn" onclick="abrirPrecDoCatalogo()" title="Precificação" style="font-size:1.1rem">💰</button>
