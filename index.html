@@ -737,16 +737,16 @@
 
 <!-- PAYWALL — fora do #app para position:fixed funcionar corretamente no mobile -->
 <div id="paywall" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#fdf8f2;z-index:99999;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1.5rem;overflow-y:auto;box-sizing:border-box">
-  <div style="max-width:340px;width:100%;text-align:center">
-    <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.5rem;color:#5c3318;margin-bottom:0.2rem">Atelier <span style="color:#b8862a">Hub</span></div>
-    <div style="font-size:0.68rem;letter-spacing:0.14em;color:#9a7d65;text-transform:uppercase;margin-bottom:1.8rem">Resina</div>
-    <div style="font-size:2rem;margin-bottom:1rem">🌸</div>
-    <div id="paywall-msg" style="font-size:1rem;color:#2a1a0e;margin-bottom:0.5rem;font-weight:600;line-height:1.4"></div>
-    <div id="paywall-sub" style="font-size:0.82rem;color:#9a7d65;margin-bottom:1.5rem;line-height:1.5"></div>
+  <div style="max-width:min(420px,100%);width:100%;text-align:center">
+    <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.8rem;color:#5c3318;margin-bottom:0.2rem">Atelier <span style="color:#b8862a">Hub</span></div>
+    <div style="font-size:0.75rem;letter-spacing:0.14em;color:#9a7d65;text-transform:uppercase;margin-bottom:1.8rem">Resina</div>
+    <div style="font-size:2.2rem;margin-bottom:1rem">🌸</div>
+    <div id="paywall-msg" style="font-size:1.1rem;color:#2a1a0e;margin-bottom:0.5rem;font-weight:600;line-height:1.4"></div>
+    <div id="paywall-sub" style="font-size:0.9rem;color:#9a7d65;margin-bottom:1.5rem;line-height:1.5"></div>
     <button onclick="window.open('https://buy.stripe.com/6oU6oA1LE7qIfnM8Gi2Nq00','_blank')" style="width:100%;background:#5c3318;color:white;border:none;border-radius:10px;padding:0.9rem;font-size:0.95rem;font-weight:600;cursor:pointer;margin-bottom:0.6rem;letter-spacing:0.02em">Assinar mensal — R$97/mês →</button>
     <button onclick="window.open('https://buy.stripe.com/bJe14gfCu7qIa3s09M2Nq01','_blank')" style="width:100%;background:#fdf8f2;border:1.5px solid #5c3318;border-radius:10px;padding:0.75rem;font-size:0.88rem;color:#5c3318;cursor:pointer;margin-bottom:0.8rem;font-weight:600">Assinar anual — R$897/ano <span style="font-size:0.75rem;color:#6b8f71"> · economize R$267</span></button>
     <button onclick="(async()=>{try{const sb=getSupabase();if(sb)await sb.auth.signOut();}catch(e){}location.reload();})()" style="width:100%;background:transparent;border:1px solid rgba(184,134,42,0.2);border-radius:10px;padding:0.65rem;font-size:0.82rem;color:#9a7d65;cursor:pointer">Sair da conta</button>
-    <div style="font-size:0.7rem;color:#9a7d65;margin-top:1.3rem">Dúvidas? <a href="mailto:contato@atelierhub.com.br" style="color:#5c3318">contato@atelierhub.com.br</a></div>
+    <div style="font-size:0.75rem;color:#9a7d65;margin-top:1.3rem">Dúvidas? <a href="mailto:contato@atelierhub.com.br" style="color:#5c3318">contato@atelierhub.com.br</a></div>
   </div>
 </div>
 
@@ -754,7 +754,7 @@
 <div id="login-screen">
   <div class="login-bg"></div>
   <img src="/icon-512.png" alt="Atelier Hub Resina" style="width:140px;height:140px;object-fit:contain;border-radius:28px;margin-bottom:1rem;position:relative;box-shadow:0 4px 20px rgba(0,0,0,0.12)">
-  <div class="login-subtitle" style="margin-bottom:2rem;font-size:0.7rem">Gestão completa do seu atelier</div>
+  <div class="login-subtitle" style="margin-bottom:2rem;font-size:0.7rem;text-align:center">Gestão completa do seu atelier</div>
   <!-- ABAS: Entrar / Criar conta -->
   <div id="login-tabs" style="display:flex;gap:0;width:100%;max-width:300px;margin-bottom:1.2rem;border:1px solid rgba(184,134,42,0.3);border-radius:4px;overflow:hidden;position:relative">
     <button id="tab-entrar" onclick="showLoginTab('entrar')" style="flex:1;padding:0.6rem;font-family:Calibri,sans-serif;font-size:0.72rem;letter-spacing:0.15em;text-transform:uppercase;border:none;background:var(--brown);color:white;cursor:pointer">Entrar</button>
@@ -801,7 +801,12 @@
 <!-- APP -->
 <div id="app" style="display:none">
   <header class="app-header">
-    <img src="/icon-512.png" alt="Atelier Hub" style="height:42px;width:42px;object-fit:contain;border-radius:10px">
+    <div class="header-logo">
+      <span class="logo-atelier">Atelier</span>
+      <span class="logo-hub">HUB</span>
+      <div class="logo-sep"></div>
+      <span class="logo-resina">Resina</span>
+    </div>
     <div style="display:flex;gap:0.6rem;align-items:center">
       <button class="header-btn" onclick="abrirTarefas()" title="Tarefas" style="font-size:1.1rem;position:relative">✅<span id="badge-tarefas" style="display:none;position:absolute;top:0;right:0;background:var(--brown);color:white;border-radius:50%;width:14px;height:14px;font-size:0.55rem;align-items:center;justify-content:center;font-family:sans-serif"></span></button>
       <button class="header-btn" onclick="abrirPrecDoCatalogo()" title="Precificação" style="font-size:1.1rem">💰</button>
