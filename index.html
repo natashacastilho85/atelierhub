@@ -7,18 +7,21 @@
 /* Corrige bug de cold start (Android/TWA): às vezes o navegador usa o viewport
    largo padrão (~980px) antes de aplicar a tag acima, e a tela inteira aparece
    encolhida até fechar/reabrir o app. Isso força o navegador a reprocessar a
-   tag de viewport pouco depois do carregamento, sem efeito visual quando já
-   está tudo certo. */
+   tag de viewport, sem efeito visual quando já está tudo certo.
+   Roda em 2 momentos: logo no carregamento inicial (defensivo) E de novo
+   assim que o dashboard é montado (chamada em initApp, após renderAll) —
+   que é quando o conteúdo pesado realmente aparece na tela. */
+function corrigirViewport() {
+  var vp = document.querySelector('meta[name="viewport"]');
+  if (!vp) return;
+  var original = vp.getAttribute('content');
+  vp.setAttribute('content', original + ',');
+  requestAnimationFrame(function () {
+    vp.setAttribute('content', original);
+  });
+}
 window.addEventListener('load', function () {
-  setTimeout(function () {
-    var vp = document.querySelector('meta[name="viewport"]');
-    if (!vp) return;
-    var original = vp.getAttribute('content');
-    vp.setAttribute('content', original + ',');
-    requestAnimationFrame(function () {
-      vp.setAttribute('content', original);
-    });
-  }, 50);
+  setTimeout(corrigirViewport, 50);
 });
 </script>
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -2303,6 +2306,7 @@ async function initApp() {
   await carregarPrecSupabase();
   hideLoading();
   renderAll();
+  corrigirViewport();
   _atualizarNomeAtelierDashboard();
   // Ativa push notifications em background
   if (typeof ativarPushAposLogin === 'function') ativarPushAposLogin();
