@@ -14,19 +14,51 @@
    momento certo pra corrigir, o script fica checando por alguns segundos após
    cada carregamento da página e corrige assim que detectar a diferença —
    cobre abrir direto, voltar do Google, ou qualquer caminho parecido. */
+
+/* ── PAINEL DE DIAGNÓSTICO TEMPORÁRIO — REMOVER DEPOIS DE ACHAR O BUG ──
+   Mostra ao vivo, no topo da tela, os números reais do que está acontecendo,
+   pra tirar print durante o bug em vez de ficar só na teoria. */
+var _diagPainel = document.createElement('div');
+_diagPainel.id = 'diag-viewport';
+_diagPainel.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999999;' +
+  'background:rgba(0,0,0,0.88);color:#0f0;font:12px/1.5 monospace;' +
+  'padding:6px 8px;white-space:pre-wrap;pointer-events:none;';
+document.documentElement.appendChild(_diagPainel);
+
 (function monitorarViewport() {
   var checagens = 0;
-  var maxChecagens = 40; // ~10s de monitoramento (40 x 250ms)
+  var maxChecagens = 80; // ~20s de monitoramento (80 x 250ms)
+  var correcoes = 0;
+  var inicio = Date.now();
+
+  function atualizarPainel(bugAtivo) {
+    var vp = document.querySelector('meta[name="viewport"]');
+    _diagPainel.textContent =
+      'DIAG (temporário) ' + ((Date.now() - inicio) / 1000).toFixed(1) + 's\n' +
+      'innerWidth=' + window.innerWidth + '   screen.width=' + window.screen.width + '\n' +
+      'bug detectado agora: ' + (bugAtivo ? 'SIM' : 'não') + '   correcoes feitas: ' + correcoes + '\n' +
+      'viewport atual: ' + (vp ? vp.getAttribute('content') : '(sem tag)');
+  }
+
   var intervalo = setInterval(function () {
     checagens++;
-    if (window.innerWidth > window.screen.width * 1.15) {
+    var bugAtivo = window.innerWidth > window.screen.width * 1.15;
+    if (bugAtivo) {
       var vp = document.querySelector('meta[name="viewport"]');
       if (vp) {
         vp.setAttribute('content', 'width=' + window.screen.width + ', initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+        correcoes++;
       }
     }
-    if (checagens >= maxChecagens) clearInterval(intervalo);
+    atualizarPainel(bugAtivo);
+    if (checagens >= maxChecagens) {
+      clearInterval(intervalo);
+      setTimeout(function () {
+        if (_diagPainel.parentNode) _diagPainel.parentNode.removeChild(_diagPainel);
+      }, 4000);
+    }
   }, 250);
+  atualizarPainel(false);
 })();
 </script>
 <meta name="apple-mobile-web-app-capable" content="yes">
