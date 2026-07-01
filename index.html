@@ -8979,6 +8979,7 @@ async function onLoginSucesso(user) {
   const meta = user.user_metadata || {};
   window._currentUserName = meta.full_name || meta.name || user.email?.split('@')[0] || '';
   document.getElementById('login-screen').style.display = 'none';
+  await new Promise(r => requestAnimationFrame(r));
   document.getElementById('app').style.display = 'flex';
   await initApp();
   _appJaIniciado = false;
