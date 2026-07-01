@@ -9136,6 +9136,7 @@ function _mostrarPaywall(titulo, sub) {
   document.getElementById('paywall-msg').textContent = titulo;
   document.getElementById('paywall-sub').textContent  = sub;
   document.getElementById('paywall').style.display    = 'flex';
+  document.getElementById('login-screen').style.display = 'none';
   // Esconde banner de trial se estiver visível
   const banner = document.getElementById('banner-trial');
   if (banner) banner.style.display = 'none';
