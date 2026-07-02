@@ -18,9 +18,21 @@
    antes até do conteúdo da página existir — pra recarregar o quanto antes,
    minimizando o tempo em que a tela errada fica visível. Trava por
    sessionStorage evita ficar recarregando em loop caso não resolva. Confirmado
-   funcionando em testes reais (01/07/2026) — painel de diagnóstico removido. */
+   funcionando em testes reais (01/07/2026) — painel de diagnóstico removido.
+
+   02/07/2026 — restringido a Android + faixas de valores específicas do bug
+   real (screen.width de celular + innerWidth na faixa do viewport largo
+   padrão ~980px). Motivo: ferramentas automatizadas (ex: PWABuilder) rodam
+   em navegadores headless onde innerWidth/screen.width não batem por razões
+   totalmente diferentes (sem relação com o bug do Android), e a checagem
+   genérica anterior podia disparar reload nelas também, atrapalhando análises
+   como a detecção do Service Worker. */
+function _ehAndroid() {
+  return /Android/.test(navigator.userAgent || '');
+}
 function _vpBugDetectado() {
-  return window.innerWidth > window.screen.width * 1.15;
+  var iw = window.innerWidth, sw = window.screen.width;
+  return _ehAndroid() && sw > 0 && sw < 550 && iw >= 700 && iw > sw * 1.15;
 }
 function _vpPodeRecarregar() {
   var ultima = sessionStorage.getItem('_vpReloadTs');
