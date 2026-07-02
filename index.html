@@ -17,7 +17,8 @@
    por esse bug). A checagem roda IMEDIATAMENTE, na primeira linha do script —
    antes até do conteúdo da página existir — pra recarregar o quanto antes,
    minimizando o tempo em que a tela errada fica visível. Trava por
-   sessionStorage evita ficar recarregando em loop caso não resolva. */
+   sessionStorage evita ficar recarregando em loop caso não resolva. Confirmado
+   funcionando em testes reais (01/07/2026) — painel de diagnóstico removido. */
 function _vpBugDetectado() {
   return window.innerWidth > window.screen.width * 1.15;
 }
@@ -30,55 +31,22 @@ function _vpPodeRecarregar() {
 }
 
 // Checagem imediata — a primeira coisa que o script faz
-var _vpJaRecarregou = false;
 if (_vpBugDetectado() && _vpPodeRecarregar()) {
-  _vpJaRecarregou = true;
   location.reload();
 }
 
-/* ── PAINEL DE DIAGNÓSTICO TEMPORÁRIO — REMOVER DEPOIS DE CONFIRMAR QUE RESOLVEU ──
-   Mostra ao vivo, no topo da tela, os números reais do que está acontecendo,
-   pra tirar print durante o bug em vez de ficar só na teoria. */
-var _diagPainel = document.createElement('div');
-_diagPainel.id = 'diag-viewport';
-_diagPainel.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999999;' +
-  'background:rgba(0,0,0,0.88);color:#0f0;font:12px/1.5 monospace;' +
-  'padding:6px 8px;white-space:pre-wrap;pointer-events:none;';
-document.documentElement.appendChild(_diagPainel);
-
+// Monitor de segurança — cobre o caso raro do bug aparecer um pouco depois da checagem imediata
 (function monitorarViewport() {
   var checagens = 0;
   var maxChecagens = 80; // ~20s de monitoramento (80 x 250ms)
-  var recargas = 0;
-  var inicio = Date.now();
-
-  function atualizarPainel(bugAtivo) {
-    var vp = document.querySelector('meta[name="viewport"]');
-    _diagPainel.textContent =
-      'DIAG (temporário) ' + ((Date.now() - inicio) / 1000).toFixed(1) + 's\n' +
-      'innerWidth=' + window.innerWidth + '   screen.width=' + window.screen.width + '\n' +
-      'bug detectado agora: ' + (bugAtivo ? 'SIM' : 'não') + '   já recarregou ao entrar: ' + (_vpJaRecarregou ? 'SIM' : 'não') + '   recargas do loop: ' + recargas + '\n' +
-      'viewport atual: ' + (vp ? vp.getAttribute('content') : '(sem tag)');
-  }
-
   var intervalo = setInterval(function () {
     checagens++;
-    var bugAtivo = _vpBugDetectado();
-    if (bugAtivo && _vpPodeRecarregar()) {
-      recargas++;
-      atualizarPainel(bugAtivo);
+    if (_vpBugDetectado() && _vpPodeRecarregar()) {
       location.reload();
       return;
     }
-    atualizarPainel(bugAtivo);
-    if (checagens >= maxChecagens) {
-      clearInterval(intervalo);
-      setTimeout(function () {
-        if (_diagPainel.parentNode) _diagPainel.parentNode.removeChild(_diagPainel);
-      }, 4000);
-    }
+    if (checagens >= maxChecagens) clearInterval(intervalo);
   }, 250);
-  atualizarPainel(false);
 })();
 </script>
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -87,7 +55,7 @@ document.documentElement.appendChild(_diagPainel);
 <meta name="theme-color" content="#fdf8f2" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1a1410" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="./manifest.json">
-<link rel="apple-touch-icon" href="/atelierhub/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <title>Atelier Hub</title>
 
 <style>
@@ -178,8 +146,8 @@ document.documentElement.appendChild(_diagPainel);
   .login-input { width:100%; background:white; border:1px solid rgba(184,134,42,0.3); border-radius:3px; padding:0.9rem 1.2rem; color:var(--dark); font-family:'Calibri',sans-serif; font-size:0.9rem; outline:none; transition:border-color 0.3s; }
   .login-input:focus { border-color:var(--gold); }
   .login-input::placeholder { color:var(--muted-light); }
-  .login-btn { width:100%; background:var(--brown); border:none; border-radius:3px; padding:0.9rem; color:white; font-family:'Calibri',sans-serif; font-size:0.75rem; font-weight:500; letter-spacing:0.3em; text-transform:uppercase; cursor:pointer; }
-  .login-btn:active { background:var(--brown-mid); }
+  .login-btn { width:100%; background:var(--brown); border:none; border-radius:3px; padding:0.9rem; color:white; font-family:'Calibri',sans-serif; font-size:0.75rem; font-weight:500; letter-spacing:0.3em; text-transform:uppercase; cursor:pointer; transition:transform 0.08s ease, background 0.08s ease, box-shadow 0.08s ease; }
+  .login-btn:active { background:var(--brown-mid); transform:scale(0.97); box-shadow:inset 0 1px 4px rgba(0,0,0,0.15); }
 
   /* ── APP ── */
   #app { display:flex; flex-direction:column; min-height:100vh; }
@@ -846,6 +814,7 @@ document.documentElement.appendChild(_diagPainel);
       <input class="login-input" id="login-senha" type="password" placeholder="Senha" autocomplete="current-password" style="width:100%;padding-right:2.8rem;box-sizing:border-box">
       <button type="button" onclick="toggleSenha('login-senha',this)" style="position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:0;line-height:1">👁</button>
     </div>
+    <div id="login-msg" style="font-size:0.8rem;color:var(--bordeaux);text-align:center;max-width:300px;min-height:1.2em;display:none;padding:0.4rem 0"></div>
     <button class="login-btn" onclick="fazerLogin()">Entrar</button>
     <button class="login-btn" onclick="loginGoogle()" style="background:white;color:var(--dark);border:1px solid rgba(184,134,42,0.3);display:flex;align-items:center;justify-content:center;gap:0.6rem">
       <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
@@ -880,11 +849,10 @@ document.documentElement.appendChild(_diagPainel);
   <div class="login-form" id="form-recuperar" style="display:none">
     <div style="font-size:0.78rem;color:var(--muted);text-align:center;margin-bottom:0.5rem">Digite seu e-mail para receber o link de recuperação</div>
     <input class="login-input" id="recuperar-email" type="email" placeholder="E-mail">
+    <div id="login-msg-recuperar" style="font-size:0.8rem;color:var(--bordeaux);text-align:center;max-width:300px;min-height:1.2em;display:none;padding:0.4rem 0"></div>
     <button class="login-btn" onclick="enviarRecuperacaoSenha()">Enviar link</button>
     <button onclick="showLoginTab('entrar')" style="background:none;border:none;font-size:0.72rem;color:var(--muted);cursor:pointer;padding:0.3rem;font-family:Calibri,sans-serif">← Voltar</button>
   </div>
-
-  <div id="login-msg" style="font-size:0.75rem;color:var(--bordeaux);margin-top:0.8rem;text-align:center;max-width:300px;min-height:1.2em;position:relative"></div>
 </div>
 
 <!-- APP -->
@@ -1936,6 +1904,13 @@ document.documentElement.appendChild(_diagPainel);
         </button>
       </div>
     </div>
+
+    <div style="font-size:0.8rem;color:var(--brown);font-weight:600;margin-bottom:0.5rem;padding-bottom:0.5rem;border-top:1px solid rgba(184,134,42,0.15);padding-top:0.8rem">Notificações</div>
+    <div id="notif-status-texto" style="font-size:0.78rem;color:var(--muted);margin-bottom:0.7rem;line-height:1.4"></div>
+    <button id="btn-ativar-notif" onclick="ativarNotificacoesManual()"
+      style="width:100%;padding:0.6rem;border:none;border-radius:8px;background:var(--brown);color:white;font-size:0.82rem;font-weight:600;cursor:pointer;margin-bottom:1.2rem">
+      🔔 Ativar notificações
+    </button>
 
     <div style="font-size:0.8rem;color:var(--brown);font-weight:600;margin-bottom:0.5rem;padding-bottom:0.5rem;border-top:1px solid rgba(184,134,42,0.15);padding-top:0.8rem">Financeiro</div>
     <div class="field-group">
@@ -8392,19 +8367,17 @@ function showLoginTab(tab) {
 }
 
 function setLoginMsg(msg, cor) {
-  // Mostra no formulário ativo
+  // Mostra no formulário ativo — cada aba tem sua própria mensagem, acima do botão dela
   const formCriar = document.getElementById('form-criar');
+  const formRecuperar = document.getElementById('form-recuperar');
   const isCriar = formCriar && formCriar.style.display !== 'none';
-  if (isCriar) {
-    const el = document.getElementById('login-msg-criar');
-    if (el) {
-      el.textContent = msg;
-      el.style.color = cor || 'var(--bordeaux)';
-      el.style.display = msg ? 'block' : 'none';
-    }
-  } else {
-    const el = document.getElementById('login-msg');
-    if (el) { el.textContent = msg; el.style.color = cor || 'var(--bordeaux)'; }
+  const isRecuperar = formRecuperar && formRecuperar.style.display !== 'none';
+  const idAlvo = isCriar ? 'login-msg-criar' : (isRecuperar ? 'login-msg-recuperar' : 'login-msg');
+  const el = document.getElementById(idAlvo);
+  if (el) {
+    el.textContent = msg;
+    el.style.color = cor || 'var(--bordeaux)';
+    el.style.display = msg ? 'block' : 'none';
   }
 }
 
@@ -8877,6 +8850,7 @@ function openConfiguracoes() {
   if (grpSenha) grpSenha.style.display = 'none';
   const msgSenha = document.getElementById('c-senha-msg');
   if (msgSenha) msgSenha.textContent = '';
+  atualizarStatusNotif();
   // Preenche campos de impostos
   const imp = custosConfig.impostoConfig || CUSTOS_DEFAULT.impostoConfig;
   const elImpTipo = document.getElementById('c-imposto-tipo');
@@ -9364,44 +9338,109 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
 }
 
+// Núcleo da inscrição push, compartilhado entre a renovação automática e o botão manual
+async function _executarSubscricaoPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return { ok: false, motivo: 'sem-suporte' };
+
+  const reg = await navigator.serviceWorker.ready;
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') return { ok: false, motivo: 'negado' };
+
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) {
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+  }
+
+  const subJson = sub.toJSON();
+  await sbFetch('push_subscriptions', {
+    method: 'POST',
+    headers: { 'Prefer': 'resolution=merge-duplicates', 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      user_id: _uid(),
+      endpoint: subJson.endpoint,
+      subscription: subJson,
+      updated_at: new Date().toISOString()
+    })
+  });
+
+  console.log('✅ Push subscription ativa e salva no Supabase');
+  return { ok: true };
+}
+
+// Ativação automática pós-login: só RENOVA se a permissão já tinha sido concedida antes.
+// Nunca pede permissão sozinha — no iPhone o Safari ignora silenciosamente pedidos
+// de permissão que não vêm de um toque direto do usuário, e no Android também é
+// mais correto deixar a pessoa decidir clicando no botão em Configurações.
 async function ativarPushAposLogin() {
   try {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-
-    const reg = await navigator.serviceWorker.ready;
-
-    // Pede permissão se ainda não deu
-    const perm = await Notification.requestPermission();
-    if (perm !== 'granted') return;
-
-    // Verifica se já tem subscription ativa
-    let sub = await reg.pushManager.getSubscription();
-
-    if (!sub) {
-      // Cria nova subscription
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-      });
-    }
-
-    // Salva/atualiza subscription no Supabase
-    const subJson = sub.toJSON();
-    await sbFetch('push_subscriptions', {
-      method: 'POST',
-      headers: { 'Prefer': 'resolution=merge-duplicates', 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user_id: _uid(),
-        endpoint: subJson.endpoint,
-        subscription: subJson,
-        updated_at: new Date().toISOString()
-      })
-    });
-
-    console.log('✅ Push subscription ativa e salva no Supabase');
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    await _executarSubscricaoPush();
   } catch (err) {
     console.warn('Push não disponível:', err.message);
   }
+}
+
+// Detecta iPhone/iPad
+function _ehIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent || '');
+}
+// Detecta se está rodando instalado (tela de início / TWA), não numa aba de navegador comum
+function _ehStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+// Botão manual "Ativar notificações" em Configurações — sempre disparado por toque direto
+async function ativarNotificacoesManual() {
+  const btn = document.getElementById('btn-ativar-notif');
+  if (btn) { btn.disabled = true; btn.textContent = 'Ativando...'; }
+  try {
+    const r = await _executarSubscricaoPush();
+    if (r.ok) {
+      mostrarAlerta({ emoji: '🔔', titulo: 'Notificações ativadas', mensagem: 'Você vai receber os avisos do AtelierHub por aqui.' });
+    } else if (r.motivo === 'negado') {
+      mostrarAlerta({ emoji: '🔕', titulo: 'Permissão negada', mensagem: 'Pra ativar, você precisa permitir notificações nas configurações do navegador ou do sistema pra este site.' });
+    } else {
+      mostrarAlerta({ emoji: '⚠️', titulo: 'Não disponível', mensagem: 'Seu navegador não suporta notificações push.' });
+    }
+  } catch (e) {
+    mostrarAlerta({ emoji: '⚠️', titulo: 'Erro', mensagem: 'Não foi possível ativar agora. Tente novamente.' });
+  }
+  atualizarStatusNotif();
+}
+
+// Atualiza o texto/botão de status na tela de Configurações
+function atualizarStatusNotif() {
+  const txt = document.getElementById('notif-status-texto');
+  const btn = document.getElementById('btn-ativar-notif');
+  if (!txt || !btn) return;
+
+  if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+    txt.textContent = 'Seu navegador não suporta notificações.';
+    btn.style.display = 'none';
+    return;
+  }
+  if (_ehIOS() && !_ehStandalone()) {
+    txt.textContent = 'No iPhone: adicione o app à Tela de Início primeiro (Compartilhar → Adicionar à Tela de Início) — só assim dá pra ativar notificações.';
+    btn.style.display = 'none';
+    return;
+  }
+  if (Notification.permission === 'granted') {
+    txt.textContent = 'Notificações ativadas ✓';
+    btn.style.display = 'none';
+    return;
+  }
+  if (Notification.permission === 'denied') {
+    txt.textContent = 'Bloqueado. Pra ativar, permita notificações nas configurações do navegador ou do sistema pra este site.';
+    btn.style.display = 'none';
+    return;
+  }
+  txt.textContent = 'Receba avisos de prazos e cobranças direto no celular.';
+  btn.style.display = 'block';
+  btn.disabled = false;
+  btn.textContent = '🔔 Ativar notificações';
 }
 
 function filtrarContratos() {
