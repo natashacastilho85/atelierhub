@@ -4,18 +4,39 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <script>
-/* Corrige bug de renderização (Android/TWA): em certos carregamentos — abrir o
-   app direto, ou voltar de um redirecionamento externo como o login do Google —
-   o navegador às vezes calcula a tela como se fosse bem mais larga do que o
-   aparelho real, e o app inteiro aparece encolhido até fechar/reabrir.
-   Detecção: quando isso acontece, window.innerWidth (o que o navegador ACHA
-   que é a largura) fica bem maior que window.screen.width (a largura real do
-   aparelho, que não é afetada por esse bug). Em vez de tentar adivinhar UM
-   momento certo pra corrigir, o script fica checando por alguns segundos após
-   cada carregamento da página e corrige assim que detectar a diferença —
-   cobre abrir direto, voltar do Google, ou qualquer caminho parecido. */
+/* Corrige bug de renderização (Android/TWA): em certos carregamentos — sobretudo
+   voltando do redirecionamento do login com Google — o navegador calcula a tela
+   como se fosse bem mais larga que o aparelho real, e o app aparece encolhido.
+   Provado por teste real: só mudar o atributo da tag de viewport NÃO faz o
+   navegador recalcular nesse contexto (a tag muda, mas o innerWidth continua
+   errado). O único jeito confirmado que funciona é fechar e abrir de novo —
+   ou seja, um carregamento novo da página. Por isso a estratégia é: detectar
+   o bug o mais cedo possível e forçar esse "fechar e abrir" via location.reload().
+   Detecção: window.innerWidth (o que o navegador ACHA que é a largura) fica bem
+   maior que window.screen.width (a largura real do aparelho, que não é afetada
+   por esse bug). A checagem roda IMEDIATAMENTE, na primeira linha do script —
+   antes até do conteúdo da página existir — pra recarregar o quanto antes,
+   minimizando o tempo em que a tela errada fica visível. Trava por
+   sessionStorage evita ficar recarregando em loop caso não resolva. */
+function _vpBugDetectado() {
+  return window.innerWidth > window.screen.width * 1.15;
+}
+function _vpPodeRecarregar() {
+  var ultima = sessionStorage.getItem('_vpReloadTs');
+  var agora = Date.now();
+  if (ultima && (agora - parseInt(ultima, 10)) < 5000) return false;
+  sessionStorage.setItem('_vpReloadTs', String(agora));
+  return true;
+}
 
-/* ── PAINEL DE DIAGNÓSTICO TEMPORÁRIO — REMOVER DEPOIS DE ACHAR O BUG ──
+// Checagem imediata — a primeira coisa que o script faz
+var _vpJaRecarregou = false;
+if (_vpBugDetectado() && _vpPodeRecarregar()) {
+  _vpJaRecarregou = true;
+  location.reload();
+}
+
+/* ── PAINEL DE DIAGNÓSTICO TEMPORÁRIO — REMOVER DEPOIS DE CONFIRMAR QUE RESOLVEU ──
    Mostra ao vivo, no topo da tela, os números reais do que está acontecendo,
    pra tirar print durante o bug em vez de ficar só na teoria. */
 var _diagPainel = document.createElement('div');
@@ -28,7 +49,7 @@ document.documentElement.appendChild(_diagPainel);
 (function monitorarViewport() {
   var checagens = 0;
   var maxChecagens = 80; // ~20s de monitoramento (80 x 250ms)
-  var correcoes = 0;
+  var recargas = 0;
   var inicio = Date.now();
 
   function atualizarPainel(bugAtivo) {
@@ -36,19 +57,18 @@ document.documentElement.appendChild(_diagPainel);
     _diagPainel.textContent =
       'DIAG (temporário) ' + ((Date.now() - inicio) / 1000).toFixed(1) + 's\n' +
       'innerWidth=' + window.innerWidth + '   screen.width=' + window.screen.width + '\n' +
-      'bug detectado agora: ' + (bugAtivo ? 'SIM' : 'não') + '   correcoes feitas: ' + correcoes + '\n' +
+      'bug detectado agora: ' + (bugAtivo ? 'SIM' : 'não') + '   já recarregou ao entrar: ' + (_vpJaRecarregou ? 'SIM' : 'não') + '   recargas do loop: ' + recargas + '\n' +
       'viewport atual: ' + (vp ? vp.getAttribute('content') : '(sem tag)');
   }
 
   var intervalo = setInterval(function () {
     checagens++;
-    var bugAtivo = window.innerWidth > window.screen.width * 1.15;
-    if (bugAtivo) {
-      var vp = document.querySelector('meta[name="viewport"]');
-      if (vp) {
-        vp.setAttribute('content', 'width=' + window.screen.width + ', initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
-        correcoes++;
-      }
+    var bugAtivo = _vpBugDetectado();
+    if (bugAtivo && _vpPodeRecarregar()) {
+      recargas++;
+      atualizarPainel(bugAtivo);
+      location.reload();
+      return;
     }
     atualizarPainel(bugAtivo);
     if (checagens >= maxChecagens) {
