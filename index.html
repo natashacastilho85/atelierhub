@@ -1765,7 +1765,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;gap:0.5rem">
       <div style="display:flex;align-items:center;gap:0.4rem">
         <div class="drawer-title" style="margin-bottom:0">&#9201; Desidratação</div>
-        <button onclick="mostrarAlerta({emoji:'ℹ️', titulo:'Como funciona a ordem', mensagem:'Os cards são ordenados pela data prevista de conclusão — os que estão mais perto de ficar prontos (ou já atrasados) aparecem primeiro. Os com mais tempo pela frente ficam depois.'})" style="background:none;border:none;color:var(--muted);font-size:1rem;cursor:pointer;padding:0;line-height:1" title="Como funciona a ordem">ℹ️</button>
+        <button class="header-btn" onclick="mostrarAlerta({emoji:'ℹ️', titulo:'Como funciona a ordem', mensagem:'Os cards são ordenados pela data prevista de conclusão — os que estão mais perto de ficar prontos (ou já atrasados) aparecem primeiro. Os com mais tempo pela frente ficam depois.'})" title="Como funciona a ordem" style="font-size:1.1rem">ℹ️</button>
       </div>
       <button onclick="abrirNovaDesid()" style="background:var(--brown);border:none;border-radius:6px;color:white;padding:0.45rem 0.9rem;font-size:0.78rem;cursor:pointer;font-family:'Calibri',sans-serif">+ Nova</button>
     </div>
@@ -2486,13 +2486,31 @@ function _scrollScreenToTop(tab) {
 // Abas cujo card do mês vigente é identificado por id="<prefixo>-mes-MM"
 const _prefixoMesPorTab = { gastos: 'gasto', financeiro: 'fin', calendario: 'cal' };
 
+// Rola até um elemento, descontando a altura do cabeçalho fixo (evita esconder o topo do card)
+function _scrollAteComFolga(el) {
+  if (!el) return;
+  el.scrollIntoView({ block: 'start' });
+  const header = document.querySelector('.app-header');
+  const headerH = header ? header.getBoundingClientRect().height : 0;
+  const folga = headerH + 16;
+  window.scrollBy(0, -folga);
+  const cont = document.querySelector('.app-content');
+  if (cont) cont.scrollBy(0, -folga);
+}
+
 function _scrollParaMesAtual(tab) {
   const prefixo = _prefixoMesPorTab[tab];
   if (!prefixo) return false;
   const mesAtual = String(new Date().getMonth() + 1).padStart(2, '0');
   const card = document.getElementById(prefixo + '-mes-' + mesAtual);
   if (!card) return false;
-  card.scrollIntoView({ block: 'start' });
+  const tela = document.getElementById('screen-' + tab);
+  _scrollAteComFolga(card);
+  if (tela) {
+    const header = document.querySelector('.app-header');
+    const headerH = header ? header.getBoundingClientRect().height : 0;
+    tela.scrollBy(0, -(headerH + 16));
+  }
   return true;
 }
 
@@ -3652,7 +3670,7 @@ async function saveGasto() {
     renderAll();
     const mesDoGasto = data.split('-')[1];
     const cardGasto = document.getElementById('gasto-mes-' + mesDoGasto);
-    if (cardGasto) cardGasto.scrollIntoView({ block: 'start' });
+    _scrollAteComFolga(cardGasto);
   } catch(e) {
     hideLoading();
     mostrarAlerta({ emoji: '❌', titulo: 'Erro ao salvar', mensagem: e.message });
