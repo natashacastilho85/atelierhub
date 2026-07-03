@@ -1762,8 +1762,11 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
 <div class="drawer-overlay" id="drawer-desid" onclick="if(event.target===this)closeDrawer('drawer-desid')">
   <div class="drawer" onclick="event.stopPropagation()">
     <div class="drawer-handle"></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
-      <div class="drawer-title" style="margin-bottom:0">&#9201; Desidratação</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;gap:0.5rem">
+      <div style="display:flex;align-items:center;gap:0.4rem">
+        <div class="drawer-title" style="margin-bottom:0">&#9201; Desidratação</div>
+        <button onclick="mostrarAlerta({emoji:'ℹ️', titulo:'Como funciona a ordem', mensagem:'Os cards são ordenados pela data prevista de conclusão — os que estão mais perto de ficar prontos (ou já atrasados) aparecem primeiro. Os com mais tempo pela frente ficam depois.'})" style="background:none;border:none;color:var(--muted);font-size:1rem;cursor:pointer;padding:0;line-height:1" title="Como funciona a ordem">ℹ️</button>
+      </div>
       <button onclick="abrirNovaDesid()" style="background:var(--brown);border:none;border-radius:6px;color:white;padding:0.45rem 0.9rem;font-size:0.78rem;cursor:pointer;font-family:'Calibri',sans-serif">+ Nova</button>
     </div>
     <div id="desid-lista" style="margin-bottom:1.5rem"></div>
@@ -2480,6 +2483,19 @@ function _scrollScreenToTop(tab) {
   window.scrollTo(0, 0);
 }
 
+// Abas cujo card do mês vigente é identificado por id="<prefixo>-mes-MM"
+const _prefixoMesPorTab = { gastos: 'gasto', financeiro: 'fin', calendario: 'cal' };
+
+function _scrollParaMesAtual(tab) {
+  const prefixo = _prefixoMesPorTab[tab];
+  if (!prefixo) return false;
+  const mesAtual = String(new Date().getMonth() + 1).padStart(2, '0');
+  const card = document.getElementById(prefixo + '-mes-' + mesAtual);
+  if (!card) return false;
+  card.scrollIntoView({ block: 'start' });
+  return true;
+}
+
 function goTab(tab, el) {
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
@@ -2487,7 +2503,7 @@ function goTab(tab, el) {
   if (!tela) return;
   tela.classList.add('active');
   if (el) el.classList.add('active');
-  _scrollScreenToTop(tab);
+  if (!_scrollParaMesAtual(tab)) _scrollScreenToTop(tab);
   const fab = document.getElementById('fab');
   if (tab in tabsComFab) {
     fab.classList.remove('hidden');
@@ -3173,7 +3189,8 @@ function renderCalendario() {
       c.contrato.startsWith(String(new Date().getFullYear())) && 
       parseInt(c.contrato.split('-')[1]) - 1 === m
     ).length;
-    html += `<div class="cal-month-card">
+    const mCalStr = String(m+1).padStart(2,'0');
+    html += `<div class="cal-month-card" id="cal-mes-${mCalStr}">
       <div class="cal-month-header">
         <div class="cal-month-name">${mesesNomes[m]}</div>
         <div class="cal-month-stat">
@@ -3202,6 +3219,9 @@ function renderCalendario() {
       });
     }
     html += `</div>`;
+    if ((m+1) % 3 === 0 && (m+1) < 12) {
+      html += `<div style="text-align:center;padding:0.3rem 0 0.5rem"><button onclick="(function(){var d=document.getElementById('screen-calendario');if(d)d.scrollTo({top:0,behavior:'smooth'});})()" style="background:none;border:1px solid rgba(184,134,42,0.2);border-radius:20px;padding:0.3rem 0.9rem;font-size:0.68rem;color:var(--muted);cursor:pointer;letter-spacing:0.08em;font-family:'Calibri',sans-serif">↑ subir ao topo</button></div>`;
+    }
   }
   lista.innerHTML = html;
 }
@@ -3252,7 +3272,7 @@ function renderFinanceiro() {
     const saidMes = gastosAno.filter(g=>g.data.startsWith(prefMes)).reduce((s,g)=>s+g.valor, 0);
     const resMes  = recebidoMes - saidMes;
     const nCtrs   = ctrsAno.filter(c=>c.contrato.startsWith(prefMes)).length;
-    return `<div class="fin-month-card">
+    let cardHtml = `<div class="fin-month-card" id="fin-mes-${m}">
       <div class="fin-month-header">
         <div class="fin-month-name">${nome}</div>
         <div class="fin-month-stat">
@@ -3268,6 +3288,10 @@ function renderFinanceiro() {
         <div class="fin-row"><span class="lbl">Resultado líquido</span><span class="val gold">${resMes!==0?'R$ '+resMes.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</span></div>
       </div>
     </div>`;
+    if (Number(m) % 3 === 0 && Number(m) < 12) {
+      cardHtml += `<div style="text-align:center;padding:0.3rem 0 0.5rem"><button onclick="(function(){var d=document.getElementById('screen-financeiro');if(d)d.scrollTo({top:0,behavior:'smooth'});})()" style="background:none;border:1px solid rgba(184,134,42,0.2);border-radius:20px;padding:0.3rem 0.9rem;font-size:0.68rem;color:var(--muted);cursor:pointer;letter-spacing:0.08em;font-family:'Calibri',sans-serif">↑ subir ao topo</button></div>`;
+    }
+    return cardHtml;
   }).join('');
 }
 
@@ -3300,7 +3324,7 @@ function renderGastos() {
     // Total do mês exclui registros zerados de "compra"
     const totalMes = lista.filter(g => g.parcela_num !== 0).reduce((s,g)=>s+g.valor, 0);
 
-    html += `<div class="gasto-month-card">
+    html += `<div class="gasto-month-card" id="gasto-mes-${mStr}">
       <div class="gasto-month-header">
         <div class="gasto-month-name">${nome}</div>
         <div class="gasto-month-total">${totalMes>0?'− R$ '+totalMes.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</div>
@@ -3334,6 +3358,9 @@ function renderGastos() {
       }).join('');
     }
     html += `</div>`;
+    if (m % 3 === 0 && m < 12) {
+      html += `<div style="text-align:center;padding:0.3rem 0 0.5rem"><button onclick="(function(){var d=document.getElementById('screen-gastos');if(d)d.scrollTo({top:0,behavior:'smooth'});})()" style="background:none;border:1px solid rgba(184,134,42,0.2);border-radius:20px;padding:0.3rem 0.9rem;font-size:0.68rem;color:var(--muted);cursor:pointer;letter-spacing:0.08em;font-family:'Calibri',sans-serif">↑ subir ao topo</button></div>`;
+    }
   }
   document.getElementById('gastos-list').innerHTML = html;
 }
@@ -3623,6 +3650,9 @@ async function saveGasto() {
     hideLoading();
     closeDrawer('drawer-gasto');
     renderAll();
+    const mesDoGasto = data.split('-')[1];
+    const cardGasto = document.getElementById('gasto-mes-' + mesDoGasto);
+    if (cardGasto) cardGasto.scrollIntoView({ block: 'start' });
   } catch(e) {
     hideLoading();
     mostrarAlerta({ emoji: '❌', titulo: 'Erro ao salvar', mensagem: e.message });
@@ -9790,7 +9820,7 @@ async function renderDesidLista() {
       return;
     }
     const hj = new Date(); hj.setHours(0,0,0,0);
-    el.innerHTML = dados.map(r => {
+    el.innerHTML = dados.map((r, idx) => {
       const dc = new Date(r.data_conclusao + 'T12:00:00');
       const diff = Math.round((dc - hj) / 86400000);
       const ok = r.concluido;
@@ -9816,7 +9846,10 @@ async function renderDesidLista() {
         +'<div><div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted)">Pronto em</div>'
         +'<div style="font-family:Calibri,serif;font-size:0.95rem;color:'+cor+'">'+df+' - '+st+'</div></div>'
         +(!ok?'<button onclick="concluirDesid('+r.id+')" style="background:var(--sage);border:none;border-radius:6px;color:white;padding:0.4rem 0.8rem;font-size:0.72rem;cursor:pointer;font-family:Calibri,sans-serif">Concluir</button>':'')
-        +'</div></div>';
+        +'</div></div>'
+        +(((idx+1) % 6 === 0 && idx+1 < dados.length)
+          ? '<div style="text-align:center;padding:0.3rem 0 0.5rem"><button onclick="(function(){const d=document.querySelector(\'#drawer-desid .drawer\');if(d)d.scrollTo({top:0,behavior:\'smooth\'});})()" style="background:none;border:1px solid rgba(184,134,42,0.25);border-radius:20px;padding:0.35rem 1rem;font-size:0.68rem;color:var(--muted);cursor:pointer;letter-spacing:0.08em;font-family:\'Calibri\',sans-serif">↑ subir ao topo</button></div>'
+          : '');
     }).join('');
   } catch(e) {
     el.innerHTML = '<div style="color:var(--bordeaux);font-size:0.8rem;padding:1rem">Erro: '+e.message+'</div>';
