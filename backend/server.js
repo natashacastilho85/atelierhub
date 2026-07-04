@@ -112,6 +112,31 @@ async function verificarNotificacoes() {
 
   console.log(`[notif] ${contratos.length} contrato(s)`);
 
+  // Busca em lote a configuração de Reserva Antecipada (prazo de quitação + antecedência do aviso)
+  // de cada usuária que tem ao menos um contrato em 'reserva'. Usuária sem configuração feita
+  // ainda: nenhum lembrete de reserva é disparado para ela (sem enforcement até ela configurar).
+  const uidsReserva = [...new Set(contratos.filter(c => c.forma_pag === 'reserva' && c.user_id).map(c => c.user_id))];
+  const reservaConfigPorUid = new Map();
+  if (uidsReserva.length) {
+    const { data: configs, error: errCfg } = await supabase
+      .from('configuracoes')
+      .select('user_id, valor')
+      .eq('chave', 'villare-custos')
+      .in('user_id', uidsReserva);
+    if (errCfg) {
+      console.error('[notif] Erro ao buscar config de reserva:', errCfg.message);
+    } else if (configs) {
+      for (const row of configs) {
+        const v = row.valor || {};
+        const prazo = v.prazoReserva;
+        const notifDias = v.notifDiasAntesReserva;
+        if (prazo !== null && prazo !== undefined && notifDias !== null && notifDias !== undefined) {
+          reservaConfigPorUid.set(row.user_id, { prazo, notifDias });
+        }
+      }
+    }
+  }
+
   for (const c of contratos) {
     if (!c.casamento || !c.user_id) continue;
     const uid = c.user_id;
@@ -122,12 +147,19 @@ async function verificarNotificacoes() {
     if (addDays(cas, -7) === today)
       await disparar(uid, `7d-${id}`, '💍 Casamento em 7 dias', `${c.nome} — o grande dia está chegando!`, id);
 
-    // 2. 💰 Lembrete reserva 20 dias (só se tiver saldo)
-    if (addDays(cas, -20) === today && c.forma_pag === 'reserva') {
-      const saldo = (parseFloat(c.valor_bruto) || 0) - totalPago(c.pagamentos);
-      if (saldo > 0.01)
-        await disparar(uid, `reserva20-${id}`, '💰 Lembrete reserva 20 dias',
-          `${c.nome} — saldo de R$${saldo.toFixed(2).replace('.', ',')} em aberto`, id);
+    // 2. 💰 Lembrete reserva — prazo e antecedência configurados pela usuária (Configurações → Formas de pagamento)
+    if (c.forma_pag === 'reserva') {
+      const cfg = reservaConfigPorUid.get(uid);
+      if (cfg) {
+        const diasAntes = cfg.prazo + cfg.notifDias;
+        if (addDays(cas, -diasAntes) === today) {
+          const saldo = (parseFloat(c.valor_bruto) || 0) - totalPago(c.pagamentos);
+          if (saldo > 0.01)
+            await disparar(uid, `reserva-${id}`, '💰 Lembrete reserva',
+              `${c.nome} — saldo de R$${saldo.toFixed(2).replace('.', ',')} em aberto`, id);
+        }
+      }
+      // Sem configuração feita ainda: nenhum lembrete é disparado para essa usuária.
     }
 
     // 3. 📦 Confirmação de envio — 1 dia útil após casamento
