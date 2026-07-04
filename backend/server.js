@@ -137,6 +137,29 @@ async function verificarNotificacoes() {
     }
   }
 
+  // Busca em lote a configuração de "Entrada + saldo na entrega" (dias após a entrega para avisar)
+  // de cada usuária que tem ao menos um contrato em 'entrega_prazo'. Sem configuração: sem aviso.
+  const uidsEntregaPrazo = [...new Set(contratos.filter(c => c.forma_pag === 'entrega_prazo' && c.user_id).map(c => c.user_id))];
+  const entregaPrazoConfigPorUid = new Map();
+  if (uidsEntregaPrazo.length) {
+    const { data: configsE, error: errCfgE } = await supabase
+      .from('configuracoes')
+      .select('user_id, valor')
+      .eq('chave', 'villare-custos')
+      .in('user_id', uidsEntregaPrazo);
+    if (errCfgE) {
+      console.error('[notif] Erro ao buscar config de entrega_prazo:', errCfgE.message);
+    } else if (configsE) {
+      for (const row of configsE) {
+        const v = row.valor || {};
+        const diasAviso = v.diasAvisoEntrega;
+        if (diasAviso !== null && diasAviso !== undefined) {
+          entregaPrazoConfigPorUid.set(row.user_id, { diasAviso });
+        }
+      }
+    }
+  }
+
   for (const c of contratos) {
     if (!c.casamento || !c.user_id) continue;
     const uid = c.user_id;
@@ -156,6 +179,22 @@ async function verificarNotificacoes() {
           const saldo = (parseFloat(c.valor_bruto) || 0) - totalPago(c.pagamentos);
           if (saldo > 0.01)
             await disparar(uid, `reserva-${id}`, '💰 Lembrete reserva',
+              `${c.nome} — saldo de R$${saldo.toFixed(2).replace('.', ',')} em aberto`, id);
+        }
+      }
+      // Sem configuração feita ainda: nenhum lembrete é disparado para essa usuária.
+    }
+
+    // 2b. 💰 Lembrete Entrada + saldo na entrega — dispara X dias após a peça ser marcada como entregue,
+    // contagem direta a partir de c.entrega (independente do prazo de quitação, que é só visual no app).
+    if (c.forma_pag === 'entrega_prazo' && c.entrega) {
+      const cfgE = entregaPrazoConfigPorUid.get(uid);
+      if (cfgE) {
+        const dataEntrega = c.entrega.split('T')[0];
+        if (addDays(dataEntrega, cfgE.diasAviso) === today) {
+          const saldo = (parseFloat(c.valor_bruto) || 0) - totalPago(c.pagamentos);
+          if (saldo > 0.01)
+            await disparar(uid, `entregaprazo-${id}`, '💰 Lembrete de saldo',
               `${c.nome} — saldo de R$${saldo.toFixed(2).replace('.', ',')} em aberto`, id);
         }
       }
