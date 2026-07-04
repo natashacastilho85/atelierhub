@@ -1076,7 +1076,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
               <div id="fil-col-pagamento" style="display:none;margin-bottom:0.5rem">
                 <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.2rem">Forma de pagamento</div>
                 <select id="fil-forma" style="width:100%;padding:0.4rem 0.5rem;border:1px solid rgba(184,134,42,0.35);border-radius:8px;font-family:'Calibri',sans-serif;font-size:0.82rem;background:var(--cream);color:var(--dark)">
-                  <option value="">Qualquer</option><option value="pix">Pix</option><option value="debito">Débito</option><option value="dinheiro">Dinheiro</option><option value="credito">Crédito</option><option value="reserva">Reserva antecipada</option><option value="misto">Misto</option>
+                  <option value="">Qualquer</option><option value="pix">Pix</option><option value="debito">Débito</option><option value="dinheiro">Dinheiro</option><option value="credito">Crédito</option><option value="reserva">Reserva antecipada</option><option value="entrega_prazo">Entrada + saldo na entrega</option><option value="misto">Misto</option>
                 </select>
               </div>
               <div id="fil-col-presente" style="display:none;margin-bottom:0.5rem">
@@ -1306,7 +1306,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     </div>
     <div class="field-group">
       <label class="field-label" style="display:flex;align-items:center;gap:0.35rem">Forma de pagamento
-        <button onclick="(function(){var v=document.getElementById('forma-pag-select').value;if(v==='reserva')infoReservaAntecipada();else if(v==='misto')infoMisto();})()" id="btn-info-forma-pag" style="background:none;border:none;padding:0;cursor:pointer;font-size:0.8rem;color:var(--muted-light);display:none">ⓘ</button>
+        <button onclick="(function(){var v=document.getElementById('forma-pag-select').value;if(v==='reserva')infoReservaAntecipada();else if(v==='entrega_prazo')infoEntregaPrazo();else if(v==='misto')infoMisto();})()" id="btn-info-forma-pag" style="background:none;border:none;padding:0;cursor:pointer;font-size:0.8rem;color:var(--muted-light);display:none">ⓘ</button>
       </label>
       <select class="field-input" id="forma-pag-select" onchange="onFormaPagChange(this.value)">
         <option value="pix">Pix</option>
@@ -1314,10 +1314,14 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         <option value="dinheiro">Dinheiro</option>
         <option value="credito">Crédito</option>
         <option value="reserva">Reserva antecipada</option>
+        <option value="entrega_prazo">Entrada + saldo na entrega</option>
         <option value="misto">Misto</option>
       </select>
       <div class="field-hint" id="hint-reserva">
         Mínimo de R$ 300 na entrada. Saldo restante pago da forma que a noiva preferir.
+      </div>
+      <div class="field-hint" id="hint-entregaprazo">
+        Saldo restante cobrado após a entrega da peça.
       </div>
     </div>
     <div class="field-group" id="grp-credito" style="display:none">
@@ -1342,6 +1346,27 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       <div class="field-group">
         <label class="field-label">Entrada já recebida (R$)</label>
         <input class="field-input" id="c-pago" type="number" placeholder="Mín. R$ 300,00" step="1" min="0">
+        <div class="field-hint visible" style="font-size:0.65rem;color:var(--muted);margin-top:0.3rem">O restante fica em aberto. Você poderá registrar mais pagamentos depois, no detalhe do contrato.</div>
+      </div>
+    </div>
+    <div id="grp-pago-entregaprazo" style="display:none">
+      <div class="field-row">
+        <div class="field-group">
+          <label class="field-label">Forma da entrada</label>
+          <select class="field-input" id="c-entregaprazo-forma" onchange="onEntregaPrazoFormaChange('c')">
+            <option value="Pix">Pix</option>
+            <option value="Cartão">Cartão</option>
+            <option value="Dinheiro">Dinheiro</option>
+          </select>
+        </div>
+        <div class="field-group" id="c-entregaprazo-grp-parc" style="display:none">
+          <label class="field-label">Parcelas</label>
+          <select class="field-input" id="c-entregaprazo-parc"></select>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Entrada já recebida (R$)</label>
+        <input class="field-input" id="c-entregaprazo-pago" type="number" placeholder="0,00" step="1" min="0">
         <div class="field-hint visible" style="font-size:0.65rem;color:var(--muted);margin-top:0.3rem">O restante fica em aberto. Você poderá registrar mais pagamentos depois, no detalhe do contrato.</div>
       </div>
     </div>
@@ -1533,6 +1558,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         <option value="dinheiro">Dinheiro</option>
         <option value="credito">Crédito</option>
         <option value="reserva">Reserva antecipada</option>
+        <option value="entrega_prazo">Entrada + saldo na entrega</option>
         <option value="misto">Misto</option>
       </select>
     </div>
@@ -1564,6 +1590,27 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       <div class="field-group">
         <label class="field-label">Entrada já recebida (R$)</label>
         <input class="field-input" id="e-pago" type="number" placeholder="Mín. R$ 300,00" step="1" min="0">
+        <div class="field-hint visible" style="font-size:0.65rem;color:var(--muted);margin-top:0.3rem">Valor que a noiva já pagou de entrada. Sem descontos.</div>
+      </div>
+    </div>
+    <div id="e-grp-pago-entregaprazo" style="display:none">
+      <div class="field-row">
+        <div class="field-group">
+          <label class="field-label">Forma da entrada</label>
+          <select class="field-input" id="e-entregaprazo-forma" onchange="onEntregaPrazoFormaChange('e')">
+            <option value="Pix">Pix</option>
+            <option value="Cartão">Cartão</option>
+            <option value="Dinheiro">Dinheiro</option>
+          </select>
+        </div>
+        <div class="field-group" id="e-entregaprazo-grp-parc" style="display:none">
+          <label class="field-label">Parcelas</label>
+          <select class="field-input" id="e-entregaprazo-parc"></select>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Entrada já recebida (R$)</label>
+        <input class="field-input" id="e-entregaprazo-pago" type="number" placeholder="0,00" step="1" min="0">
         <div class="field-hint visible" style="font-size:0.65rem;color:var(--muted);margin-top:0.3rem">Valor que a noiva já pagou de entrada. Sem descontos.</div>
       </div>
     </div>
@@ -2243,17 +2290,32 @@ function totalPagoPorForma(c, forma) {
   return c.pagamentos.filter(p=>p.forma===forma).reduce((s,p) => s + (parseFloat(p.valor)||0), 0);
 }
 
-// Verifica se a noiva está devedora (reserva antecipada não quitada faltando o prazo configurado ou menos)
+// Verifica se a noiva está devedora — Reserva (prazo antes do casamento) ou Entrega+Prazo (prazo após a entrega)
 function isDevedor(c) {
   if (c.status === 'Cancelado') return false;
-  if (c.formaPag !== 'reserva') return false;
-  const prazo = custosConfig.prazoReserva;
-  if (prazo === null || prazo === undefined) return false; // ainda não configurado — sem enforcement
-  const saldo = c.valorBruto - totalPago(c);
-  if (saldo <= 0.01) return false;
-  const dataCas = new Date(c.casamento+'T12:00:00'); dataCas.setHours(0,0,0,0);
-  const limite = new Date(dataCas); limite.setDate(limite.getDate() - prazo);
-  return hoje >= limite;
+
+  if (c.formaPag === 'reserva') {
+    const prazo = custosConfig.prazoReserva;
+    if (prazo === null || prazo === undefined) return false; // ainda não configurado — sem enforcement
+    const saldo = c.valorBruto - totalPago(c);
+    if (saldo <= 0.01) return false;
+    const dataCas = new Date(c.casamento+'T12:00:00'); dataCas.setHours(0,0,0,0);
+    const limite = new Date(dataCas); limite.setDate(limite.getDate() - prazo);
+    return hoje >= limite;
+  }
+
+  if (c.formaPag === 'entrega_prazo') {
+    if (!c.entrega) return false; // só conta a partir do momento em que a peça é marcada como entregue/pronta
+    const prazo = custosConfig.prazoEntrega;
+    if (prazo === null || prazo === undefined) return false; // ainda não configurado — sem enforcement
+    const saldo = c.valorBruto - totalPago(c);
+    if (saldo <= 0.01) return false;
+    const dataEntrega = new Date(c.entrega+'T12:00:00'); dataEntrega.setHours(0,0,0,0);
+    const limite = new Date(dataEntrega); limite.setDate(limite.getDate() + prazo);
+    return hoje >= limite;
+  }
+
+  return false;
 }
 function mapGasto(r) {
   return {
@@ -2853,6 +2915,15 @@ function gerarPagamentosIniciais(forma, valor, dataContrato, desconto) {
     const pag = { data, valor: pagoEntrada, bruto: pagoEntrada, forma: formaEntrada, status: 'Realizado' };
     if (parcEntrada) pag.parcelas = parcEntrada;
     return [pag];
+  } else if (forma === 'entrega_prazo') {
+    const pagoEntradaE = round2(parseFloat(document.getElementById('c-entregaprazo-pago').value) || 0);
+    const formaEntradaE = document.getElementById('c-entregaprazo-forma')?.value || 'Pix';
+    const parcEntradaE = formaEntradaE === 'Cartão'
+      ? (parseInt(document.getElementById('c-entregaprazo-parc')?.value) || 1)
+      : null;
+    const pagE = { data, valor: pagoEntradaE, bruto: pagoEntradaE, forma: formaEntradaE, status: 'Realizado' };
+    if (parcEntradaE) pagE.parcelas = parcEntradaE;
+    return [pagE];
   } else if (forma === 'misto') {
     const pPix = parseFloat(document.getElementById('c-pago-pix').value) || 0;
     const pCartao = parseFloat(document.getElementById('c-pago-cartao').value) || 0;
@@ -3024,6 +3095,19 @@ function onReservaFormaChange(prefixo) {
   }
 }
 
+function onEntregaPrazoFormaChange(prefixo) {
+  const forma = document.getElementById(prefixo + '-entregaprazo-forma')?.value;
+  const grpParc = document.getElementById(prefixo + '-entregaprazo-grp-parc');
+  const selParc = document.getElementById(prefixo + '-entregaprazo-parc');
+  if (!grpParc) return;
+  if (forma === 'Cartão') {
+    grpParc.style.display = '';
+    if (selParc) selParc.innerHTML = getOpcoesParcelasSimples();
+  } else {
+    grpParc.style.display = 'none';
+  }
+}
+
 function onFormaPagChange(val) {
   const hint = document.getElementById('hint-reserva');
   if (hint) {
@@ -3036,14 +3120,26 @@ function onFormaPagChange(val) {
     }
   }
 
-  // Mostra ⓘ só em Reserva ou Misto
+  const hintEntregaPrazo = document.getElementById('hint-entregaprazo');
+  if (hintEntregaPrazo) {
+    hintEntregaPrazo.classList.toggle('visible', val==='entrega_prazo');
+    if (val === 'entrega_prazo') {
+      const prazoE = custosConfig.prazoEntrega;
+      hintEntregaPrazo.innerHTML = (prazoE !== null && prazoE !== undefined)
+        ? `Saldo restante cobrado até ${prazoE} dia${prazoE===1?'':'s'} após a entrega da peça.`
+        : `Saldo restante cobrado após a entrega da peça. <strong style="color:var(--bordeaux)">Configure o prazo de quitação em Configurações → Formas de pagamento antes de usar esta opção.</strong>`;
+    }
+  }
+
+  // Mostra ⓘ em Reserva, Entrega ou Misto
   const btnInfo = document.getElementById('btn-info-forma-pag');
-  if (btnInfo) btnInfo.style.display = (val === 'reserva' || val === 'misto') ? 'inline' : 'none';
+  if (btnInfo) btnInfo.style.display = (val === 'reserva' || val === 'entrega_prazo' || val === 'misto') ? 'inline' : 'none';
 
   const grpReserva = document.getElementById('grp-pago-reserva');
+  const grpEntregaPrazo = document.getElementById('grp-pago-entregaprazo');
   const grpMisto = document.getElementById('grp-pago-misto');
 
-  ['c-pago','c-pago-pix','c-pago-cartao','c-pago-dinheiro'].forEach(id => {
+  ['c-pago','c-pago-pix','c-pago-cartao','c-pago-dinheiro','c-entregaprazo-pago'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -3051,20 +3147,29 @@ function onFormaPagChange(val) {
   const grpCredito = document.getElementById('grp-credito');
   if (val === 'reserva') {
     if (grpReserva) grpReserva.style.display = '';
+    if (grpEntregaPrazo) grpEntregaPrazo.style.display = 'none';
+    if (grpMisto) grpMisto.style.display = 'none';
+    if (grpCredito) grpCredito.style.display = 'none';
+  } else if (val === 'entrega_prazo') {
+    if (grpReserva) grpReserva.style.display = 'none';
+    if (grpEntregaPrazo) grpEntregaPrazo.style.display = '';
     if (grpMisto) grpMisto.style.display = 'none';
     if (grpCredito) grpCredito.style.display = 'none';
   } else if (val === 'misto') {
     if (grpReserva) grpReserva.style.display = 'none';
+    if (grpEntregaPrazo) grpEntregaPrazo.style.display = 'none';
     if (grpMisto) grpMisto.style.display = '';
     if (grpCredito) grpCredito.style.display = 'none';
     preencherSelectParcelas('c-pago-cartao-parc');
   } else if (val === 'credito') {
     if (grpReserva) grpReserva.style.display = 'none';
+    if (grpEntregaPrazo) grpEntregaPrazo.style.display = 'none';
     if (grpMisto) grpMisto.style.display = 'none';
     if (grpCredito) grpCredito.style.display = '';
     preencherSelectParcelas('c-credito-parc');
   } else {
     if (grpReserva) grpReserva.style.display = 'none';
+    if (grpEntregaPrazo) grpEntregaPrazo.style.display = 'none';
     if (grpMisto) grpMisto.style.display = 'none';
     if (grpCredito) grpCredito.style.display = 'none';
   }
@@ -4782,7 +4887,7 @@ function renderComparativos() {
   var fmtR = function(v) { return 'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); };
 
   // Formas de pagamento
-  var formas = {pix:0,debito:0,dinheiro:0,credito:0,reserva:0,misto:0};
+  var formas = {pix:0,debito:0,dinheiro:0,credito:0,reserva:0,entrega_prazo:0,misto:0};
   ctrsAtivos.forEach(function(c) { if (formas[c.formaPag]!==undefined) formas[c.formaPag]++; });
   var total = ctrsAtivos.length || 1;
   var formasHTML = [
@@ -4792,6 +4897,7 @@ function renderComparativos() {
     ['Crédito',  formas.credito],
     ['Misto',    formas.misto],
     ['Reserva',  formas.reserva],
+    ['Entrega+Prazo', formas.entrega_prazo],
   ].filter(function(f){return f[1]>0;}).map(function(f) {
     var pct = Math.round(f[1]/total*100);
     return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem">'+
@@ -5198,7 +5304,7 @@ function openDetail(id) {
   const fmtData = s => s ? s.split('-').reverse().join('/') : '—';
   const _pixPctDetalhe = Math.round(getDescontoPix() * 100);
   const _dinheiroPctDetalhe = Math.round(getDescontoDinheiro() * 100);
-  const formaTxt = { pix: _pixPctDetalhe > 0 ? `Pix (${_pixPctDetalhe}% desc. noiva)` : 'Pix', debito:'Débito', dinheiro: _dinheiroPctDetalhe > 0 ? `Dinheiro (${_dinheiroPctDetalhe}% desc. noiva)` : 'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', misto:'Misto' };
+  const formaTxt = { pix: _pixPctDetalhe > 0 ? `Pix (${_pixPctDetalhe}% desc. noiva)` : 'Pix', debito:'Débito', dinheiro: _dinheiroPctDetalhe > 0 ? `Dinheiro (${_dinheiroPctDetalhe}% desc. noiva)` : 'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto' };
   const telLimpo = (c.telefone||'').replace(/\D/g,'');
   const telFormatado = formatarTelefone(c.telefone || '');
   const linkWaBtn = telLimpo ? `javascript:abrirWhatsBusiness('${telLimpo}')` : '';
@@ -5327,6 +5433,7 @@ function openDetail(id) {
       <div class="detail-row"><span class="dl">Total recebido</span><span class="dv" style="color:var(--sage);font-family:'Calibri',serif;font-size:1rem">R$ ${pagoNoCaixa.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
       <div class="detail-row"><span class="dl" style="color:var(--dark)">Saldo a receber</span><span class="dv" style="color:${saldo>0.01?(devedor?'var(--bordeaux)':'var(--brown)'):'var(--sage)'};${devedor?'font-weight:600':''}">${saldo>0.01?'R$ '+saldo.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'✓ Quitado'}</span></div>
       ${c.formaPag==='reserva'?`<div class="detail-row"><span class="dl" style="color:var(--muted-light);font-size:0.7rem">Prazo: ${(custosConfig.prazoReserva !== null && custosConfig.prazoReserva !== undefined) ? `quitado até ${custosConfig.prazoReserva} dia${custosConfig.prazoReserva===1?'':'s'} antes do casamento` : 'configure o prazo em Configurações'}</span><span class="dv"></span></div>`:''}
+      ${c.formaPag==='entrega_prazo'?`<div class="detail-row"><span class="dl" style="color:var(--muted-light);font-size:0.7rem">Prazo: ${!c.entrega ? 'conta a partir da entrega da peça' : (custosConfig.prazoEntrega !== null && custosConfig.prazoEntrega !== undefined) ? `quitado até ${custosConfig.prazoEntrega} dia${custosConfig.prazoEntrega===1?'':'s'} após a entrega` : 'configure o prazo em Configurações'}</span><span class="dv"></span></div>`:''}
       ${mistoHtml}
       ${pagsHtml ? `<div style="margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid rgba(184,134,42,0.12)"><div style="font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem">Histórico</div>${pagsHtml}</div>`:''}
       <button class="btn-primary" style="margin-top:0.7rem;background:rgba(107,143,113,0.12);color:var(--sage);border:1px solid rgba(107,143,113,0.35)" onclick="openNovoPagamento(${c.id})">💲 Registrar pagamento</button>
@@ -5525,6 +5632,10 @@ function abrirEdicaoContrato(id) {
     const primeiro = pags[0];
     const valor = primeiro ? (primeiro.bruto !== undefined ? primeiro.bruto : primeiro.valor) : '';
     document.getElementById('e-pago').value = valor || '';
+  } else if (c.formaPag === 'entrega_prazo') {
+    const primeiroE = pags[0];
+    const valorE = primeiroE ? (primeiroE.bruto !== undefined ? primeiroE.bruto : primeiroE.valor) : '';
+    document.getElementById('e-entregaprazo-pago').value = valorE || '';
   } else if (c.formaPag === 'misto') {
     // Identifica o primeiro Pix, Cartão e Dinheiro entre os pagamentos
     const pPix = pags.find(p => p.forma === 'Pix');
@@ -5547,6 +5658,21 @@ function abrirEdicaoContrato(id) {
       if (formaEntradaReserva === 'Cartão' && parcEntradaReserva) {
         const selParc = document.getElementById('e-reserva-parc');
         if (selParc) selParc.value = parcEntradaReserva;
+      }
+    }
+  }
+  // Carrega forma da entrada de Entrega+Prazo (antes de onFormaPagEditChange)
+  if (c.formaPag === 'entrega_prazo') {
+    const primeiroEPag = c.pagamentos && c.pagamentos[0];
+    const formaEntradaE = (primeiroEPag && primeiroEPag.forma) || 'Pix';
+    const parcEntradaE2 = (primeiroEPag && primeiroEPag.parcelas) || null;
+    const elEntregaPrazoForma = document.getElementById('e-entregaprazo-forma');
+    if (elEntregaPrazoForma) {
+      elEntregaPrazoForma.value = ['Cartão','Dinheiro'].includes(formaEntradaE) ? formaEntradaE : 'Pix';
+      onEntregaPrazoFormaChange('e');
+      if (formaEntradaE === 'Cartão' && parcEntradaE2) {
+        const selParcE = document.getElementById('e-entregaprazo-parc');
+        if (selParcE) selParcE.value = parcEntradaE2;
       }
     }
   }
@@ -5632,16 +5758,24 @@ function confirmarPecaEdit(pecaId) {
 
 function onFormaPagEditChange(val) {
   const grpReserva = document.getElementById('e-grp-pago-reserva');
+  const grpEntregaPrazo = document.getElementById('e-grp-pago-entregaprazo');
   const grpMisto = document.getElementById('e-grp-pago-misto');
   if (val === 'reserva') {
     if (grpReserva) grpReserva.style.display = '';
+    if (grpEntregaPrazo) grpEntregaPrazo.style.display = 'none';
+    if (grpMisto) grpMisto.style.display = 'none';
+  } else if (val === 'entrega_prazo') {
+    if (grpReserva) grpReserva.style.display = 'none';
+    if (grpEntregaPrazo) grpEntregaPrazo.style.display = '';
     if (grpMisto) grpMisto.style.display = 'none';
   } else if (val === 'misto') {
     if (grpReserva) grpReserva.style.display = 'none';
+    if (grpEntregaPrazo) grpEntregaPrazo.style.display = 'none';
     if (grpMisto) grpMisto.style.display = '';
     preencherSelectParcelas('e-pago-cartao-parc');
   } else {
     if (grpReserva) grpReserva.style.display = 'none';
+    if (grpEntregaPrazo) grpEntregaPrazo.style.display = 'none';
     if (grpMisto) grpMisto.style.display = 'none';
   }
 }
@@ -5739,6 +5873,8 @@ async function saveEditContrato() {
       const liqEdit = absorvEdit ? round2(diff * (1 - taxaEdit)) : diff;
       novoPag = { data: dataContrato, valor: liqEdit, bruto: diff, forma: 'Cartão', parcelas: nEdit, status: 'Realizado' };
     } else if (dados.forma_pag === 'reserva') {
+      novoPag = { data: dataContrato, valor: diff, bruto: diff, forma: 'Pix', status: 'Realizado' };
+    } else if (dados.forma_pag === 'entrega_prazo') {
       novoPag = { data: dataContrato, valor: diff, bruto: diff, forma: 'Pix', status: 'Realizado' };
     }
     if (novoPag) {
@@ -5857,7 +5993,7 @@ function openNovoPagamento(contratoId) {
   const pago = totalPago(c);
   const saldo = round2(vap - pago);
   const fmtV = v => v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const _formaLabelPag = { pix:'Pix', debito:'Débito', dinheiro:'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', misto:'Misto' };
+  const _formaLabelPag = { pix:'Pix', debito:'Débito', dinheiro:'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto' };
   document.getElementById('pag-info').innerHTML = `<strong>${c.nome}</strong><br>Total: R$ ${fmtV(vap)} · Pago: R$ ${fmtV(pago)} · <strong style="color:var(--brown)">Saldo: R$ ${fmtV(saldo)}</strong><br><span style="color:var(--muted)">Forma: ${_formaLabelPag[c.formaPag]||c.formaPag}</span>`;
   const h = new Date();
   const hStr = `${h.getFullYear()}-${String(h.getMonth()+1).padStart(2,'0')}-${String(h.getDate()).padStart(2,'0')}`;
@@ -5882,8 +6018,8 @@ function atualizarPagFormaUI() {
       const parcelasDoContrato = (c && c.pagamentos && c.pagamentos[0] && c.pagamentos[0].parcelas) || null;
       const el = document.getElementById('pag-parcelas');
       if (el) {
-        // Reserva: taxa sempre repassada — sem labels de absorção
-        el.innerHTML = c && c.formaPag === 'reserva'
+        // Reserva e Entrega+Prazo: taxa sempre repassada — sem labels de absorção
+        el.innerHTML = c && (c.formaPag === 'reserva' || c.formaPag === 'entrega_prazo')
           ? getOpcoesParcelasSimples()
           : getOpcoesParcelasHTML('pag-parcelas');
         if (parcelasDoContrato) el.value = parcelasDoContrato;
@@ -5901,9 +6037,12 @@ function atualizarPreviewPag() {
   const fmt = v => 'R$ ' + v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
   const c = pagamentoContratoId ? contratos.find(x => x.id === pagamentoContratoId) : null;
   const isReserva = c && c.formaPag === 'reserva';
+  const isEntregaPrazo = c && c.formaPag === 'entrega_prazo';
 
   if (isReserva) {
     el.textContent = `→ entra no caixa: ${fmt(valor)} (sem desconto — reserva)`;
+  } else if (isEntregaPrazo) {
+    el.textContent = `→ entra no caixa: ${fmt(valor)} (sem desconto — entrada/saldo na entrega)`;
   } else if (forma === 'Pix') {
     const isMisto = c && c.formaPag === 'misto';
     if (isMisto) {
@@ -5956,8 +6095,8 @@ async function salvarNovoPagamento() {
   // Calcula líquido (entrada no caixa) e parcelas
   let liquido = valor;
   let parcelas = null;
-  if (c.formaPag === 'reserva') {
-    // Reserva: sempre cheio — sem desconto Pix, sem absorção no cartão
+  if (c.formaPag === 'reserva' || c.formaPag === 'entrega_prazo') {
+    // Reserva e Entrega+Prazo: sempre cheio — sem desconto Pix, sem absorção no cartão
     if (forma === 'Cartão') {
       parcelas = parseInt(document.getElementById('pag-parcelas').value) || 1;
     }
@@ -6203,6 +6342,7 @@ const CUSTOS_DEFAULT = {
     { id: 'dinheiro', label: 'Dinheiro',             ativa: true,  tipo: 'desconto', taxa: 0,   desconto: false, absorvido: false, obs: 'Desconto dado à cliente' },
     { id: 'credito',  label: 'Crédito',              ativa: true,  tipo: 'credito',  taxa: 0,   desconto: false, absorvido: false, obs: '' },
     { id: 'reserva',  label: 'Reserva antecipada',   ativa: true,  tipo: 'entrada',  taxa: 0,   desconto: false, absorvido: false, obs: 'Entrada mínima, restante depois' },
+    { id: 'entrega_prazo', label: 'Entrada + saldo na entrega', ativa: true, tipo: 'entrada', taxa: 0, desconto: false, absorvido: false, obs: 'Entrada livre, saldo cobrado após a entrega' },
     { id: 'misto',    label: 'Misto',                ativa: true,  tipo: 'misto',    taxa: 0,   desconto: false, absorvido: false, obs: '' },
   ],
   parcelas: [
@@ -6223,6 +6363,8 @@ const CUSTOS_DEFAULT = {
   prazoDesidratacao: 21,
   prazoReserva: null,           // dias antes do casamento para quitação total da Reserva Antecipada — sem padrão, obrigatório configurar
   notifDiasAntesReserva: null, // dias antes do prazo de quitação para avisar — sem padrão, obrigatório configurar
+  prazoEntrega: null,          // dias após a entrega (peça pronta) para quitação total — sem padrão, obrigatório configurar
+  diasAvisoEntrega: null,      // dias após a entrega para disparar o aviso — sem padrão, obrigatório configurar
   processos: [],
   impostoConfig: {
     tipo: 'nenhum',   // 'nenhum', 'fixo' ou 'percentual'
@@ -6278,6 +6420,13 @@ async function carregarCustosSupabase() {
       }
       // Remove entradas legadas de crédito parcelado
       custosConfig.formasPag = custosConfig.formasPag.filter(f => !['credito_1x','credito_sj','credito_cj'].includes(f.id));
+      // Garante que formasPag tem a entrada "entrega_prazo" (migração de configs antigas)
+      if (!custosConfig.formasPag.find(f => f.id === 'entrega_prazo')) {
+        const idxMisto2 = custosConfig.formasPag.findIndex(f => f.id === 'misto');
+        const entradaEntregaPrazo = { id: 'entrega_prazo', label: 'Entrada + saldo na entrega', ativa: true, tipo: 'entrada', taxa: 0, desconto: false, absorvido: false, obs: 'Entrada livre, saldo cobrado após a entrega' };
+        if (idxMisto2 >= 0) custosConfig.formasPag.splice(idxMisto2, 0, entradaEntregaPrazo);
+        else custosConfig.formasPag.push(entradaEntregaPrazo);
+      }
 
       // Garante que parcelas tem todas as 12 faixas (mescla com o que está salvo)
       const parcelasDefault = CUSTOS_DEFAULT.parcelas;
@@ -6449,7 +6598,7 @@ function renderFormasPag() {
     const labelTaxa = f.tipo === 'desconto' ? 'Desconto (%)' : f.tipo === 'juros' ? 'Juros (%)' : 'Taxa (%)';
     const borderAlpha = f.ativa ? '0.25' : '0.1';
     const bg = f.ativa ? 'var(--card-bg)' : 'rgba(184,134,42,0.03)';
-    const mbInner = (f.ativa && (temTaxa || f.id === 'reserva')) ? '0.5rem' : '0';
+    const mbInner = (f.ativa && (temTaxa || f.id === 'reserva' || f.id === 'entrega_prazo')) ? '0.5rem' : '0';
     const corNome = f.ativa ? 'var(--dark)' : 'var(--muted-light)';
     const fwNome = f.ativa ? '500' : '400';
     const obsHtml = f.obs ? '<span style="font-size:0.62rem;color:var(--muted);font-style:italic">' + f.obs + '</span>' : '';
@@ -6507,6 +6656,33 @@ function renderFormasPag() {
       '</div>';
     }
 
+    let entregaPrazoHtml = '';
+    if (f.ativa && f.id === 'entrega_prazo') {
+      const prazoValE = (custosConfig.prazoEntrega !== null && custosConfig.prazoEntrega !== undefined) ? custosConfig.prazoEntrega : '';
+      const avisoValE = (custosConfig.diasAvisoEntrega !== null && custosConfig.diasAvisoEntrega !== undefined) ? custosConfig.diasAvisoEntrega : '';
+      const prazoVazioE = prazoValE === '';
+      const avisoVazioE = avisoValE === '';
+      const borderObrigE = 'border-color:var(--bordeaux)';
+      const avisoHtmlE = (prazoVazioE || avisoVazioE) ? '<div style="font-size:0.65rem;color:var(--bordeaux)">⚠️ Preencha os dois campos abaixo para poder salvar</div>' : '';
+      entregaPrazoHtml = '<div style="padding-left:1.4rem;margin-top:0.3rem;display:flex;flex-direction:column;gap:0.5rem">' +
+        avisoHtmlE +
+        '<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">' +
+          '<label style="font-size:0.68rem;color:var(--muted);white-space:nowrap;max-width:180px">Prazo de quitação (dias após a entrega)</label>' +
+          '<input class="field-input" type="number" step="1" min="0"' +
+          ' value="' + prazoValE + '" placeholder="Ex: 10"' +
+          ' oninput="atualizarPrazoEntrega(this.value)"' +
+          ' style="width:70px;padding:0.35rem 0.5rem;font-size:0.82rem;text-align:right;' + (prazoVazioE ? borderObrigE : '') + '">' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">' +
+          '<label style="font-size:0.68rem;color:var(--muted);white-space:nowrap;max-width:180px">Avisar quantos dias após a entrega</label>' +
+          '<input class="field-input" type="number" step="1" min="0"' +
+          ' value="' + avisoValE + '" placeholder="Ex: 3"' +
+          ' oninput="atualizarDiasAvisoEntrega(this.value)"' +
+          ' style="width:70px;padding:0.35rem 0.5rem;font-size:0.82rem;text-align:right;' + (avisoVazioE ? borderObrigE : '') + '">' +
+        '</div>' +
+      '</div>';
+    }
+
     html += '<div style="border:1px solid rgba(184,134,42,' + borderAlpha + ');border-radius:8px;padding:0.7rem 0.9rem;margin-bottom:0.5rem;background:' + bg + '">' +
       '<div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:' + mbInner + '">' +
         '<label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;flex:1">' +
@@ -6516,7 +6692,7 @@ function renderFormasPag() {
         '</label>' +
         obsHtml +
       '</div>' +
-      taxaHtml + reservaHtml +
+      taxaHtml + reservaHtml + entregaPrazoHtml +
     '</div>';
   });
   el.innerHTML = html;
@@ -6558,6 +6734,14 @@ function atualizarNotifDiasReserva(val) {
   custosConfig.notifDiasAntesReserva = (val === '' || val === null || val === undefined) ? null : (parseInt(val) || 0);
 }
 
+function atualizarPrazoEntrega(val) {
+  custosConfig.prazoEntrega = (val === '' || val === null || val === undefined) ? null : (parseInt(val) || 0);
+}
+
+function atualizarDiasAvisoEntrega(val) {
+  custosConfig.diasAvisoEntrega = (val === '' || val === null || val === undefined) ? null : (parseInt(val) || 0);
+}
+
 function openCustos() {
   openConfiguracoes();
 }
@@ -6592,6 +6776,17 @@ async function salvarCustos() {
       const notifOk = custosConfig.notifDiasAntesReserva !== null && custosConfig.notifDiasAntesReserva !== undefined;
       if (!prazoOk || !notifOk) {
         mostrarAlerta({ emoji: '⚠️', titulo: 'Configuração obrigatória', mensagem: 'Para usar Reserva antecipada, informe o prazo de quitação e quantos dias antes avisar (na seção Formas de pagamento aceitas).' });
+        return;
+      }
+    }
+
+    // Validação: se Entrada + saldo na entrega estiver ativa, prazo e dias de aviso são obrigatórios
+    const entregaPrazoForma = (custosConfig.formasPag || []).find(f => f.id === 'entrega_prazo');
+    if (entregaPrazoForma && entregaPrazoForma.ativa) {
+      const prazoOkE = custosConfig.prazoEntrega !== null && custosConfig.prazoEntrega !== undefined;
+      const avisoOkE = custosConfig.diasAvisoEntrega !== null && custosConfig.diasAvisoEntrega !== undefined;
+      if (!prazoOkE || !avisoOkE) {
+        mostrarAlerta({ emoji: '⚠️', titulo: 'Configuração obrigatória', mensagem: 'Para usar Entrada + saldo na entrega, informe o prazo de quitação e quantos dias após a entrega avisar (na seção Formas de pagamento aceitas).' });
         return;
       }
     }
@@ -6715,7 +6910,7 @@ function exportarDadosPDF() {
   const rowsC = contratos.slice().sort((a,b)=>(b.contrato||'').localeCompare(a.contrato||'')).map(c => {
     const saldo = round2(calcValorAPagar(c) - totalPago(c));
     const situacao = saldo <= 0.01 ? 'Quitada ✓' : totalPago(c) > 0 ? 'Entrada paga' : 'Sem pagamento';
-    const formaLabel = { pix:'Pix', debito:'Débito', dinheiro:'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', misto:'Misto' };
+    const formaLabel = { pix:'Pix', debito:'Débito', dinheiro:'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto' };
     return `<tr>
       <td>${esc(c.nome)}</td>
       <td>${fmtD(c.contrato)}</td>
@@ -8803,6 +8998,18 @@ function infoReservaAntecipada() {
     'Modalidade com pagamento dividido em <b>entrada + saldo</b>.',
     `<br><br>A cliente paga um valor mínimo de entrada para reservar a data, e quita o restante da forma que preferir — ${txtPrazo}.`,
     '<br><br>A forma de pagamento do saldo (Pix ou cartão) é configurada no momento do contrato.'
+  ].join(''));
+}
+
+function infoEntregaPrazo() {
+  const prazo = custosConfig.prazoEntrega;
+  const txtPrazo = (prazo !== null && prazo !== undefined)
+    ? `até ${prazo} dia${prazo===1?'':'s'} depois da entrega da peça`
+    : 'até o prazo que você configurar em Configurações → Formas de pagamento';
+  _mostrarInfoModal('Entrada + saldo na entrega', [
+    'Modalidade com pagamento dividido em <b>entrada + saldo</b>, mas o prazo de quitação não depende da data do casamento.',
+    `<br><br>A cliente paga uma entrada ao fechar o contrato, e quita o restante ${txtPrazo} — ou seja, o prazo só começa a contar quando você marcar a peça como entregue no contrato.`,
+    '<br><br>A forma de pagamento do saldo é configurada no momento do contrato.'
   ].join(''));
 }
 
