@@ -3,6 +3,9 @@
   "target": {
     "namespace": "android_app",
     "package_name": "br.com.atelierhub",
-    "sha256_cert_fingerprints": ["AE:FA:2A:38:0E:E3:2A:89:1E:8F:44:B7:E9:A6:F7:8A:32:5A:25:43:B3:F3:24:7D:51:96:02:04:D1:EC:B1:8C"]
+    "sha256_cert_fingerprints": [
+      "AE:FA:2A:38:0E:E3:2A:89:1E:8F:44:B7:E9:A6:F7:8A:32:5A:25:43:B3:F3:24:7D:51:96:02:04:D1:EC:B1:8C",
+      "37:00:8F:D8:D1:6B:A3:4B:92:19:13:78:07:6A:50:4D:0C:F4:22:DD:49:B5:A5:51:33:CB:AA:79:3A:C1:4F:CE"
+    ]
   }
 }]
