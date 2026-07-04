@@ -2320,7 +2320,7 @@ function showLoading(msg) {
     el = document.createElement('div');
     el.id = 'loading-overlay';
     el.style.cssText = 'position:fixed;inset:0;background:rgba(253,248,242,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:1rem';
-    el.innerHTML = '<div style="font-family:Calibri,serif;font-size:1.4rem;color:var(--brown);font-style:italic">Atelier Hub</div><div id="loading-msg" style="font-size:0.75rem;color:var(--muted);letter-spacing:0.2em;text-transform:uppercase"></div>';
+    el.innerHTML = '<div style="font-family:Calibri,serif;font-size:1.4rem;color:var(--brown);font-style:italic">Atelier Hub Resina</div><div id="loading-msg" style="font-size:0.75rem;color:var(--muted);letter-spacing:0.2em;text-transform:uppercase"></div>';
     document.body.appendChild(el);
   }
   document.getElementById('loading-msg').textContent = msg || 'Carregando...';
