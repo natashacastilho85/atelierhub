@@ -878,9 +878,9 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     </div>
     <div style="display:flex;gap:0.6rem;align-items:center">
       <button class="header-btn" onclick="abrirTarefas()" title="Tarefas" style="font-size:1.1rem;position:relative">✅<span id="badge-tarefas" style="display:none;position:absolute;top:0;right:0;background:var(--brown);color:white;border-radius:50%;width:14px;height:14px;font-size:0.55rem;align-items:center;justify-content:center;font-family:sans-serif"></span></button>
-      <button class="header-btn" onclick="abrirPrecDoCatalogo()" title="Precificação" style="font-size:1.1rem">💰</button>
-      <button class="header-btn" onclick="abrirDesidratacao()" title="Desidratação" style="font-size:1.1rem;position:relative">🌸<span id="badge-desid" style="display:none;position:absolute;top:0;right:0;background:var(--sage);color:white;border-radius:50%;width:14px;height:14px;font-size:0.55rem;align-items:center;justify-content:center;font-family:sans-serif"></span></button>
       <button class="header-btn" onclick="abrirCentroNotif()" id="btn-sininho" style="position:relative">🔔<span id="badge-notif" style="display:none;position:absolute;top:0;right:0;background:var(--bordeaux);color:white;border-radius:50%;width:14px;height:14px;font-size:0.55rem;align-items:center;justify-content:center;font-family:sans-serif"></span></button>
+      <button class="header-btn" onclick="abrirDesidratacao()" title="Desidratação" style="font-size:1.1rem;position:relative">🌸<span id="badge-desid" style="display:none;position:absolute;top:0;right:0;background:var(--sage);color:white;border-radius:50%;width:14px;height:14px;font-size:0.55rem;align-items:center;justify-content:center;font-family:sans-serif"></span></button>
+      <button class="header-btn" onclick="abrirPrecDoCatalogo()" title="Precificação" style="font-size:1.1rem">💰</button>
       <button class="header-btn" onclick="openConfiguracoes()" title="Configurações" style="font-size:1.1rem">⚙️</button>
       <button class="header-btn" onclick="confirmarLogout()" title="Sair" style="font-size:1.1rem">❌</button>
     </div>
@@ -1076,7 +1076,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
               <div id="fil-col-pagamento" style="display:none;margin-bottom:0.5rem">
                 <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.2rem">Forma de pagamento</div>
                 <select id="fil-forma" style="width:100%;padding:0.4rem 0.5rem;border:1px solid rgba(184,134,42,0.35);border-radius:8px;font-family:'Calibri',sans-serif;font-size:0.82rem;background:var(--cream);color:var(--dark)">
-                  <option value="">Qualquer</option><option value="pix">Pix</option><option value="debito">Débito</option><option value="dinheiro">Dinheiro</option><option value="credito">Crédito</option><option value="reserva">Reserva antecipada</option><option value="entrega_prazo">Entrada + saldo na entrega</option><option value="misto">Misto</option>
+                  <option value="">Qualquer</option><option value="pix">Pix</option><option value="debito">Débito</option><option value="dinheiro">Dinheiro</option><option value="credito">Crédito</option><option value="reserva">Reserva antecipada</option><option value="entrega_prazo">Entrada + saldo na entrega</option><option value="misto">Misto (Pix, Cartão e/ou Dinheiro)</option>
                 </select>
               </div>
               <div id="fil-col-presente" style="display:none;margin-bottom:0.5rem">
@@ -1262,7 +1262,15 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     <div class="drawer-handle"></div>
     <div class="drawer-title">Novo contrato</div>
     <div class="field-group"><label class="field-label">Nome da contratante</label><input class="field-input" id="c-nome" type="text" placeholder="Nome completo"></div>
-    <div class="field-group"><label class="field-label">WhatsApp da noiva</label><input class="field-input" id="c-telefone" type="tel" placeholder="(12) 99107-6544" oninput="this.value=mascararTelefone(this.value)" maxlength="15"></div>
+    <div class="field-group">
+      <label class="field-label">WhatsApp da noiva</label>
+      <input class="field-input" id="c-telefone" type="tel" placeholder="(12) 99107-6544" oninput="this.value=mascararTelefone(this.value)" maxlength="15">
+      <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.4rem;cursor:pointer">
+        <input type="checkbox" id="c-tel-intl" style="width:16px;height:16px;accent-color:var(--brown);cursor:pointer;flex-shrink:0" onchange="toggleTelefoneIntl('c', this.checked)">
+        <span style="font-size:0.75rem;color:var(--muted)">Número internacional</span>
+      </label>
+      <div class="field-hint" id="c-tel-intl-hint">Digite com o código do país (ex: +1 305 555 0100). O + é opcional, mas não esqueça o código do país.</div>
+    </div>
     <div class="field-row">
       <div class="field-group"><label class="field-label">Data do casamento</label><input class="field-input" id="c-casamento" type="date"></div>
       <div class="field-group"><label class="field-label">Data do contrato</label><input class="field-input" id="c-contrato" type="date"></div>
@@ -1315,7 +1323,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         <option value="credito">Crédito</option>
         <option value="reserva">Reserva antecipada</option>
         <option value="entrega_prazo">Entrada + saldo na entrega</option>
-        <option value="misto">Misto</option>
+        <option value="misto">Misto (Pix, Cartão e/ou Dinheiro)</option>
       </select>
       <div class="field-hint" id="hint-reserva">
         Mínimo de R$ 300 na entrada. Saldo restante pago da forma que a noiva preferir.
@@ -1514,7 +1522,15 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     <div class="drawer-handle"></div>
     <div class="drawer-title">Editar contrato</div>
     <div class="field-group"><label class="field-label">Nome da contratante</label><input class="field-input" id="e-nome" type="text"></div>
-    <div class="field-group"><label class="field-label">WhatsApp da noiva</label><input class="field-input" id="e-telefone" type="tel" placeholder="(12) 99107-6544" oninput="this.value=mascararTelefone(this.value)" maxlength="15"></div>
+    <div class="field-group">
+      <label class="field-label">WhatsApp da noiva</label>
+      <input class="field-input" id="e-telefone" type="tel" placeholder="(12) 99107-6544" oninput="this.value=mascararTelefone(this.value)" maxlength="15">
+      <label style="display:flex;align-items:center;gap:0.5rem;margin-top:0.4rem;cursor:pointer">
+        <input type="checkbox" id="e-tel-intl" style="width:16px;height:16px;accent-color:var(--brown);cursor:pointer;flex-shrink:0" onchange="toggleTelefoneIntl('e', this.checked)">
+        <span style="font-size:0.75rem;color:var(--muted)">Número internacional</span>
+      </label>
+      <div class="field-hint" id="e-tel-intl-hint">Digite com o código do país (ex: +1 305 555 0100). O + é opcional, mas não esqueça o código do país.</div>
+    </div>
     <div class="field-row">
       <div class="field-group"><label class="field-label">Data do casamento</label><input class="field-input" id="e-casamento" type="date"></div>
       <div class="field-group"><label class="field-label">Data do contrato</label><input class="field-input" id="e-contrato" type="date"></div>
@@ -1559,7 +1575,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         <option value="credito">Crédito</option>
         <option value="reserva">Reserva antecipada</option>
         <option value="entrega_prazo">Entrada + saldo na entrega</option>
-        <option value="misto">Misto</option>
+        <option value="misto">Misto (Pix, Cartão e/ou Dinheiro)</option>
       </select>
     </div>
     <div class="field-row">
@@ -2258,6 +2274,7 @@ function mapContrato(r) {
     acrescimo: parseFloat(r.acrescimo) || 0,
     cadastro: r.created_at ? r.created_at.slice(0,10) : '',
     telefone: r.telefone || '',
+    telefoneInternacional: r.telefone_internacional || false,
     pecas: Array.isArray(r.pecas) ? r.pecas : [],
     pagamentos: Array.isArray(r.pagamentos) ? r.pagamentos : [],
     ficha_producao: r.ficha_producao || {},
@@ -2339,8 +2356,8 @@ function mapPeca(r) {
 // ── ABRIR WHATSAPP BUSINESS ──
 // No Android: tenta abrir o WhatsApp Business diretamente via intent. Se não estiver instalado, cai no wa.me.
 // No iOS / desktop: abre wa.me normal (o sistema escolhe o app instalado).
-function abrirWhatsBusiness(tel, texto) {
-  const numero = '55' + (tel||'').replace(/\D/g,'');
+function abrirWhatsBusiness(tel, texto, internacional) {
+  const numero = (internacional ? '' : '55') + (tel||'').replace(/\D/g,'');
   const txt = texto ? encodeURIComponent(texto) : '';
   const ua = navigator.userAgent || '';
   const isAndroid = /Android/i.test(ua);
@@ -2638,6 +2655,9 @@ function openFab() {
   _preencherSelectPresente('c-f-presente');
   document.getElementById('pecas-selecionadas').innerHTML = '';
   onFormaPagChange('pix');
+  const celIntl = document.getElementById('c-tel-intl');
+  if (celIntl) celIntl.checked = false;
+  toggleTelefoneIntl('c', false);
   openDrawer('drawer-new');
 }
 
@@ -2829,6 +2849,8 @@ async function saveContrato() {
   const estado = document.getElementById('c-estado').value;
   const envio = document.getElementById('c-envio').value;
   const telefone = document.getElementById('c-telefone').value;
+  const telIntlEl = document.getElementById('c-tel-intl');
+  const telefoneInternacional = telIntlEl ? telIntlEl.checked : false;
   const formaPag = document.getElementById('forma-pag-select').value;
   const desconto = round2(parseFloat(document.getElementById('c-desconto').value) || 0);
   const acrescimo = round2(parseFloat(document.getElementById('c-acrescimo').value) || 0);
@@ -2870,6 +2892,7 @@ async function saveContrato() {
   try {
     const [novoContrato] = await sbInsert('contratos', {
       nome, status, casamento, contrato, cidade, estado, envio, telefone,
+      telefone_internacional: telefoneInternacional,
       forma_pag: formaPag, valor_bruto: valorFinal, desconto, acrescimo, pecas: pecasSel,
       pagamentos: pagamentosIni, ficha_producao: ficha, presente: presenteVal
     });
@@ -3298,7 +3321,7 @@ function contratoCardHTML(c) {
     const restam = prazoConfigurado - diasPassados;
     
     const cor = restam <= 15 ? 'var(--bordeaux)' : restam <= 30 ? 'var(--gold)' : 'var(--sage)';
-    const textoBadge = restam < 0 ? `${diasPassados}d · Atrasado!` : `${diasPassados}d passados · restam ${restam}`;
+    const textoBadge = restam < 0 ? `${diasPassados} dias de produção - ${Math.abs(restam)} dias atrasado` : `${diasPassados} dias de produção - restam ${restam} dias`;
     
     // Adicionado text-transform: uppercase no style
     diasBadge = `<span style="font-size:0.55rem;letter-spacing:0.08em;padding:0.22rem 0.55rem;border-radius:20px;font-weight:600;white-space:nowrap;background:rgba(0,0,0,0.04);border:1px solid ${cor};color:${cor};text-transform:uppercase">${textoBadge}</span>`;
@@ -4895,7 +4918,7 @@ function renderComparativos() {
     ['Débito',   formas.debito],
     ['Dinheiro', formas.dinheiro],
     ['Crédito',  formas.credito],
-    ['Misto',    formas.misto],
+    ['Misto (Pix, Cartão e/ou Dinheiro)', formas.misto],
     ['Reserva',  formas.reserva],
     ['Entrega+Prazo', formas.entrega_prazo],
   ].filter(function(f){return f[1]>0;}).map(function(f) {
@@ -5304,10 +5327,10 @@ function openDetail(id) {
   const fmtData = s => s ? s.split('-').reverse().join('/') : '—';
   const _pixPctDetalhe = Math.round(getDescontoPix() * 100);
   const _dinheiroPctDetalhe = Math.round(getDescontoDinheiro() * 100);
-  const formaTxt = { pix: _pixPctDetalhe > 0 ? `Pix (${_pixPctDetalhe}% desc. noiva)` : 'Pix', debito:'Débito', dinheiro: _dinheiroPctDetalhe > 0 ? `Dinheiro (${_dinheiroPctDetalhe}% desc. noiva)` : 'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto' };
+  const formaTxt = { pix: _pixPctDetalhe > 0 ? `Pix (${_pixPctDetalhe}% desc. noiva)` : 'Pix', debito:'Débito', dinheiro: _dinheiroPctDetalhe > 0 ? `Dinheiro (${_dinheiroPctDetalhe}% desc. noiva)` : 'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto (Pix, Cartão e/ou Dinheiro)' };
   const telLimpo = (c.telefone||'').replace(/\D/g,'');
-  const telFormatado = formatarTelefone(c.telefone || '');
-  const linkWaBtn = telLimpo ? `javascript:abrirWhatsBusiness('${telLimpo}')` : '';
+  const telFormatado = c.telefoneInternacional ? (c.telefone || '') : formatarTelefone(c.telefone || '');
+  const linkWaBtn = telLimpo ? `javascript:abrirWhatsBusiness('${telLimpo}', null, ${c.telefoneInternacional ? 'true' : 'false'})` : '';
   const devedor = isDevedor(c);
 
   // Histórico de pagamentos
@@ -5522,6 +5545,25 @@ function formatarTelefone(tel) {
   return mascararTelefone(tel);
 }
 
+// Alterna o campo de telefone entre máscara BR (padrão) e texto livre (número internacional)
+function toggleTelefoneIntl(prefix, checked) {
+  const campo = document.getElementById(prefix + '-telefone');
+  const hint = document.getElementById(prefix + '-tel-intl-hint');
+  if (!campo) return;
+  if (checked) {
+    campo.removeAttribute('maxlength');
+    campo.oninput = null;
+    campo.placeholder = '+1 305 555 0100';
+    if (hint) hint.classList.add('visible');
+  } else {
+    campo.value = mascararTelefone(campo.value);
+    campo.setAttribute('maxlength', '15');
+    campo.oninput = function() { this.value = mascararTelefone(this.value); };
+    campo.placeholder = '(12) 99107-6544';
+    if (hint) hint.classList.remove('visible');
+  }
+}
+
 // Fechar dropdown de presente ao clicar fora
 document.addEventListener('click', function(e) {
   if (!e.target.closest('.presente-dropdown')) {
@@ -5610,7 +5652,10 @@ function abrirEdicaoContrato(id) {
   if (!c) return;
   contratoEditandoId = id;
   document.getElementById('e-nome').value = c.nome || '';
-  document.getElementById('e-telefone').value = formatarTelefone(c.telefone || '');
+  const eTelIntlEl = document.getElementById('e-tel-intl');
+  if (eTelIntlEl) eTelIntlEl.checked = !!c.telefoneInternacional;
+  toggleTelefoneIntl('e', !!c.telefoneInternacional);
+  document.getElementById('e-telefone').value = c.telefoneInternacional ? (c.telefone || '') : formatarTelefone(c.telefone || '');
   document.getElementById('e-casamento').value = c.casamento || '';
   document.getElementById('e-contrato').value = c.contrato || '';
   document.getElementById('e-cidade').value = c.cidade || '';
@@ -5784,9 +5829,15 @@ async function saveEditContrato() {
   const c = contratos.find(x => x.id === contratoEditandoId);
   if (!c) return;
 
+  const eTelIntlEl2 = document.getElementById('e-tel-intl');
+  const telefoneInternacionalEdit = eTelIntlEl2 ? eTelIntlEl2.checked : false;
+
   const dados = {
     nome: document.getElementById('e-nome').value,
-    telefone: document.getElementById('e-telefone').value.replace(/\D/g,'').replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3').replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3') || document.getElementById('e-telefone').value,
+    telefone: telefoneInternacionalEdit
+      ? document.getElementById('e-telefone').value.trim()
+      : (document.getElementById('e-telefone').value.replace(/\D/g,'').replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3').replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3') || document.getElementById('e-telefone').value),
+    telefone_internacional: telefoneInternacionalEdit,
     casamento: document.getElementById('e-casamento').value,
     contrato: document.getElementById('e-contrato').value,
     cidade: document.getElementById('e-cidade').value,
@@ -5993,7 +6044,7 @@ function openNovoPagamento(contratoId) {
   const pago = totalPago(c);
   const saldo = round2(vap - pago);
   const fmtV = v => v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const _formaLabelPag = { pix:'Pix', debito:'Débito', dinheiro:'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto' };
+  const _formaLabelPag = { pix:'Pix', debito:'Débito', dinheiro:'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto (Pix, Cartão e/ou Dinheiro)' };
   document.getElementById('pag-info').innerHTML = `<strong>${c.nome}</strong><br>Total: R$ ${fmtV(vap)} · Pago: R$ ${fmtV(pago)} · <strong style="color:var(--brown)">Saldo: R$ ${fmtV(saldo)}</strong><br><span style="color:var(--muted)">Forma: ${_formaLabelPag[c.formaPag]||c.formaPag}</span>`;
   const h = new Date();
   const hStr = `${h.getFullYear()}-${String(h.getMonth()+1).padStart(2,'0')}-${String(h.getDate()).padStart(2,'0')}`;
@@ -6343,7 +6394,7 @@ const CUSTOS_DEFAULT = {
     { id: 'credito',  label: 'Crédito',              ativa: true,  tipo: 'credito',  taxa: 0,   desconto: false, absorvido: false, obs: '' },
     { id: 'reserva',  label: 'Reserva antecipada',   ativa: true,  tipo: 'entrada',  taxa: 0,   desconto: false, absorvido: false, obs: 'Entrada mínima, restante depois' },
     { id: 'entrega_prazo', label: 'Entrada + saldo na entrega', ativa: true, tipo: 'entrada', taxa: 0, desconto: false, absorvido: false, obs: 'Entrada livre, saldo cobrado após a entrega' },
-    { id: 'misto',    label: 'Misto',                ativa: true,  tipo: 'misto',    taxa: 0,   desconto: false, absorvido: false, obs: '' },
+    { id: 'misto',    label: 'Misto (Pix, Cartão e/ou Dinheiro)', ativa: true,  tipo: 'misto',    taxa: 0,   desconto: false, absorvido: false, obs: '' },
   ],
   parcelas: [
     { n: 1,  taxa: 0, absorvido: false },
@@ -6910,7 +6961,7 @@ function exportarDadosPDF() {
   const rowsC = contratos.slice().sort((a,b)=>(b.contrato||'').localeCompare(a.contrato||'')).map(c => {
     const saldo = round2(calcValorAPagar(c) - totalPago(c));
     const situacao = saldo <= 0.01 ? 'Quitada ✓' : totalPago(c) > 0 ? 'Entrada paga' : 'Sem pagamento';
-    const formaLabel = { pix:'Pix', debito:'Débito', dinheiro:'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto' };
+    const formaLabel = { pix:'Pix', debito:'Débito', dinheiro:'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto (Pix, Cartão e/ou Dinheiro)' };
     return `<tr>
       <td>${esc(c.nome)}</td>
       <td>${fmtD(c.contrato)}</td>
@@ -7351,6 +7402,12 @@ function renderPrecCard(p, d, valorHora, custoFixoHora, cardIdx) {
     } else {
       d.margemVenda = Math.round(((d.precoVenda - r.custoTotalReal - d.precoVenda * impostoPerc0) / d.precoVenda) * 1000) / 10;
     }
+  } else if (r.precoCalc > 0) {
+    // Grava automaticamente na primeira vez que houver um valor calculável, sem exigir digitação manual
+    d.precoVenda = r.precoCalc;
+    d.margemVenda = valorCampoPrec;
+    salvarPrecLocal();
+    renderCatalogo();
   }
 
   let matRows = d.materiais.map((m, i) => {
@@ -8067,6 +8124,13 @@ function recalcularCard(pecaId) {
     // Preço não fixado: atualiza campo R$ com preço calculado
     const elVenda = document.getElementById('prec-venda-' + pecaId);
     if (elVenda) elVenda.value = r.precoCalc.toFixed(2).replace('.', ',');
+    // Grava automaticamente na primeira vez que houver um valor calculável, sem exigir digitação manual
+    if (r.precoCalc > 0) {
+      d.precoVenda = r.precoCalc;
+      d.margemVenda = valorCampoPrec;
+      salvarPrecLocal();
+      renderCatalogo();
+    }
   }
 
   atualizarTabelaResumo();
@@ -9701,12 +9765,12 @@ iniciarAuth();
   history.replaceState({}, '', url.toString());
 
   // Cria botão flutuante que aparece assim que o app carregar
-  function mostrarBotaoWA(tel, texto) {
+  function mostrarBotaoWA(tel, texto, internacional) {
     const overlay = document.createElement('div');
     overlay.id = 'wa-notif-overlay';
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(42,26,14,0.55);z-index:99999;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)';
 
-    const numero = '55' + tel.replace(/\D/g, '');
+    const numero = (internacional ? '' : '55') + tel.replace(/\D/g, '');
     const txt = encodeURIComponent(texto);
     const isAndroid = /Android/i.test(navigator.userAgent);
     // Intent direto para WA Business no Android; wa.me no iOS
@@ -9737,7 +9801,7 @@ iniciarAuth();
     const c = contratos.find(x => String(x.id) === String(waId));
     if (c && c.telefone) {
       const texto = waTexto ? decodeURIComponent(waTexto) : '';
-      mostrarBotaoWA(c.telefone, texto);
+      mostrarBotaoWA(c.telefone, texto, c.telefoneInternacional);
     } else if (tentativas > 0) {
       setTimeout(() => tentarAbrir(tentativas - 1), 500);
     }
@@ -10016,7 +10080,7 @@ function _abrirWAReserva(contratoId) {
   if (!c) return;
   if (!c.telefone) { mostrarAlerta({ emoji: '⚠️', titulo: 'Sem telefone', mensagem: 'Este contrato não tem telefone cadastrado.' }); return; }
   const template = custosConfig.msgWACobranca || CUSTOS_DEFAULT.msgWACobranca;
-  abrirWhatsBusiness(c.telefone, _substituirVarsWA(template, c));
+  abrirWhatsBusiness(c.telefone, _substituirVarsWA(template, c), c.telefoneInternacional);
 }
 
 function _abrirWACasamento(contratoId) {
@@ -10024,7 +10088,7 @@ function _abrirWACasamento(contratoId) {
   if (!c) return;
   if (!c.telefone) { mostrarAlerta({ emoji: '⚠️', titulo: 'Sem telefone', mensagem: 'Este contrato não tem telefone cadastrado.' }); return; }
   const template = custosConfig.msgWACasamento || CUSTOS_DEFAULT.msgWACasamento;
-  abrirWhatsBusiness(c.telefone, _substituirVarsWA(template, c));
+  abrirWhatsBusiness(c.telefone, _substituirVarsWA(template, c), c.telefoneInternacional);
 }
 
 async function excluirNotif(tipo, id) {
@@ -10206,9 +10270,9 @@ async function renderDesidLista() {
       const ok = r.concluido;
       let st, cor;
       if (ok) { st = 'Concluido'; cor = 'var(--sage)'; }
-      else if (diff < 0) { st = Math.abs(diff)+'d atrasado'; cor = 'var(--bordeaux-soft)'; }
+      else if (diff < 0) { st = Math.abs(diff)+' dias atrasado'; cor = 'var(--bordeaux-soft)'; }
       else if (diff === 0) { st = 'Pronto hoje!'; cor = 'var(--gold)'; }
-      else { st = diff+'d restantes'; cor = 'var(--brown-mid)'; }
+      else { st = diff+' dias restantes'; cor = 'var(--brown-mid)'; }
       const df = dc.toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
       return '<div style="background:var(--card-bg);border:1px solid rgba(184,134,42,'+(ok?'0.08':'0.18')+');border-radius:8px;padding:0.9rem 1rem;margin-bottom:0.7rem;opacity:'+(ok?'0.55':'1')+'">'
         +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;margin-bottom:0.5rem">'
