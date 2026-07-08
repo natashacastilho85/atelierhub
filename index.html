@@ -3273,10 +3273,15 @@ function renderContratos(statusFiltro) {
     return; 
   }
 
-  // Produção: ordena do mais avançado (chegada mais antiga) para o mais recente
-  if (statusFiltro === 'Produção') {
-    filtrados = filtrados.slice().sort((a, b) => (a.chegada || '').localeCompare(b.chegada || ''));
-  }
+  // Ordena por chegada (mais antiga primeiro); sem chegada, vai pro final ordenado por casamento (mais próximo primeiro)
+  filtrados = filtrados.slice().sort((a, b) => {
+    const aTemChegada = !!a.chegada;
+    const bTemChegada = !!b.chegada;
+    if (aTemChegada && bTemChegada) return a.chegada.localeCompare(b.chegada);
+    if (aTemChegada && !bTemChegada) return -1;
+    if (!aTemChegada && bTemChegada) return 1;
+    return (a.casamento || '').localeCompare(b.casamento || '');
+  });
 
   lista.innerHTML = filtrados.map(c => contratoCardHTML(c)).join('');
 }
