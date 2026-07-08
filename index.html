@@ -6478,6 +6478,11 @@ async function carregarCustosSupabase() {
         if (idxMisto2 >= 0) custosConfig.formasPag.splice(idxMisto2, 0, entradaEntregaPrazo);
         else custosConfig.formasPag.push(entradaEntregaPrazo);
       }
+      // Atualiza o label do Misto para o texto completo (migração de configs antigas salvas com label curto)
+      const idxMistoLabel = custosConfig.formasPag.findIndex(f => f.id === 'misto');
+      if (idxMistoLabel >= 0 && custosConfig.formasPag[idxMistoLabel].label !== 'Misto (Pix, Cartão e/ou Dinheiro)') {
+        custosConfig.formasPag[idxMistoLabel].label = 'Misto (Pix, Cartão e/ou Dinheiro)';
+      }
 
       // Garante que parcelas tem todas as 12 faixas (mescla com o que está salvo)
       const parcelasDefault = CUSTOS_DEFAULT.parcelas;
