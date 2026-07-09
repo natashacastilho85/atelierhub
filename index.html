@@ -6001,8 +6001,18 @@ function _abrirModalPagamentoPeca(linhaId, nomePeca, qtdDelta, precoUnitCatalogo
     overlay.style.cssText = 'position:fixed;inset:0;background:rgba(42,26,14,0.5);z-index:9500;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(3px)';
     document.body.appendChild(overlay);
   }
+  overlay.onclick = () => _desistirModalPagamentoPeca();
   _renderModalPagamentoPeca();
   overlay.style.display = 'flex';
+}
+
+// Fecha o modal por desistência (X ou clique fora): remove a linha da peça associada, sem pedir confirmação
+// (a peça está sempre "nova nesta sessão" nesse ponto, mesmo quando representa um aumento de quantidade)
+function _desistirModalPagamentoPeca() {
+  if (!_modalPecaTemp) return;
+  const div = document.querySelector(`#e-pecas-selecionadas > div[data-linha-id="${_modalPecaTemp.linhaId}"]`);
+  if (div) div.remove();
+  _fecharModalPagamentoPeca();
 }
 
 function _renderModalPagamentoPeca() {
@@ -6014,8 +6024,9 @@ function _renderModalPagamentoPeca() {
 
   if (etapa === 1) {
     overlay.innerHTML = `
-      <div onclick="event.stopPropagation()" style="background:var(--warm-white);border-radius:16px 16px 0 0;width:100%;max-width:520px;padding:1.2rem 1.2rem calc(1.2rem + env(safe-area-inset-bottom,0px))">
-        <div style="font-family:'Calibri',serif;font-size:1.05rem;color:var(--brown);margin-bottom:0.3rem">${nomePeca}${qtdLabel}</div>
+      <div onclick="event.stopPropagation()" style="background:var(--warm-white);border-radius:16px 16px 0 0;width:100%;max-width:520px;padding:1.2rem 1.2rem calc(1.2rem + env(safe-area-inset-bottom,0px));position:relative">
+        <button onclick="_desistirModalPagamentoPeca()" style="position:absolute;top:0.8rem;right:0.9rem;background:none;border:none;font-size:1.3rem;color:var(--muted);cursor:pointer;line-height:1;padding:0.2rem">×</button>
+        <div style="font-family:'Calibri',serif;font-size:1.05rem;color:var(--brown);margin-bottom:0.3rem;padding-right:1.5rem">${nomePeca}${qtdLabel}</div>
         <div style="font-size:0.78rem;color:var(--muted);margin-bottom:1rem">Valor de catálogo: R$ ${valorCatalogo.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
         <div style="display:flex;gap:0.6rem;margin-bottom:1rem">
           <div style="flex:1">
@@ -6033,8 +6044,9 @@ function _renderModalPagamentoPeca() {
   } else {
     const hj = new Date().toLocaleDateString('en-CA');
     overlay.innerHTML = `
-      <div onclick="event.stopPropagation()" style="background:var(--warm-white);border-radius:16px 16px 0 0;width:100%;max-width:520px;padding:1.2rem 1.2rem calc(1.2rem + env(safe-area-inset-bottom,0px))">
-        <div style="font-family:'Calibri',serif;font-size:1.05rem;color:var(--brown);margin-bottom:1rem">Como foi pago?</div>
+      <div onclick="event.stopPropagation()" style="background:var(--warm-white);border-radius:16px 16px 0 0;width:100%;max-width:520px;padding:1.2rem 1.2rem calc(1.2rem + env(safe-area-inset-bottom,0px));position:relative">
+        <button onclick="_desistirModalPagamentoPeca()" style="position:absolute;top:0.8rem;right:0.9rem;background:none;border:none;font-size:1.3rem;color:var(--muted);cursor:pointer;line-height:1;padding:0.2rem">×</button>
+        <div style="font-family:'Calibri',serif;font-size:1.05rem;color:var(--brown);margin-bottom:1rem;padding-right:1.5rem">Como foi pago?</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:1rem" id="mpp-formas">
           <div class="filter-chip" onclick="_selecionarFormaPagamentoPeca('Pix')" data-forma="Pix" style="text-align:center">Pix</div>
           <div class="filter-chip" onclick="_selecionarFormaPagamentoPeca('Débito')" data-forma="Débito" style="text-align:center">Débito</div>
