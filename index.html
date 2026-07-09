@@ -1875,8 +1875,12 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
   <div class="drawer" onclick="event.stopPropagation()">
     <div class="drawer-handle"></div>
     <div class="drawer-title">Nova Desidratação</div>
+    <div style="display:flex;gap:0.5rem;margin-bottom:0.9rem">
+      <div class="filter-chip active" id="desid-modo-buque" onclick="toggleModoDesid('buque')" style="flex:1;text-align:center">Buquê de noiva</div>
+      <div class="filter-chip" id="desid-modo-avulso" onclick="toggleModoDesid('avulso')" style="flex:1;text-align:center">Avulso / manual</div>
+    </div>
     <div style="display:flex;flex-direction:column;gap:0.9rem">
-      <div>
+      <div id="desid-wrap-contrato">
         <div class="field-label">Contrato em produção *</div>
         <select class="field-input" id="desid-contrato-sel" onchange="preencherDesidDoContrato()" style="width:100%">
           <option value="">&#8212; selecione a noiva &#8212;</option>
@@ -1885,6 +1889,10 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       <div id="desid-pecas-wrap" style="display:none">
         <div class="field-label">Pecas</div>
         <div id="desid-pecas-display" style="font-size:0.85rem;color:var(--muted);background:var(--offwhite);border-radius:6px;padding:0.6rem 0.9rem;border:1px solid rgba(184,134,42,0.15)"></div>
+      </div>
+      <div id="desid-wrap-descricao" style="display:none">
+        <div class="field-label">Descrição *</div>
+        <input class="field-input" id="desid-descricao" placeholder="Ex: Cabos de rosa, folhas soltas" style="width:100%">
       </div>
       <div>
         <div class="field-label">Tipos de flores</div>
@@ -10275,6 +10283,13 @@ async function abrirNovaDesid() {
   document.getElementById('desid-obs').value = '';
   document.getElementById('desid-pecas-wrap').style.display = 'none';
   document.getElementById('desid-pecas-display').textContent = '';
+  document.getElementById('desid-descricao').value = '';
+  toggleModoDesid('buque');
+  _desidEditandoId = null;
+  const titulo = document.querySelector('#drawer-nova-desid .drawer-title');
+  if (titulo) titulo.textContent = 'Nova Desidratação';
+  const btnSalvar = document.querySelector('#drawer-nova-desid button[onclick="salvarEdicaoDesid()"]');
+  if (btnSalvar) btnSalvar.setAttribute('onclick', 'salvarDesid()');
   const hj = new Date().toISOString().slice(0,10);
   document.getElementById('desid-data').value = hj;
   atualizarPrevisaoDesid();
@@ -10302,22 +10317,55 @@ function atualizarPrevisaoDesid() {
   el.textContent = d.toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
 }
 
+// Alterna o formulário de desidratação entre "Buquê de noiva" e "Avulso / manual"
+function toggleModoDesid(modo) {
+  const elBuque = document.getElementById('desid-modo-buque');
+  const elAvulso = document.getElementById('desid-modo-avulso');
+  const wrapContrato = document.getElementById('desid-wrap-contrato');
+  const wrapDescricao = document.getElementById('desid-wrap-descricao');
+  const pecasWrap = document.getElementById('desid-pecas-wrap');
+  if (modo === 'avulso') {
+    elBuque.classList.remove('active');
+    elAvulso.classList.add('active');
+    wrapContrato.style.display = 'none';
+    if (pecasWrap) pecasWrap.style.display = 'none';
+    wrapDescricao.style.display = 'block';
+  } else {
+    elAvulso.classList.remove('active');
+    elBuque.classList.add('active');
+    wrapContrato.style.display = 'block';
+    wrapDescricao.style.display = 'none';
+  }
+}
+
 async function salvarDesid() {
-  const sel = document.getElementById('desid-contrato-sel');
-  const cid = sel.value;
-  const nome = cid ? sel.options[sel.selectedIndex].textContent : '';
-  const pecas = document.getElementById('desid-pecas-display').textContent.trim();
+  const modoAvulso = document.getElementById('desid-modo-avulso').classList.contains('active');
   const flores = document.getElementById('desid-flores').value.trim();
   const obs = document.getElementById('desid-obs').value.trim();
   const di = document.getElementById('desid-data').value;
-  if (!cid) { mostrarAlerta({ emoji: '⚠️', titulo: 'Campo obrigatório', mensagem: 'Selecione um contrato.' }); return; }
+
+  let cid = null;
+  let nome = '';
+  let pecas = '';
+
+  if (modoAvulso) {
+    const descricao = document.getElementById('desid-descricao').value.trim();
+    if (!descricao) { mostrarAlerta({ emoji: '⚠️', titulo: 'Campo obrigatório', mensagem: 'Informe a descrição.' }); return; }
+    nome = descricao;
+  } else {
+    const sel = document.getElementById('desid-contrato-sel');
+    cid = sel.value;
+    if (!cid) { mostrarAlerta({ emoji: '⚠️', titulo: 'Campo obrigatório', mensagem: 'Selecione um contrato.' }); return; }
+    nome = sel.options[sel.selectedIndex].textContent;
+    pecas = document.getElementById('desid-pecas-display').textContent.trim();
+  }
   if (!di) { mostrarAlerta({ emoji: '⚠️', titulo: 'Campo obrigatório', mensagem: 'Informe a data de início.' }); return; }
   const d = new Date(di + 'T12:00:00');
   const prazo = custosConfig.prazoDesidratacao || 21;
   d.setDate(d.getDate() + prazo);
   const dc = d.toISOString().slice(0,10);
   try {
-    await sbInsert('desidratacao', { contrato_id: parseInt(cid), nome_noiva: nome, pecas, flores, observacoes: obs, data_inicio: di, data_conclusao: dc, concluido: false });
+    await sbInsert('desidratacao', { contrato_id: cid ? parseInt(cid) : null, nome_noiva: nome, pecas, flores, observacoes: obs, data_inicio: di, data_conclusao: dc, concluido: false });
     closeDrawer('drawer-nova-desid');
     await renderDesidLista();
     await atualizarBadgeDesid();
@@ -10377,9 +10425,12 @@ async function renderDesidLista() {
       else if (diff === 0) { st = 'Pronto hoje!'; cor = 'var(--gold)'; }
       else { st = diff+' dias restantes'; cor = 'var(--brown-mid)'; }
       const df = dc.toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
+      const badgeAvulso = !r.contrato_id
+        ? '<span style="font-size:0.6rem;padding:0.1rem 0.4rem;border-radius:20px;background:rgba(107,143,113,0.15);color:var(--sage);border:1px solid rgba(107,143,113,0.3);margin-right:0.4rem;white-space:nowrap">🌿 Avulso</span>'
+        : '';
       return '<div style="background:var(--card-bg);border:1px solid rgba(184,134,42,'+(ok?'0.08':'0.18')+');border-radius:8px;padding:0.9rem 1rem;margin-bottom:0.7rem;opacity:'+(ok?'0.55':'1')+'">'
         +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;margin-bottom:0.5rem">'
-        +'<div style="flex:1"><div style="font-family:Calibri,serif;font-size:1rem;color:var(--dark)">'+r.nome_noiva+'</div>'
+        +'<div style="flex:1"><div style="font-family:Calibri,serif;font-size:1rem;color:var(--dark)">'+badgeAvulso+r.nome_noiva+'</div>'
         +(r.pecas?'<div style="font-size:0.72rem;color:var(--muted);margin-top:0.1rem">'+r.pecas+'</div>':'')
         +(r.flores?'<div style="font-size:0.72rem;color:var(--muted)">'+r.flores+'</div>':'')
         +(r.observacoes?'<div style="font-size:0.72rem;color:var(--muted);font-style:italic;margin-top:0.2rem">'+r.observacoes+'</div>':'')
@@ -10415,16 +10466,22 @@ async function editarDesid(id) {
     _desidEditandoId = id;
 
     // Preenche o drawer de nova desid com os dados existentes
-    const sel = document.getElementById('desid-contrato-sel');
-    sel.innerHTML = '<option value="'+r.contrato_id+'">'+r.nome_noiva+'</option>';
+    if (r.contrato_id) {
+      toggleModoDesid('buque');
+      const sel = document.getElementById('desid-contrato-sel');
+      sel.innerHTML = '<option value="'+r.contrato_id+'">'+r.nome_noiva+'</option>';
 
-    const pecasWrap = document.getElementById('desid-pecas-wrap');
-    const pecasDisplay = document.getElementById('desid-pecas-display');
-    if (r.pecas) {
-      pecasDisplay.textContent = r.pecas;
-      pecasWrap.style.display = 'block';
+      const pecasWrap = document.getElementById('desid-pecas-wrap');
+      const pecasDisplay = document.getElementById('desid-pecas-display');
+      if (r.pecas) {
+        pecasDisplay.textContent = r.pecas;
+        pecasWrap.style.display = 'block';
+      } else {
+        pecasWrap.style.display = 'none';
+      }
     } else {
-      pecasWrap.style.display = 'none';
+      toggleModoDesid('avulso');
+      document.getElementById('desid-descricao').value = r.nome_noiva || '';
     }
 
     document.getElementById('desid-flores').value = r.flores || '';
@@ -10444,18 +10501,27 @@ async function editarDesid(id) {
 
 async function salvarEdicaoDesid() {
   if (!_desidEditandoId) return;
+  const modoAvulso = document.getElementById('desid-modo-avulso').classList.contains('active');
   const flores = document.getElementById('desid-flores').value.trim();
   const obs = document.getElementById('desid-obs').value.trim();
   const dataInicio = document.getElementById('desid-data').value;
   if (!dataInicio) { mostrarAlerta({ emoji: '⚠️', titulo: 'Campo obrigatório', mensagem: 'Informe a data de início.' }); return; }
+
+  const corpo = { flores, observacoes: obs, data_inicio: dataInicio };
+  if (modoAvulso) {
+    const descricao = document.getElementById('desid-descricao').value.trim();
+    if (!descricao) { mostrarAlerta({ emoji: '⚠️', titulo: 'Campo obrigatório', mensagem: 'Informe a descrição.' }); return; }
+    corpo.nome_noiva = descricao;
+  }
+
   const d = new Date(dataInicio + 'T12:00:00');
   const prazo = custosConfig.prazoDesidratacao || 21;
   d.setDate(d.getDate() + prazo);
-  const dataConclusao = d.toISOString().slice(0,10);
+  corpo.data_conclusao = d.toISOString().slice(0,10);
   try {
     await sbFetch('desidratacao?id=eq.'+_desidEditandoId, {
       method: 'PATCH',
-      body: JSON.stringify({ flores, observacoes: obs, data_inicio: dataInicio, data_conclusao: dataConclusao })
+      body: JSON.stringify(corpo)
     });
     _desidEditandoId = null;
     // Restaura o botao salvar para o modo novo
