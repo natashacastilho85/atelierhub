@@ -2210,10 +2210,60 @@ async function sbFetch(path, opts={}) {
     'Prefer': 'return=representation',
     ...(opts.headers||{})
   };
-  const res = await fetch(url, { mode:'cors', ...opts, headers });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  let res;
+  try {
+    res = await fetch(url, { mode:'cors', ...opts, headers, signal: controller.signal });
+  } catch (err) {
+    if (err && err.name === 'AbortError') throw new Error('TIMEOUT_CONEXAO');
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
   if (!res.ok) { const e = await res.text(); throw new Error(e); }
   const txt = await res.text();
   return txt ? JSON.parse(txt) : [];
+}
+
+// Detecta se um erro é de conectividade (sem internet, instável, ou muito lenta)
+function _ehErroConexao(e) {
+  if (!e) return false;
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return true;
+  if (e.message === 'TIMEOUT_CONEXAO') return true;
+  if (e instanceof TypeError) return true;
+  const msg = (e.message || '').toLowerCase();
+  return /failed to fetch|networkerror|load failed|network request failed|network error|err_internet_disconnected|err_network|err_connection/.test(msg);
+}
+
+// Registra erros que NÃO são de conexão numa tabela própria, silenciosamente (sem incomodar quem está usando o app)
+async function _logErroSistema(contexto, e) {
+  try {
+    const msg = e && e.message ? String(e.message).slice(0, 2000) : String(e).slice(0, 2000);
+    await sbInsert('error_log', { contexto, mensagem: msg });
+  } catch (_) { /* nunca deixa o log de erro gerar outro erro visível */ }
+}
+
+// Helper padrão para ações que a pessoa iniciou (salvar, excluir, etc.) — mostra aviso com a estética do app
+function _mostrarErroAcao(contexto, e, { acaoLabel = 'concluir esta ação' } = {}) {
+  if (_ehErroConexao(e)) {
+    mostrarAlerta({ emoji: '📡', titulo: 'Sem conexão', mensagem: `Não foi possível ${acaoLabel}. Verifique sua internet e tente novamente.` });
+  } else {
+    _logErroSistema(contexto, e);
+    mostrarAlerta({ emoji: '⚠️', titulo: 'Algo deu errado', mensagem: 'Tente novamente. Se persistir, entre em contato com o suporte.' });
+  }
+}
+
+// Helper para telas de lista (sininho, tarefas, desidratação) — texto inline com botão de tentar novamente
+function _htmlErroInline(contexto, e, retryFnCall) {
+  const conexao = _ehErroConexao(e);
+  if (!conexao) _logErroSistema(contexto, e);
+  const emoji = conexao ? '📡' : '⚠️';
+  const msg = conexao ? 'Sem conexão. Verifique sua internet.' : 'Algo deu errado ao carregar.';
+  return `<div style="text-align:center;padding:1.5rem 1rem">
+    <div style="color:var(--bordeaux);font-size:0.85rem;margin-bottom:0.7rem">${emoji} ${msg}</div>
+    <button onclick="${retryFnCall}" style="background:none;border:1px solid rgba(184,134,42,0.25);border-radius:20px;padding:0.35rem 1rem;font-size:0.68rem;color:var(--muted);cursor:pointer;letter-spacing:0.08em;font-family:'Calibri',sans-serif">Tentar novamente</button>
+  </div>`;
 }
 
 function _uid() {
@@ -2435,6 +2485,7 @@ async function initApp() {
   const _nomeUser = window._currentUserName || ''; document.getElementById('greeting').textContent = (h<12?'Bom dia':h<18?'Boa tarde':'Boa noite')+((_nomeUser)?', '+_nomeUser:'');
   document.getElementById('today-date').textContent = `${diasSem[hoje.getDay()]}, ${hoje.getDate()} de ${mesesMin[hoje.getMonth()]} de ${hoje.getFullYear()}`;
   document.getElementById('mes-label').textContent = mesesMin[hoje.getMonth()];
+  let _falhouCarregamentoInicial = false;
   try {
     const [rc, rg, rp] = await Promise.all([sbGet('contratos'), sbGet('gastos'), sbGet('pecas')]);
     contratos = rc.map(mapContrato);
@@ -2442,11 +2493,14 @@ async function initApp() {
     pecas     = rp.map(mapPeca);
   } catch(e) {
     console.error('Erro ao carregar dados:', e);
+    if (!_ehErroConexao(e)) _logErroSistema('initApp-core', e);
+    _falhouCarregamentoInicial = true;
   }
   // Carrega custos, materiais e precificação do Supabase
-  await carregarCustosSupabase();
-  await carregarMatGlobaisSupabase();
-  await carregarPrecSupabase();
+  const _okCustos = await carregarCustosSupabase();
+  const _okMat = await carregarMatGlobaisSupabase();
+  const _okPrec = await carregarPrecSupabase();
+  if (!_okCustos || !_okMat || !_okPrec) _falhouCarregamentoInicial = true;
   hideLoading();
   renderAll();
   _atualizarNomeAtelierDashboard();
@@ -2458,6 +2512,15 @@ async function initApp() {
   if (typeof onFormaPagChange === 'function') onFormaPagChange('pix');
   // Verifica assinatura ou trial — bloqueia acesso se necessário
   await verificarAssinatura();
+  if (_falhouCarregamentoInicial) {
+    mostrarAlerta({
+      emoji: '📡',
+      titulo: 'Sem conexão',
+      mensagem: 'Não foi possível carregar seus dados agora. Verifique sua internet e tente novamente.',
+      txtOk: 'Tentar novamente',
+      onOk: () => initApp()
+    });
+  }
 }
 
 // Apaga TODOS os dados do Supabase (contratos, gastos, peças)
@@ -2494,7 +2557,7 @@ function limparTodosDados() {
             mostrarAlerta({ emoji: '✅', titulo: 'Dados apagados', mensagem: 'Todos os dados foram removidos com sucesso.' });
           } catch(e) {
             hideLoading();
-            mostrarAlerta({ emoji: '❌', titulo: 'Erro', mensagem: 'Erro ao limpar dados: ' + e.message });
+            _mostrarErroAcao('limparTodosDados', e, { acaoLabel: 'apagar os dados' });
           }
         }
       });
@@ -2902,7 +2965,7 @@ async function saveContrato() {
     renderAll();
     goTabById('contratos');
     setTimeout(() => openDetail(novoMapeado.id), 300);
-  } catch(e) { mostrarAlerta({ emoji: '❌', titulo: 'Erro ao salvar', mensagem: e.message }); }
+  } catch(e) { _mostrarErroAcao('saveContrato', e, { acaoLabel: 'salvar o contrato' }); }
 }
 
 function gerarPagamentosIniciais(forma, valor, dataContrato, desconto) {
@@ -3843,7 +3906,7 @@ async function saveGasto() {
     _scrollAteComFolga(cardGasto);
   } catch(e) {
     hideLoading();
-    mostrarAlerta({ emoji: '❌', titulo: 'Erro ao salvar', mensagem: e.message });
+    _mostrarErroAcao('saveGasto', e, { acaoLabel: 'salvar o gasto' });
   }
 }
 
@@ -3903,7 +3966,7 @@ async function excluirGasto() {
           gastoEditandoId = null;
           closeDrawer('drawer-gasto');
           renderAll();
-        } catch(e) { mostrarAlerta({ emoji: '❌', titulo: 'Erro ao excluir', mensagem: e.message }); }
+        } catch(e) { _mostrarErroAcao('excluirGasto-parcela', e, { acaoLabel: 'excluir o gasto' }); }
       },
       onConfirmar: async () => {
         try {
@@ -3913,7 +3976,7 @@ async function excluirGasto() {
           gastoEditandoId = null;
           closeDrawer('drawer-gasto');
           renderAll();
-        } catch(e) { mostrarAlerta({ emoji: '❌', titulo: 'Erro ao excluir', mensagem: e.message }); }
+        } catch(e) { _mostrarErroAcao('excluirGasto-grupo', e, { acaoLabel: 'excluir o gasto' }); }
       }
     });
   } else {
@@ -3931,7 +3994,7 @@ async function excluirGasto() {
           gastoEditandoId = null;
           closeDrawer('drawer-gasto');
           renderAll();
-        } catch(e) { mostrarAlerta({ emoji: '❌', titulo: 'Erro ao excluir', mensagem: e.message }); }
+        } catch(e) { _mostrarErroAcao('excluirGasto-simples', e, { acaoLabel: 'excluir o gasto' }); }
       }
     });
   }
@@ -4050,7 +4113,7 @@ async function savePeca() {
     
     _pecaVeioDe = null;
 
-  } catch(e) { mostrarAlerta({ emoji: '❌', titulo: 'Erro ao salvar', mensagem: e.message }); }
+  } catch(e) { _mostrarErroAcao('savePeca', e, { acaoLabel: 'salvar a peça' }); }
 }
 
 async function deletePeca() {
@@ -4075,7 +4138,7 @@ async function deletePeca() {
         closeDrawer('drawer-peca');
         _ignorarProximoPopstate = true;
         history.back();
-      } catch(e) { mostrarAlerta({ emoji: '❌', titulo: 'Erro ao excluir', mensagem: e.message }); }
+      } catch(e) { _mostrarErroAcao('deletePeca', e, { acaoLabel: 'excluir a peça' }); }
     }
   });
 }
@@ -5622,7 +5685,7 @@ async function registrarChegadaBuque(contratoId) {
         renderAll();
         openDetail(contratoId);
       } catch(e) {
-        mostrarAlerta({ emoji: '❌', titulo: 'Erro ao salvar', mensagem: e.message });
+        _mostrarErroAcao('registrarChegadaBuque', e, { acaoLabel: 'registrar a chegada' });
       }
     }
   });
@@ -5643,7 +5706,7 @@ async function registrarEntregaEternizacao(contratoId) {
         renderAll();
         openDetail(contratoId);
       } catch(e) {
-        mostrarAlerta({ emoji: '❌', titulo: 'Erro ao salvar', mensagem: e.message });
+        _mostrarErroAcao('registrarEntregaEternizacao', e, { acaoLabel: 'registrar a entrega' });
       }
     }
   });
@@ -5989,7 +6052,7 @@ async function saveEditContrato() {
       setTimeout(() => openDetail(_idEditado), 300);
     }
   } catch(e) { 
-    mostrarAlerta({ emoji: '❌', titulo: 'Erro ao atualizar', mensagem: e.message });
+    _mostrarErroAcao('saveEditContrato', e, { acaoLabel: 'atualizar o contrato' });
   }
 }
 
@@ -6011,7 +6074,7 @@ async function excluirContrato() {
         contratoEditandoId = null;
         renderAll();
         goTabById('contratos');
-      } catch(e) { mostrarAlerta({ emoji: '❌', titulo: 'Erro ao excluir', mensagem: e.message }); }
+      } catch(e) { _mostrarErroAcao('excluirContrato', e, { acaoLabel: 'excluir o contrato' }); }
     }
   });
 }
@@ -6033,7 +6096,7 @@ async function excluirContratoDoDetalhe(id) {
         closeDrawer('drawer-detail');
         renderAll();
         goTabById('contratos');
-      } catch(e) { mostrarAlerta({ emoji: '❌', titulo: 'Erro ao excluir', mensagem: e.message }); }
+      } catch(e) { _mostrarErroAcao('excluirContratoDoDetalhe', e, { acaoLabel: 'excluir o contrato' }); }
     }
   });
 }
@@ -6188,7 +6251,7 @@ async function salvarNovoPagamento() {
     pagamentoContratoId = null;
     renderAll();
     openDetail(c.id);
-  } catch(e) { mostrarAlerta({ emoji: '❌', titulo: 'Erro ao salvar', mensagem: e.message }); }
+  } catch(e) { _mostrarErroAcao('salvarNovoPagamento', e, { acaoLabel: 'salvar o pagamento' }); }
 }
 
 async function excluirPagamento(contratoId, idx) {
@@ -6214,7 +6277,7 @@ async function excluirPagamento(contratoId, idx) {
         Object.assign(c, mapContrato(r));
         renderAll();
         openDetail(c.id);
-      } catch(e) { mostrarAlerta({ emoji: '❌', titulo: 'Erro ao excluir', mensagem: e.message }); }
+      } catch(e) { _mostrarErroAcao('excluirPagamento', e, { acaoLabel: 'excluir o pagamento' }); }
     }
   });
 }
@@ -6246,7 +6309,7 @@ let precDados = {};
 async function carregarPrecSupabase() {
   try {
     const uid = _uid();
-    if (!uid) return;
+    if (!uid) return true;
     const data = await sbFetch('configuracoes?chave=eq.prec-dados&user_id=eq.' + uid);
     if (data && data[0] && data[0].valor) {
       precDados = data[0].valor;
@@ -6268,13 +6331,20 @@ async function carregarPrecSupabase() {
       });
       if (precisaMigrar) salvarPrecLocal();
     }
-  } catch(e) {}
+    return true;
+  } catch(e) {
+    if (!_ehErroConexao(e)) _logErroSistema('carregarPrecSupabase', e);
+    return false;
+  }
 }
 
 async function salvarPrecLocal() {
   try {
     await sbSaveConfig('prec-dados', precDados);
-  } catch(e) { console.error('Erro salvarPrecLocal:', e); }
+  } catch(e) {
+    console.error('Erro salvarPrecLocal:', e);
+    if (!_ehErroConexao(e)) _logErroSistema('salvarPrecLocal', e);
+  }
 }
 
 function getPrecPeca(pecaId) {
@@ -6442,7 +6512,7 @@ let custosConfig = {...CUSTOS_DEFAULT};
 async function carregarCustosSupabase() {
   try {
     const uid = _uid();
-    if (!uid) return;
+    if (!uid) return true;
     const data = await sbFetch('configuracoes?chave=eq.villare-custos&user_id=eq.' + uid);
     if (data && data[0] && data[0].valor) {
       const salvo = data[0].valor;
@@ -6506,7 +6576,12 @@ async function carregarCustosSupabase() {
         localStorage.removeItem(CUSTOS_KEY);
       }
     }
-  } catch(e) { console.error('Erro ao carregar custos:', e); }
+    return true;
+  } catch(e) {
+    console.error('Erro ao carregar custos:', e);
+    if (!_ehErroConexao(e)) _logErroSistema('carregarCustosSupabase', e);
+    return false;
+  }
 }
 
 function getValorHora() {
@@ -6824,7 +6899,7 @@ async function _recalcularDesidratacaoExistentes(novoPrazo) {
     mostrarAlerta({ emoji: '✅', titulo: `${n} registro${n > 1 ? 's' : ''} atualizado${n > 1 ? 's' : ''}`, mensagem: 'As datas de conclusão foram recalculadas com o novo prazo.' });
     if (typeof renderDesid === 'function') renderDesid();
   } catch (e) {
-    mostrarAlerta({ emoji: '❌', titulo: 'Erro ao atualizar', mensagem: e.message });
+    _mostrarErroAcao('_recalcularDesidratacaoExistentes', e, { acaoLabel: 'atualizar os prazos' });
   }
 }
 
@@ -6955,7 +7030,7 @@ async function salvarCustos() {
     }
     
   } catch (erro) {
-    mostrarAlerta({ emoji: '❌', titulo: 'Erro ao salvar', mensagem: erro.message });
+    _mostrarErroAcao('salvarCustos', erro, { acaoLabel: 'salvar as configurações' });
   }
 }
 
@@ -7681,7 +7756,7 @@ function excluirPecaPrec(pecaId) {
         salvarPrecLocal();
         renderCatalogo();
         _renderPrecBody();
-      } catch(e) { mostrarAlerta({ emoji: '❌', titulo: 'Erro ao excluir', mensagem: e.message }); }
+      } catch(e) { _mostrarErroAcao('excluirPecaPrec', e, { acaoLabel: 'excluir a peça' }); }
     }
   });
 }
@@ -7714,7 +7789,7 @@ async function duplicarPecaPrec(pecaId) {
       }
     }, 500);
 
-  } catch(e) { mostrarAlerta({ emoji: '❌', titulo: 'Erro ao duplicar', mensagem: e.message }); }
+  } catch(e) { _mostrarErroAcao('duplicarPecaPrec', e, { acaoLabel: 'duplicar a peça' }); }
 }
 
 function simularPorPreco(pecaId, precoDigitado) {
@@ -8216,16 +8291,24 @@ let matModalSelId = null; // id do material global selecionado no modal
 async function carregarMatGlobaisSupabase() {
   try {
     const uid = _uid();
-    if (!uid) return;
+    if (!uid) return true;
     const data = await sbFetch('configuracoes?chave=eq.mat-globais&user_id=eq.' + uid);
     if (data && data[0] && data[0].valor) matGlobais = data[0].valor;
-  } catch(e) {}
+    return true;
+  } catch(e) {
+    if (!_ehErroConexao(e)) _logErroSistema('carregarMatGlobaisSupabase', e);
+    return false;
+  }
 }
 
 async function salvarMatGlobais() {
   try {
     await sbSaveConfig('mat-globais', matGlobais);
-  } catch(e) { console.error('Erro salvarMatGlobais:', e); }
+  } catch(e) {
+    console.error('Erro salvarMatGlobais:', e);
+    if (!_ehErroConexao(e)) _logErroSistema('salvarMatGlobais', e);
+    throw e;
+  }
 }
 
 function custoPorUnidade(m) {
@@ -8399,7 +8482,7 @@ async function salvarMaterialGlobal(aplicarATodas) {
 
   } catch (e) {
     console.error("Erro na sincronização:", e);
-    mostrarAlerta({ emoji: '❌', titulo: 'Erro ao atualizar', mensagem: e.message });
+    _mostrarErroAcao('salvarMaterialGlobal', e, { acaoLabel: 'salvar o material' });
   }
 }
 function excluirMaterialGlobal() {
@@ -8671,7 +8754,7 @@ async function salvarFicha() {
     const btn = document.querySelector('#drawer-ficha .btn-primary');
     if (btn) { const orig = btn.textContent; btn.textContent = '✓ Salvo!'; setTimeout(() => btn.textContent = orig, 1500); }
   } catch(e) {
-    mostrarAlerta({ emoji: '❌', titulo: 'Erro ao salvar', mensagem: e.message });
+    _mostrarErroAcao('salvarFicha', e, { acaoLabel: 'salvar a ficha' });
   }
 }
 
@@ -9272,16 +9355,26 @@ function removerOpcaoPresente(idx) {
     renderListaOpcoesPresente();
     // Limpa nos contratos em memória e no Supabase
     const afetados = contratos.filter(c => Array.isArray(c.presente) && c.presente.includes(nomePresente));
+    let falhas = 0;
     for (const c of afetados) {
       try {
         const novoArr = c.presente.filter(p => p !== nomePresente);
         await sbUpdate('contratos', c.id, { presente: novoArr.length ? novoArr : null });
         c.presente = novoArr;
       } catch(e) {
+        falhas++;
         console.error('Erro ao limpar presente do contrato', c.id, e);
+        if (!_ehErroConexao(e)) _logErroSistema('removerOpcaoPresente', e);
       }
     }
     if (afetados.length) renderAll();
+    if (falhas > 0) {
+      mostrarAlerta({
+        emoji: '⚠️',
+        titulo: 'Removido parcialmente',
+        mensagem: `${falhas} de ${afetados.length} contratos não puderam ser atualizados. Tente novamente para completar.`
+      });
+    }
   };
 }
 
@@ -9511,7 +9604,7 @@ async function salvarProcessos(aplicarATodas) {
     closeDrawer('drawer-processos');
     if (typeof _renderPrecBody === 'function') _renderPrecBody();
   } catch (erro) {
-    mostrarAlerta({ emoji: '❌', titulo: 'Erro ao salvar', mensagem: erro.message });
+    _mostrarErroAcao('salvarProcessos', erro, { acaoLabel: 'salvar os processos' });
   }
 }
 
@@ -10057,7 +10150,7 @@ async function renderCentroNotif() {
     }).join('');
 
   } catch(e) {
-    el.innerHTML = `<div style="color:var(--bordeaux);font-size:0.8rem;padding:1rem">Erro ao carregar: ${e.message}</div>`;
+    el.innerHTML = _htmlErroInline('renderCentroNotif', e, 'renderCentroNotif()');
   }
 }
 
@@ -10116,7 +10209,7 @@ async function excluirNotif(tipo, id) {
           await sbFetch('notif_manuais?id=eq.'+id, { method:'DELETE', headers:{'Prefer':''} });
         }
         await renderCentroNotif();
-      } catch(e) { mostrarAlerta({ emoji: '❌', titulo: 'Erro', mensagem: 'Erro ao apagar: ' + e.message }); }
+      } catch(e) { _mostrarErroAcao('excluirNotif', e, { acaoLabel: 'apagar a notificação' }); }
     }
   });
 }
@@ -10146,7 +10239,7 @@ async function salvarNotifManual() {
     await sbInsert('notif_manuais', { texto, data_hora: dataHora, disparada: false });
     closeDrawer('drawer-notif-manual');
     await renderCentroNotif(); // já atualiza o badge com o count real do banco
-  } catch(e) { mostrarAlerta({ emoji: '❌', titulo: 'Erro ao salvar', mensagem: e.message }); }
+  } catch(e) { _mostrarErroAcao('salvarNotifManual', e, { acaoLabel: 'salvar a notificação' }); }
 }
 
 // -- DESIDRATACAO --
@@ -10177,7 +10270,7 @@ async function abrirNovaDesid() {
     if (!emProducao.length) {
       sel.innerHTML = '<option value="">Nenhum contrato em producao</option>';
     }
-  } catch(e) { mostrarAlerta({ emoji: '❌', titulo: 'Erro', mensagem: e.message }); }
+  } catch(e) { _mostrarErroAcao('abrirNovaDesid', e, { acaoLabel: 'carregar os contratos' }); }
   document.getElementById('desid-flores').value = '';
   document.getElementById('desid-obs').value = '';
   document.getElementById('desid-pecas-wrap').style.display = 'none';
@@ -10228,7 +10321,7 @@ async function salvarDesid() {
     closeDrawer('drawer-nova-desid');
     await renderDesidLista();
     await atualizarBadgeDesid();
-  } catch(e) { mostrarAlerta({ emoji: '❌', titulo: 'Erro ao salvar', mensagem: e.message }); }
+  } catch(e) { _mostrarErroAcao('salvarDesid', e, { acaoLabel: 'salvar a desidratação' }); }
 }
 
 async function concluirDesid(id) {
@@ -10243,7 +10336,7 @@ async function concluirDesid(id) {
         await sbFetch('desidratacao?id=eq.'+id, { method:'PATCH', body: JSON.stringify({ concluido: true }) });
         await renderDesidLista();
         await atualizarBadgeDesid();
-      } catch(e) { mostrarAlerta({ emoji: '❌', titulo: 'Erro', mensagem: e.message }); }
+      } catch(e) { _mostrarErroAcao('concluirDesid', e, { acaoLabel: 'concluir a desidratação' }); }
     }
   });
 }
@@ -10259,7 +10352,7 @@ async function excluirDesid(id) {
         await sbFetch('desidratacao?id=eq.'+id, { method:'DELETE', headers:{'Prefer':''} });
         await renderDesidLista();
         await atualizarBadgeDesid();
-      } catch(e) { mostrarAlerta({ emoji: '❌', titulo: 'Erro', mensagem: e.message }); }
+      } catch(e) { _mostrarErroAcao('excluirDesid', e, { acaoLabel: 'excluir o registro' }); }
     }
   });
 }
@@ -10306,7 +10399,7 @@ async function renderDesidLista() {
           : '');
     }).join('');
   } catch(e) {
-    el.innerHTML = '<div style="color:var(--bordeaux);font-size:0.8rem;padding:1rem">Erro: '+e.message+'</div>';
+    el.innerHTML = _htmlErroInline('renderDesidLista', e, 'renderDesidLista()');
   }
 }
 
@@ -10346,7 +10439,7 @@ async function editarDesid(id) {
     if (btnSalvar) btnSalvar.setAttribute('onclick', 'salvarEdicaoDesid()');
 
     openDrawer('drawer-nova-desid');
-  } catch(e) { mostrarAlerta({ emoji: '❌', titulo: 'Erro ao carregar', mensagem: e.message }); }
+  } catch(e) { _mostrarErroAcao('editarDesid', e, { acaoLabel: 'carregar o registro' }); }
 }
 
 async function salvarEdicaoDesid() {
@@ -10372,7 +10465,7 @@ async function salvarEdicaoDesid() {
     if (titulo) titulo.textContent = 'Nova Desidratacao';
     closeDrawer('drawer-nova-desid');
     await renderDesidLista();
-  } catch(e) { mostrarAlerta({ emoji: '❌', titulo: 'Erro ao salvar', mensagem: e.message }); }
+  } catch(e) { _mostrarErroAcao('salvarEdicaoDesid', e, { acaoLabel: 'salvar a edição' }); }
 }
 
 async function atualizarBadgeDesid() {
@@ -10382,7 +10475,9 @@ async function atualizarBadgeDesid() {
     if (!badge) return;
     if (dados && dados.length > 0) { badge.textContent = dados.length; badge.style.display = 'flex'; }
     else { badge.style.display = 'none'; }
-  } catch(e) {}
+  } catch(e) {
+    if (!_ehErroConexao(e)) _logErroSistema('atualizarBadgeDesid', e);
+  }
 }
 
 // Carrega badge ao iniciar
@@ -10397,7 +10492,9 @@ async function carregarBadgeNotif() {
     } else {
       badge.style.display = 'none';
     }
-  } catch(e) {}
+  } catch(e) {
+    if (!_ehErroConexao(e)) _logErroSistema('carregarBadgeNotif', e);
+  }
 }
 
 
@@ -10421,8 +10518,8 @@ async function carregarTarefas() {
     _tarefas = (rows || []).map(mapTarefa);
     renderTarefas();
   } catch(e) {
-    document.getElementById('tarefas-lista').innerHTML =
-      '<div class="tarefa-vazia">Erro ao carregar tarefas.</div>';
+    const el = document.getElementById('tarefas-lista');
+    if (el) el.innerHTML = _htmlErroInline('carregarTarefas', e, 'carregarTarefas()');
   }
 }
 
@@ -10485,7 +10582,7 @@ async function adicionarTarefa() {
     _tarefas.push(mapTarefa(r));
     input.value = '';
     renderTarefas();
-  } catch(e) { mostrarAlerta({ emoji: '❌', titulo: 'Erro ao adicionar tarefa', mensagem: e.message }); }
+  } catch(e) { _mostrarErroAcao('adicionarTarefa', e, { acaoLabel: 'adicionar a tarefa' }); }
 }
 
 async function toggleTarefa(id) {
@@ -10502,7 +10599,7 @@ async function toggleTarefa(id) {
     // Reverte em caso de erro
     t.concluida = !t.concluida;
     renderTarefas();
-    mostrarAlerta({ emoji: '❌', titulo: 'Erro', mensagem: 'Erro ao atualizar tarefa.' });
+    _mostrarErroAcao('toggleTarefa', e, { acaoLabel: 'atualizar a tarefa' });
   }
 }
 
@@ -10513,7 +10610,7 @@ async function excluirTarefa(id) {
     await sbDelete('tarefas', id);
   } catch(e) {
     await carregarTarefas(); // recarga em caso de erro
-    mostrarAlerta({ emoji: '❌', titulo: 'Erro', mensagem: 'Erro ao excluir tarefa.' });
+    _mostrarErroAcao('excluirTarefa', e, { acaoLabel: 'excluir a tarefa' });
   }
 }
 
@@ -10562,6 +10659,7 @@ async function _tarefaDrop(e, targetId) {
     ));
   } catch(e) {
     await carregarTarefas(); // Recarga se falhar
+    _mostrarErroAcao('_tarefaDrop', e, { acaoLabel: 'salvar a nova ordem' });
   }
 }
 
@@ -10647,7 +10745,10 @@ async function _touchEnd(e) {
               body: JSON.stringify({ ordem: t.ordem })
             })
           ));
-        } catch(e) { await carregarTarefas(); }
+        } catch(e) {
+          await carregarTarefas();
+          _mostrarErroAcao('_touchEnd', e, { acaoLabel: 'salvar a nova ordem' });
+        }
       }
     }
   }
@@ -10681,7 +10782,9 @@ async function carregarBadgeTarefas() {
     } else {
       badge.style.display = 'none';
     }
-  } catch(e) {}
+  } catch(e) {
+    if (!_ehErroConexao(e)) _logErroSistema('carregarBadgeTarefas', e);
+  }
 }
   
 </script>
