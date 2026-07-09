@@ -2980,7 +2980,7 @@ function gerarPagamentosIniciais(forma, valor, dataContrato, desconto) {
   // valor = preço de venda (bruto)
   // base = valor + acréscimo - desconto (acréscimo já está embutido em valor ao chamar essa função)
   // O desconto já foi subtraído de valor antes de chamar essa função
-  const data = dataContrato || new Date().toISOString().split('T')[0];
+  const data = dataContrato || new Date().toLocaleDateString('en-CA'); // retorna YYYY-MM-DD no fuso do dispositivo (evita bug UTC)
   const base = round2(parseFloat(valor) || 0);
   if (forma === 'pix') {
     const taxaPix = getDescontoPix();
@@ -3740,7 +3740,7 @@ function abrirNovoGasto() {
   const prev = document.getElementById('g-preview-parcelas');
   if (prev) prev.style.display = 'none';
   // Data padrão = hoje
-  document.getElementById('g-data').value = new Date().toISOString().split('T')[0];
+  document.getElementById('g-data').value = new Date().toLocaleDateString('en-CA'); // retorna YYYY-MM-DD no fuso do dispositivo (evita bug UTC)
   openDrawer('drawer-gasto');
 }
 
@@ -5679,7 +5679,7 @@ function _miniModalData({ emoji, titulo, labelData, valorData, onConfirmar }) {
 }
 
 async function registrarChegadaBuque(contratoId) {
-  const hj = new Date().toISOString().slice(0, 10);
+  const hj = new Date().toLocaleDateString('en-CA'); // retorna YYYY-MM-DD no fuso do dispositivo (evita bug UTC)
   _miniModalData({
     emoji: '🌸',
     titulo: 'Buquê chegou!',
@@ -5700,7 +5700,7 @@ async function registrarChegadaBuque(contratoId) {
 }
 
 async function registrarEntregaEternizacao(contratoId) {
-  const hj = new Date().toISOString().slice(0, 10);
+  const hj = new Date().toLocaleDateString('en-CA'); // retorna YYYY-MM-DD no fuso do dispositivo (evita bug UTC)
   _miniModalData({
     emoji: '🎁',
     titulo: 'Registrar entrega',
@@ -10290,7 +10290,7 @@ async function abrirNovaDesid() {
   if (titulo) titulo.textContent = 'Nova Desidratação';
   const btnSalvar = document.querySelector('#drawer-nova-desid button[onclick="salvarEdicaoDesid()"]');
   if (btnSalvar) btnSalvar.setAttribute('onclick', 'salvarDesid()');
-  const hj = new Date().toISOString().slice(0,10);
+  const hj = new Date().toLocaleDateString('en-CA'); // retorna YYYY-MM-DD no fuso do dispositivo (evita bug UTC)
   document.getElementById('desid-data').value = hj;
   atualizarPrevisaoDesid();
   openDrawer('drawer-nova-desid');
@@ -10414,7 +10414,7 @@ async function renderDesidLista() {
       el.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted-light);font-style:italic;font-size:0.85rem">Nenhum buque em desidratacao</div>';
       return;
     }
-    const hj = new Date(); hj.setHours(0,0,0,0);
+    const hj = new Date(); hj.setHours(12,0,0,0);
     el.innerHTML = dados.map((r, idx) => {
       const dc = new Date(r.data_conclusao + 'T12:00:00');
       const diff = Math.round((dc - hj) / 86400000);
