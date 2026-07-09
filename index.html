@@ -5722,6 +5722,9 @@ async function registrarEntregaEternizacao(contratoId) {
 
 // ── EDIÇÃO DE CONTRATO ──
 let contratoEditandoId = null;
+// Controle do novo fluxo: pagamento por peça ao adicionar/aumentar quantidade na edição
+let _pecaLinhaSeq = 0;
+let _eventosPagamentoPecaEdit = {}; // { linhaId: { valorTotalBase, forma, parcelas, data, semPagamento } }
 
 function abrirEdicaoContrato(id) {
   const c = contratos.find(x=>x.id===id);
@@ -5807,18 +5810,24 @@ function abrirEdicaoContrato(id) {
   }
 
   // Reconstruir linhas de peças com os dados atuais
+  _eventosPagamentoPecaEdit = {}; // limpa eventos de sessão anterior
   const cont = document.getElementById('e-pecas-selecionadas');
   cont.innerHTML = '';
   (c.pecas || []).forEach(p => {
     const pecaCat = pecas.find(x => x.nome === p.nome);
+    const linhaId = ++_pecaLinhaSeq;
     const div = document.createElement('div');
+    div.dataset.linhaId = linhaId;
+    div.dataset.qtdBase = String(p.qtd || 1);
+    div.dataset.valorTotalBase = String(round2((parseFloat(p.valor) || 0) * (parseInt(p.qtd) || 1)));
+    div.dataset.original = 'true';
     div.style.cssText = 'display:grid;grid-template-columns:1fr 60px 24px;gap:0.4rem;align-items:center';
     const opts = pecas.map(pp => {
       const preco = getPrecoPecaCalculado(pp.id);
       const label = preco ? `${pp.nome} — R$ ${preco.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}` : pp.nome;
       return `<option value="${pp.id}" ${pecaCat && pp.id===pecaCat.id?'selected':''}>${label}</option>`;
     }).join('');
-    div.innerHTML = `<select class="field-input" style="padding:0.5rem 0.6rem;font-size:0.82rem">${opts}</select><input class="field-input" type="number" min="1" value="${p.qtd}" style="padding:0.5rem 0.4rem;text-align:center;font-size:0.82rem"><button type="button" onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--bordeaux);font-size:1.2rem;cursor:pointer;padding:0;line-height:1">×</button>`;
+    div.innerHTML = `<select class="field-input" style="padding:0.5rem 0.6rem;font-size:0.82rem">${opts}</select><input class="field-input" type="number" min="1" value="${p.qtd}" style="padding:0.5rem 0.4rem;text-align:center;font-size:0.82rem" onchange="_qtdPecaEditChange(${linhaId})"><button type="button" onclick="_removerLinhaPecaEdit(${linhaId})" style="background:none;border:none;color:var(--bordeaux);font-size:1.2rem;cursor:pointer;padding:0;line-height:1">×</button>`;
     cont.appendChild(div);
   });
 
@@ -5865,16 +5874,264 @@ function adicionarLinhaPecaEdit() {
   overlay.style.display = 'flex';
 }
 
+// Cria uma nova linha de peça (baseline zerado) e retorna o linhaId gerado
+function _criarLinhaPecaEdit(pecaId, qtdInicial) {
+  const linhaId = ++_pecaLinhaSeq;
+  const container = document.getElementById('e-pecas-selecionadas');
+  const div = document.createElement('div');
+  div.dataset.linhaId = linhaId;
+  div.dataset.qtdBase = '0';
+  div.dataset.valorTotalBase = '0';
+  div.dataset.original = 'false';
+  div.style.cssText = 'display:grid;grid-template-columns:1fr 60px 24px;gap:0.4rem;align-items:center';
+  div.innerHTML = `<select class="field-input" style="padding:0.5rem 0.6rem;font-size:0.82rem" onchange="_pecaEditTrocouSelecao(${linhaId})">${_optsLinhaPeca(pecaId)}</select><input class="field-input" type="number" min="1" value="${qtdInicial}" style="padding:0.5rem 0.4rem;text-align:center;font-size:0.82rem" onchange="_qtdPecaEditChange(${linhaId})"><button type="button" onclick="_removerLinhaPecaEdit(${linhaId})" style="background:none;border:none;color:var(--bordeaux);font-size:1.2rem;cursor:pointer;padding:0;line-height:1">×</button>`;
+  container.appendChild(div);
+  return linhaId;
+}
+
 function confirmarPecaEdit(pecaId) {
   const overlay = document.getElementById('modal-sel-peca-edit');
   if (overlay) overlay.remove();
   const p = pecas.find(x => x.id === pecaId);
   if (!p) return;
-  const container = document.getElementById('e-pecas-selecionadas');
-  const div = document.createElement('div');
-  div.style.cssText = 'display:grid;grid-template-columns:1fr 60px 24px;gap:0.4rem;align-items:center';
-  div.innerHTML = `<select class="field-input" style="padding:0.5rem 0.6rem;font-size:0.82rem">${_optsLinhaPeca(pecaId)}</select><input class="field-input" type="number" min="1" value="1" style="padding:0.5rem 0.4rem;text-align:center;font-size:0.82rem"><button type="button" onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--bordeaux);font-size:1.2rem;cursor:pointer;padding:0;line-height:1">×</button>`;
-  container.appendChild(div);
+  const linhaId = _criarLinhaPecaEdit(pecaId, 1);
+  // Peça nova: dispara o modal de pagamento pra 1 unidade
+  const preco = getPrecoPecaCalculado(pecaId) || 0;
+  _abrirModalPagamentoPeca(linhaId, p.nome, 1, preco);
+}
+
+// Remove uma linha de peça — pede confirmação se for peça ORIGINAL do contrato (reduz valor)
+function _removerLinhaPecaEdit(linhaId) {
+  const div = document.querySelector(`#e-pecas-selecionadas > div[data-linha-id="${linhaId}"]`);
+  if (!div) return;
+  const isOriginal = div.dataset.original === 'true';
+  if (!isOriginal) {
+    // Peça adicionada nesta mesma sessão — remove direto, sem confirmação
+    delete _eventosPagamentoPecaEdit[linhaId];
+    div.remove();
+    return;
+  }
+  const nomeSel = div.querySelector('select').selectedOptions[0]?.textContent || 'peça';
+  const valorAtual = parseFloat(div.dataset.valorTotalBase) || 0;
+  mostrarConfirm({
+    emoji: '⚠️',
+    titulo: 'Remover peça?',
+    mensagem: `Isso vai reduzir o valor do contrato em R$ ${valorAtual.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}. Pagamentos já registrados não serão alterados automaticamente — se a cliente já pagou, ajuste manualmente. Confirma a remoção de "${nomeSel}"?`,
+    txtConfirmar: 'Remover',
+    corConfirmar: 'var(--bordeaux)',
+    onConfirmar: () => {
+      delete _eventosPagamentoPecaEdit[linhaId];
+      div.remove();
+    }
+  });
+}
+
+// Se trocar a peça selecionada numa linha nova (ainda sem evento confirmado), reabre o modal de pagamento
+function _pecaEditTrocouSelecao(linhaId) {
+  const div = document.querySelector(`#e-pecas-selecionadas > div[data-linha-id="${linhaId}"]`);
+  if (!div || div.dataset.original === 'true') return;
+  const sel = div.querySelector('select');
+  const qtd = parseInt(div.querySelector('input[type=number]').value) || 1;
+  const pid = parseInt(sel.value);
+  const p = pecas.find(x => x.id === pid);
+  if (!p) return;
+  const preco = getPrecoPecaCalculado(pid) || 0;
+  _abrirModalPagamentoPeca(linhaId, p.nome, qtd, preco);
+}
+
+// Quando a quantidade de uma linha muda: aumento -> modal de pagamento; redução -> modal de confirmação
+function _qtdPecaEditChange(linhaId) {
+  const div = document.querySelector(`#e-pecas-selecionadas > div[data-linha-id="${linhaId}"]`);
+  if (!div) return;
+  const input = div.querySelector('input[type=number]');
+  const qtdBase = parseInt(div.dataset.qtdBase) || 0;
+  const raw = parseInt(input.value);
+  const qtdNova = isNaN(raw) ? 1 : raw; // string vazia/inválida vira 1; "0" continua "0" de propósito
+  const sel = div.querySelector('select');
+  const pid = parseInt(sel.value);
+  const p = pecas.find(x => x.id === pid);
+  const nomePeca = p ? p.nome : 'peça';
+
+  if (qtdNova <= 0) {
+    // Reduzir a quantidade a zero equivale a remover a peça inteira — usa o mesmo fluxo de remoção
+    input.value = qtdBase; // mantém visualmente o valor atual até a decisão
+    _removerLinhaPecaEdit(linhaId);
+    return;
+  }
+
+  if (qtdNova > qtdBase) {
+    // Não mistura com a linha existente — cria uma linha NOVA separada só com a diferença,
+    // assim cada "lote" mantém o valor real que foi cobrado, sem virar média.
+    const qtdDelta = qtdNova - qtdBase;
+    input.value = qtdBase; // a linha original volta pro que já estava confirmado
+    const novaLinhaId = _criarLinhaPecaEdit(pid, qtdDelta);
+    const preco = getPrecoPecaCalculado(pid) || 0;
+    _abrirModalPagamentoPeca(novaLinhaId, nomePeca, qtdDelta, preco);
+  } else if (qtdNova < qtdBase) {
+    const valorTotalBase = parseFloat(div.dataset.valorTotalBase) || 0;
+    const valorPorUnidade = qtdBase > 0 ? valorTotalBase / qtdBase : 0;
+    const reducao = valorPorUnidade * (qtdBase - qtdNova);
+    mostrarConfirm({
+      emoji: '⚠️',
+      titulo: 'Reduzir quantidade?',
+      mensagem: `Reduzir "${nomePeca}" de ${qtdBase} para ${qtdNova} vai diminuir o valor do contrato em R$ ${reducao.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}. Pagamentos já registrados não serão alterados automaticamente. Confirma?`,
+      txtConfirmar: 'Reduzir',
+      corConfirmar: 'var(--bordeaux)',
+      onConfirmar: () => {
+        div.dataset.qtdBase = String(qtdNova);
+        div.dataset.valorTotalBase = String(round2(valorPorUnidade * qtdNova));
+      },
+      onCancelar: () => { input.value = qtdBase; }
+    });
+    // Se o mostrarConfirm não suportar onCancelar (fechar sem confirmar), reverte por padrão via listener abaixo
+  } else {
+    // qtd igual à base — nada a fazer
+  }
+}
+
+// ── MODAL DE PAGAMENTO POR PEÇA (2 etapas) ──
+let _modalPecaTemp = null;
+
+function _abrirModalPagamentoPeca(linhaId, nomePeca, qtdDelta, precoUnitCatalogo) {
+  _modalPecaTemp = { linhaId, nomePeca, qtdDelta, precoUnitCatalogo, etapa: 1, forma: null, parcelas: 1 };
+  let overlay = document.getElementById('modal-pag-peca');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'modal-pag-peca';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(42,26,14,0.5);z-index:9500;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(3px)';
+    document.body.appendChild(overlay);
+  }
+  _renderModalPagamentoPeca();
+  overlay.style.display = 'flex';
+}
+
+function _renderModalPagamentoPeca() {
+  const overlay = document.getElementById('modal-pag-peca');
+  if (!overlay || !_modalPecaTemp) return;
+  const { nomePeca, qtdDelta, precoUnitCatalogo, etapa } = _modalPecaTemp;
+  const valorCatalogo = round2(precoUnitCatalogo * qtdDelta);
+  const qtdLabel = qtdDelta > 1 ? ` (+${qtdDelta} unidades)` : '';
+
+  if (etapa === 1) {
+    overlay.innerHTML = `
+      <div onclick="event.stopPropagation()" style="background:var(--warm-white);border-radius:16px 16px 0 0;width:100%;max-width:520px;padding:1.2rem 1.2rem calc(1.2rem + env(safe-area-inset-bottom,0px))">
+        <div style="font-family:'Calibri',serif;font-size:1.05rem;color:var(--brown);margin-bottom:0.3rem">${nomePeca}${qtdLabel}</div>
+        <div style="font-size:0.78rem;color:var(--muted);margin-bottom:1rem">Valor de catálogo: R$ ${valorCatalogo.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+        <div style="display:flex;gap:0.6rem;margin-bottom:1rem">
+          <div style="flex:1">
+            <label class="field-label">Desconto (R$)</label>
+            <input class="field-input" type="number" min="0" step="0.01" id="mpp-desconto" value="0" style="width:100%">
+          </div>
+          <div style="flex:1">
+            <label class="field-label">Acréscimo (R$)</label>
+            <input class="field-input" type="number" min="0" step="0.01" id="mpp-acrescimo" value="0" style="width:100%">
+          </div>
+        </div>
+        <button onclick="_avancarParaFormaPagamentoPeca()" style="width:100%;background:var(--brown);border:none;border-radius:6px;color:white;padding:0.85rem;font-size:0.85rem;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;font-family:'Calibri',sans-serif;margin-bottom:0.5rem">Registrar pagamento agora</button>
+        <button onclick="_confirmarSemPagamentoPeca()" style="width:100%;background:none;border:1px solid rgba(184,134,42,0.3);border-radius:6px;color:var(--brown);padding:0.85rem;font-size:0.85rem;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;font-family:'Calibri',sans-serif">Sem pagamento agora</button>
+      </div>`;
+  } else {
+    const hj = new Date().toLocaleDateString('en-CA');
+    overlay.innerHTML = `
+      <div onclick="event.stopPropagation()" style="background:var(--warm-white);border-radius:16px 16px 0 0;width:100%;max-width:520px;padding:1.2rem 1.2rem calc(1.2rem + env(safe-area-inset-bottom,0px))">
+        <div style="font-family:'Calibri',serif;font-size:1.05rem;color:var(--brown);margin-bottom:1rem">Como foi pago?</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:1rem" id="mpp-formas">
+          <div class="filter-chip" onclick="_selecionarFormaPagamentoPeca('Pix')" data-forma="Pix" style="text-align:center">Pix</div>
+          <div class="filter-chip" onclick="_selecionarFormaPagamentoPeca('Débito')" data-forma="Débito" style="text-align:center">Débito</div>
+          <div class="filter-chip" onclick="_selecionarFormaPagamentoPeca('Cartão')" data-forma="Cartão" style="text-align:center">Cartão</div>
+          <div class="filter-chip" onclick="_selecionarFormaPagamentoPeca('Dinheiro')" data-forma="Dinheiro" style="text-align:center">Dinheiro</div>
+        </div>
+        <div id="mpp-grp-parcelas" style="display:none;margin-bottom:1rem">
+          <label class="field-label">Parcelas</label>
+          <select class="field-input" id="mpp-parcelas" style="width:100%"></select>
+        </div>
+        <div style="margin-bottom:1rem">
+          <label class="field-label">Data do pagamento</label>
+          <input class="field-input" type="date" id="mpp-data" value="${hj}" style="width:100%">
+        </div>
+        <button onclick="_confirmarPagamentoPeca()" style="width:100%;background:var(--brown);border:none;border-radius:6px;color:white;padding:0.85rem;font-size:0.85rem;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;font-family:'Calibri',sans-serif">Confirmar</button>
+      </div>`;
+  }
+}
+
+function _avancarParaFormaPagamentoPeca() {
+  if (!_modalPecaTemp) return;
+  _modalPecaTemp.desconto = round2(parseFloat(document.getElementById('mpp-desconto').value) || 0);
+  _modalPecaTemp.acrescimo = round2(parseFloat(document.getElementById('mpp-acrescimo').value) || 0);
+  _modalPecaTemp.etapa = 2;
+  _renderModalPagamentoPeca();
+}
+
+function _selecionarFormaPagamentoPeca(forma) {
+  if (!_modalPecaTemp) return;
+  _modalPecaTemp.forma = forma;
+  document.querySelectorAll('#mpp-formas .filter-chip').forEach(el => {
+    el.classList.toggle('active', el.dataset.forma === forma);
+  });
+  const grpParc = document.getElementById('mpp-grp-parcelas');
+  if (forma === 'Cartão') {
+    grpParc.style.display = '';
+    preencherSelectParcelas('mpp-parcelas');
+  } else {
+    grpParc.style.display = 'none';
+  }
+}
+
+function _confirmarSemPagamentoPeca() {
+  if (!_modalPecaTemp) return;
+  const desconto = round2(parseFloat(document.getElementById('mpp-desconto').value) || 0);
+  const acrescimo = round2(parseFloat(document.getElementById('mpp-acrescimo').value) || 0);
+  const valorBase = round2(_modalPecaTemp.precoUnitCatalogo * _modalPecaTemp.qtdDelta + acrescimo - desconto);
+  _aplicarEventoPecaEdit(_modalPecaTemp.linhaId, { valorTotalDelta: valorBase, semPagamento: true });
+  _fecharModalPagamentoPeca();
+}
+
+function _confirmarPagamentoPeca() {
+  if (!_modalPecaTemp) return;
+  if (!_modalPecaTemp.forma) { mostrarAlerta({ emoji: '⚠️', titulo: 'Escolha a forma', mensagem: 'Selecione como foi pago.' }); return; }
+  const data = document.getElementById('mpp-data').value;
+  if (!data) { mostrarAlerta({ emoji: '⚠️', titulo: 'Campo obrigatório', mensagem: 'Informe a data do pagamento.' }); return; }
+  const desconto = _modalPecaTemp.desconto || 0;
+  const acrescimo = _modalPecaTemp.acrescimo || 0;
+  const valorBase = round2(_modalPecaTemp.precoUnitCatalogo * _modalPecaTemp.qtdDelta + acrescimo - desconto);
+  let parcelas = null;
+  if (_modalPecaTemp.forma === 'Cartão') {
+    parcelas = parseInt(document.getElementById('mpp-parcelas').value) || 1;
+  }
+  _aplicarEventoPecaEdit(_modalPecaTemp.linhaId, {
+    valorTotalDelta: valorBase,
+    semPagamento: false,
+    forma: _modalPecaTemp.forma,
+    parcelas,
+    data
+  });
+  _fecharModalPagamentoPeca();
+}
+
+function _fecharModalPagamentoPeca() {
+  const overlay = document.getElementById('modal-pag-peca');
+  if (overlay) overlay.remove();
+  _modalPecaTemp = null;
+}
+
+// Aplica o evento de pagamento a uma linha: soma o delta ao valor total base, atualiza qtdBase, guarda o evento
+function _aplicarEventoPecaEdit(linhaId, evento) {
+  const div = document.querySelector(`#e-pecas-selecionadas > div[data-linha-id="${linhaId}"]`);
+  if (!div) return;
+  const sel = div.querySelector('select');
+  const qtdAtual = parseInt(div.querySelector('input[type=number]').value) || 1;
+  const valorTotalAnterior = parseFloat(div.dataset.valorTotalBase) || 0;
+  div.dataset.valorTotalBase = String(round2(valorTotalAnterior + evento.valorTotalDelta));
+  div.dataset.qtdBase = String(qtdAtual);
+  if (!evento.semPagamento) {
+    if (!_eventosPagamentoPecaEdit[linhaId]) _eventosPagamentoPecaEdit[linhaId] = [];
+    _eventosPagamentoPecaEdit[linhaId].push({
+      valor: evento.valorTotalDelta,
+      forma: evento.forma,
+      parcelas: evento.parcelas,
+      data: evento.data
+    });
+  }
 }
 
 function onFormaPagEditChange(val) {
@@ -5937,22 +6194,15 @@ async function saveEditContrato() {
     const p = pecas.find(x=>x.id===pid);
     if (!p) return;
     const qtd = parseInt(qtdEl.value) || 1;
-    const precoCalculado = getPrecoPecaCalculado(pid) || 0;
-    pecasSel.push({ nome: p.nome, valor: precoCalculado, qtd });
-    valorBruto += precoCalculado * qtd;
+    // Usa o valor TOTAL travado da linha (preserva desconto/acréscimo já combinado, não recalcula do catálogo)
+    const valorTotalLinha = parseFloat(linha.dataset.valorTotalBase) || 0;
+    const valorUnitario = qtd > 0 ? round2(valorTotalLinha / qtd) : 0;
+    pecasSel.push({ nome: p.nome, valor: valorUnitario, qtd });
+    valorBruto += valorTotalLinha;
   });
   dados.pecas = pecasSel;
-
-  // PROTEÇÃO: só recalcula valor_bruto se as peças mudaram em relação ao original
-  // Compara IDs e quantidades para detectar mudança real
-  const pecasOriginais = c.pecas || [];
-  const pecasMudaram = pecasSel.length !== pecasOriginais.length ||
-    pecasSel.some((p, i) => {
-      const orig = pecasOriginais[i];
-      return !orig || p.nome !== orig.nome || p.qtd !== orig.qtd;
-    });
-  let valorFinalEdit = pecasMudaram ? valorBruto : (parseFloat(c.valorBruto) || valorBruto);
-  dados.valor_bruto = valorFinalEdit;
+  valorBruto = round2(valorBruto);
+  dados.valor_bruto = valorBruto;
 
   // Coleta os dados da ficha na edição
   dados.presente = _lerPresenteCheckboxes('e-f-presente');
@@ -5967,47 +6217,65 @@ async function saveEditContrato() {
     obsGeral: document.getElementById('e-f-obs-geral').value
   };
 
-  // Atualiza pagamentos — usa data do contrato, não data da edição
-  // Para pix/3x/4x/reserva: só regenera se não houver pagamentos (foram excluídos)
+  // Junta todos os pagamentos existentes + os que forem gerados nesta edição, sem sobrescrever nada
   const pagsExistentes = c.pagamentos || [];
-  const totalBrutoExistente = pagsExistentes.reduce((s,p) => {
-    const b = (p.bruto !== undefined && p.bruto !== null) ? parseFloat(p.bruto) : parseFloat(p.valor);
-    return s + (b || 0);
-  }, 0);
+  let pagamentosFinal = [...pagsExistentes];
+  let pagamentosMudaram = false;
+
+  // Pagamentos vindos do novo fluxo: peça nova ou quantidade aumentada, com forma escolhida na janelinha
+  const idsLinhasAtuais = new Set(Array.from(linhas).map(l => l.dataset.linhaId));
+  // Mapeia a forma_pag do contrato (pix/debito/credito/dinheiro) para a forma "de evento" equivalente (Pix/Débito/Cartão/Dinheiro).
+  // reserva/entrega_prazo/misto não têm correspondência direta — qualquer evento aí sempre indica múltiplas formas.
+  const _mapaFormaParaEvento = { pix: 'Pix', debito: 'Débito', credito: 'Cartão', dinheiro: 'Dinheiro' };
+  const formaEquivalenteOriginal = _mapaFormaParaEvento[c.formaPag] || null;
+  let precisaVirarMisto = false;
+  Object.keys(_eventosPagamentoPecaEdit).forEach(linhaId => {
+    if (!idsLinhasAtuais.has(linhaId)) return;
+    const eventos = _eventosPagamentoPecaEdit[linhaId] || [];
+    eventos.forEach(ev => {
+      if (c.formaPag !== 'misto' && ev.forma !== formaEquivalenteOriginal) precisaVirarMisto = true;
+    });
+  });
 
   if (dados.forma_pag !== 'misto' && pagsExistentes.length === 0) {
-    // Sem pagamentos — regenera do zero
+    // Sem pagamentos — regenera do zero (comportamento inalterado)
     const pagamentosReg = gerarPagamentosIniciais(dados.forma_pag, dados.valor_bruto, dados.contrato, dados.desconto);
     if (pagamentosReg.length > 0) {
-      dados.pagamentos = pagamentosReg;
-      dados.pago = round2(pagamentosReg.reduce((s,p) => s+(parseFloat(p.valor)||0), 0));
+      pagamentosFinal = pagamentosReg;
+      pagamentosMudaram = true;
     }
-  } else if (dados.forma_pag !== 'misto' && pecasMudaram && round2(valorBruto) > round2(parseFloat(c.valorBruto) || 0) + 0.01) {
-    // Tem pagamentos mas o novo valor é maior (adicionou peça) — adiciona diferença
-    const diff = round2(dados.valor_bruto - totalBrutoExistente);
-    const dataContrato = dados.contrato;
-    let novoPag;
-    if (dados.forma_pag === 'pix') {
-      novoPag = { data: dataContrato, valor: round2(diff * (1 - getDescontoPix())), bruto: diff, forma: 'Pix', status: 'Realizado' };
-    } else if (dados.forma_pag === 'debito') {
-      novoPag = { data: dataContrato, valor: diff, bruto: diff, forma: 'Débito', status: 'Realizado' };
-    } else if (dados.forma_pag === 'dinheiro') {
-      novoPag = { data: dataContrato, valor: round2(diff * (1 - getDescontoDinheiro())), bruto: diff, forma: 'Dinheiro', status: 'Realizado' };
-    } else if (dados.forma_pag === 'credito') {
-      const nEdit = (pagsExistentes&&pagsExistentes[0]&&pagsExistentes[0].parcelas) || 1;
-      const taxaEdit = getTaxaParcela(nEdit);
-      const absorvEdit = isParcelaAbsorvida(nEdit);
-      const liqEdit = absorvEdit ? round2(diff * (1 - taxaEdit)) : diff;
-      novoPag = { data: dataContrato, valor: liqEdit, bruto: diff, forma: 'Cartão', parcelas: nEdit, status: 'Realizado' };
-    } else if (dados.forma_pag === 'reserva') {
-      novoPag = { data: dataContrato, valor: diff, bruto: diff, forma: 'Pix', status: 'Realizado' };
-    } else if (dados.forma_pag === 'entrega_prazo') {
-      novoPag = { data: dataContrato, valor: diff, bruto: diff, forma: 'Pix', status: 'Realizado' };
-    }
-    if (novoPag) {
-      dados.pagamentos = [...pagsExistentes, novoPag];
-      dados.pago = round2(dados.pagamentos.reduce((s,p) => s+(parseFloat(p.valor)||0), 0));
-    }
+  }
+
+  if (precisaVirarMisto && dados.forma_pag !== 'misto') {
+    dados.forma_pag = 'misto';
+  }
+
+  // Gera os pagamentos dos eventos de peça (nova/aumento de quantidade) registrados na janelinha
+  Object.keys(_eventosPagamentoPecaEdit).forEach(linhaId => {
+    if (!idsLinhasAtuais.has(linhaId)) return;
+    const eventos = _eventosPagamentoPecaEdit[linhaId] || [];
+    eventos.forEach(ev => {
+      const bruto = round2(ev.valor);
+      let liquido = bruto;
+      if (ev.forma === 'Pix') {
+        liquido = round2(bruto * (1 - getDescontoPix()));
+      } else if (ev.forma === 'Dinheiro') {
+        liquido = round2(bruto * (1 - getDescontoDinheiro()));
+      } else if (ev.forma === 'Cartão') {
+        const taxa = getTaxaParcela(ev.parcelas || 1);
+        const absorvido = isParcelaAbsorvida(ev.parcelas || 1);
+        liquido = absorvido ? round2(bruto * (1 - taxa)) : bruto;
+      }
+      const novoPag = { data: ev.data, valor: liquido, bruto, forma: ev.forma, status: 'Realizado' };
+      if (ev.forma === 'Cartão' && ev.parcelas) novoPag.parcelas = ev.parcelas;
+      pagamentosFinal.push(novoPag);
+      pagamentosMudaram = true;
+    });
+  });
+
+  if (pagamentosMudaram) {
+    dados.pagamentos = pagamentosFinal;
+    dados.pago = round2(pagamentosFinal.reduce((s,p) => s+(parseFloat(p.valor)||0), 0));
   }
   if (dados.forma_pag === 'misto') {
     const dataContrato = dados.contrato;
@@ -6017,7 +6285,7 @@ async function saveEditContrato() {
     const parc = document.getElementById('e-pago-cartao-parc').value;
 
     // Verifica se os valores digitados são diferentes dos já existentes
-    const existentes = c.pagamentos || [];
+    const existentes = pagamentosFinal;
     const brutoPix = existentes.filter(p=>p.forma==='Pix').reduce((s,p)=>s+(parseFloat(p.bruto)||parseFloat(p.valor)||0),0);
     const brutoCart = existentes.filter(p=>p.forma==='Cartão').reduce((s,p)=>s+(parseFloat(p.bruto)||parseFloat(p.valor)||0),0);
     const brutoDinheiro = existentes.filter(p=>p.forma==='Dinheiro').reduce((s,p)=>s+(parseFloat(p.bruto)||parseFloat(p.valor)||0),0);
