@@ -2092,7 +2092,11 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     </div>
     <div class="field-group" id="grp-imposto-valor" style="display:none;margin-bottom:1rem">
       <label class="field-label" id="c-imposto-valor-lbl">Valor (R$)</label>
-      <input class="field-input" id="c-imposto-valor" type="number" min="0" step="0.01" placeholder="0">
+      <div style="display:flex;align-items:center;gap:0.4rem">
+        <span id="c-imposto-valor-prefix" style="font-size:0.82rem;color:var(--muted)">R$</span>
+        <input class="field-input" id="c-imposto-valor" type="number" min="0" step="0.01" placeholder="0" style="width:100px">
+        <span id="c-imposto-valor-suffix" style="font-size:0.82rem;color:var(--muted);display:none">%</span>
+      </div>
     </div>
 
     <div style="font-size:0.8rem;color:var(--brown);font-weight:600;margin-bottom:0.6rem;padding-top:0.8rem;border-top:1px solid rgba(184,134,42,0.15)">Precificação</div>
@@ -2113,7 +2117,10 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         <label class="field-label" style="margin:0" id="c-prec-valor-lbl">Markup padrão (×)</label>
         <button onclick="mostrarInfoValorPrec()" style="background:none;border:none;padding:0;cursor:pointer;font-size:0.8rem;color:var(--muted-light)">ⓘ</button>
       </div>
-      <input class="field-input" id="c-prec-valor" type="number" min="0" step="0.01" placeholder="Ex: 2.5">
+      <div style="display:flex;align-items:center;gap:0.4rem">
+        <input class="field-input" id="c-prec-valor" type="number" min="0" step="0.01" placeholder="Ex: 2.5" style="width:100px">
+        <span id="c-prec-valor-suffix" style="font-size:0.82rem;color:var(--muted)">×</span>
+      </div>
     </div>
 
     <div class="field-group" style="margin-bottom:0.7rem">
@@ -2121,7 +2128,10 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         <label class="field-label" style="margin:0">Acréscimo no preço para pagamento em Pix (%)</label>
         <button onclick="mostrarInfoTarifaPix()" style="background:none;border:none;padding:0;cursor:pointer;font-size:0.8rem;color:var(--muted-light)">ⓘ</button>
       </div>
-      <input class="field-input" id="c-prec-taxa-pix" type="number" min="0" max="100" step="0.01" placeholder="0">
+      <div style="display:flex;align-items:center;gap:0.4rem">
+        <input class="field-input" id="c-prec-taxa-pix" type="number" min="0" max="100" step="0.01" placeholder="0" style="width:100px">
+        <span style="font-size:0.82rem;color:var(--muted)">%</span>
+      </div>
     </div>
 
     <div class="field-group" style="margin-bottom:1rem">
@@ -2136,7 +2146,10 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
 
     <div class="field-group" style="margin-bottom:1rem">
       <label class="field-label" style="display:flex;align-items:center;gap:0.35rem">Perda de resina padrão (%) <button onclick="infoPerdaResina()" style="background:none;border:none;padding:0;cursor:pointer;font-size:0.8rem;color:var(--muted-light)">ⓘ</button></label>
-      <input class="field-input" id="c-perda-resina-padrao" type="number" step="0.1" min="0" max="50" placeholder="Ex: 5">
+      <div style="display:flex;align-items:center;gap:0.4rem">
+        <input class="field-input" id="c-perda-resina-padrao" type="number" step="0.1" min="0" max="50" placeholder="Ex: 5" style="width:100px">
+        <span style="font-size:0.82rem;color:var(--muted)">%</span>
+      </div>
       <div style="font-size:0.68rem;color:var(--muted);margin-top:0.3rem">Aplicada nas peças novas. Editável por peça na precificação.</div>
     </div>
 
@@ -2185,7 +2198,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     <strong>{nome}</strong> → primeiro nome da contratante<br>
     <strong>{data}</strong> → data do casamento (DD/MM/AAAA)<br>
     <strong>{saldo}</strong> → saldo em aberto no momento do envio</div>
-    <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.2rem">💰 Lembrete de cobrança (20 dias antes)</div>
+    <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.2rem">💰 Lembrete de cobrança</div>
     <textarea id="cfg-msg-cobranca" style="width:100%;border:1px solid rgba(184,134,42,0.25);border-radius:8px;padding:0.65rem;font-size:0.78rem;color:var(--text);background:var(--card-bg);resize:vertical;min-height:90px;font-family:Calibri,sans-serif;line-height:1.5;margin-bottom:0.8rem"></textarea>
     <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.2rem">💍 Mensagem do dia do casamento</div>
     <textarea id="cfg-msg-casamento" style="width:100%;border:1px solid rgba(184,134,42,0.25);border-radius:8px;padding:0.65rem;font-size:0.78rem;color:var(--text);background:var(--card-bg);resize:vertical;min-height:90px;font-family:Calibri,sans-serif;line-height:1.5;margin-bottom:0.8rem"></textarea>
@@ -5481,11 +5494,14 @@ function openDetail(id) {
     const totalCart = totalPagoPorForma(c, 'Cartão');
     const totalDin = totalPagoPorForma(c, 'Dinheiro');
     const totalOutros = pago - totalPix - totalCart - totalDin;
+    const linhasMisto = [
+      ['Em Pix', totalPix],
+      ['Em Cartão', totalCart],
+      ['Em Dinheiro', totalDin],
+      ['Outras formas', totalOutros]
+    ].filter(([,v]) => v > 0.001);
     mistoHtml = `<div style="margin-top:0.5rem;padding:0.6rem 0.8rem;background:rgba(184,134,42,0.06);border-radius:4px;font-size:0.72rem">
-      <div style="display:flex;justify-content:space-between;margin-bottom:0.2rem"><span style="color:var(--muted)">Em Pix</span><span style="color:var(--dark)">R$ ${totalPix.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
-      <div style="display:flex;justify-content:space-between;margin-bottom:0.2rem"><span style="color:var(--muted)">Em Cartão</span><span style="color:var(--dark)">R$ ${totalCart.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
-      <div style="display:flex;justify-content:space-between;${totalOutros>0?'margin-bottom:0.2rem':''}"><span style="color:var(--muted)">Em Dinheiro</span><span style="color:var(--dark)">R$ ${totalDin.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
-      ${totalOutros>0?`<div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Outras formas</span><span style="color:var(--dark)">R$ ${totalOutros.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>`:''}
+      ${linhasMisto.map(([label,v],i) => `<div style="display:flex;justify-content:space-between;${i<linhasMisto.length-1?'margin-bottom:0.2rem':''}"><span style="color:var(--muted)">${label}</span><span style="color:var(--dark)">R$ ${v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>`).join('')}
     </div>`;
   }
 
@@ -7056,7 +7072,7 @@ function renderParcelasCreditoConfig() {
   const parc = custosConfig.parcelas;
   if (!parc.length) { el.innerHTML = ''; return; }
   el.innerHTML = parc.map((p, i) => {
-    const taxaVal = p.taxa > 0 ? p.taxa : '';
+    const taxaVal = p.taxa > 0 ? p.taxa.toFixed(2) : '';
     return `<div style="display:flex;gap:0.4rem;align-items:center;margin-bottom:0.5rem;flex-wrap:wrap">
       <div style="display:flex;align-items:center;gap:0.3rem;flex-shrink:0">
         <span style="font-size:0.85rem;font-weight:600;color:var(--dark);width:32px;text-align:right" data-n="${p.n}">${p.n}×</span>
@@ -7132,10 +7148,13 @@ function renderFormasPag() {
       }
       taxaHtml = '<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;padding-left:1.4rem;margin-top:0.3rem">' +
         '<label style="font-size:0.68rem;color:var(--muted);white-space:nowrap">' + labelTaxa + '</label>' +
+        '<div style="display:flex;align-items:center;gap:0.3rem;flex-shrink:0">' +
         '<input class="field-input" type="number" step="0.01" min="0" max="100"' +
         ' value="' + taxaVal + '" placeholder="0,00"' +
         ' oninput="atualizarTaxaForma(' + i + ',this.value)"' +
         ' style="width:80px;padding:0.35rem 0.5rem;font-size:0.82rem;text-align:right">' +
+        '<span style="font-size:0.72rem;color:var(--muted)">%</span>' +
+        '</div>' +
         checkboxDesconto + checkboxAbsorvido +
         '</div>';
     }
@@ -7150,19 +7169,19 @@ function renderFormasPag() {
       const avisoHtml = (prazoVazio || notifVazio) ? '<div style="font-size:0.65rem;color:var(--bordeaux)">⚠️ Preencha os dois campos abaixo para poder salvar</div>' : '';
       reservaHtml = '<div style="padding-left:1.4rem;margin-top:0.3rem;display:flex;flex-direction:column;gap:0.5rem">' +
         avisoHtml +
-        '<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">' +
-          '<label style="font-size:0.68rem;color:var(--muted);white-space:nowrap;max-width:180px">Prazo de quitação (dias antes do casamento)</label>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem">' +
+          '<label style="font-size:0.68rem;color:var(--muted)">Prazo de quitação (dias antes do casamento)</label>' +
           '<input class="field-input" type="number" step="1" min="0"' +
           ' value="' + prazoVal + '" placeholder="Ex: 15"' +
           ' oninput="atualizarPrazoReserva(this.value)"' +
-          ' style="width:70px;padding:0.35rem 0.5rem;font-size:0.82rem;text-align:right;' + (prazoVazio ? borderObrig : '') + '">' +
+          ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right;' + (prazoVazio ? borderObrig : '') + '">' +
         '</div>' +
-        '<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">' +
-          '<label style="font-size:0.68rem;color:var(--muted);white-space:nowrap;max-width:180px">Avisar quantos dias antes desse prazo</label>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem">' +
+          '<label style="font-size:0.68rem;color:var(--muted)">Avisar quantos dias antes desse prazo</label>' +
           '<input class="field-input" type="number" step="1" min="0"' +
           ' value="' + notifVal + '" placeholder="Ex: 5"' +
           ' oninput="atualizarNotifDiasReserva(this.value)"' +
-          ' style="width:70px;padding:0.35rem 0.5rem;font-size:0.82rem;text-align:right;' + (notifVazio ? borderObrig : '') + '">' +
+          ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right;' + (notifVazio ? borderObrig : '') + '">' +
         '</div>' +
       '</div>';
     }
@@ -7177,19 +7196,19 @@ function renderFormasPag() {
       const avisoHtmlE = (prazoVazioE || avisoVazioE) ? '<div style="font-size:0.65rem;color:var(--bordeaux)">⚠️ Preencha os dois campos abaixo para poder salvar</div>' : '';
       entregaPrazoHtml = '<div style="padding-left:1.4rem;margin-top:0.3rem;display:flex;flex-direction:column;gap:0.5rem">' +
         avisoHtmlE +
-        '<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">' +
-          '<label style="font-size:0.68rem;color:var(--muted);white-space:nowrap;max-width:180px">Prazo de quitação (dias após a entrega)</label>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem">' +
+          '<label style="font-size:0.68rem;color:var(--muted)">Prazo de quitação (dias após a entrega)</label>' +
           '<input class="field-input" type="number" step="1" min="0"' +
           ' value="' + prazoValE + '" placeholder="Ex: 10"' +
           ' oninput="atualizarPrazoEntrega(this.value)"' +
-          ' style="width:70px;padding:0.35rem 0.5rem;font-size:0.82rem;text-align:right;' + (prazoVazioE ? borderObrigE : '') + '">' +
+          ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right;' + (prazoVazioE ? borderObrigE : '') + '">' +
         '</div>' +
-        '<div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">' +
-          '<label style="font-size:0.68rem;color:var(--muted);white-space:nowrap;max-width:180px">Avisar quantos dias após a entrega</label>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem">' +
+          '<label style="font-size:0.68rem;color:var(--muted)">Avisar quantos dias após a entrega</label>' +
           '<input class="field-input" type="number" step="1" min="0"' +
           ' value="' + avisoValE + '" placeholder="Ex: 3"' +
           ' oninput="atualizarDiasAvisoEntrega(this.value)"' +
-          ' style="width:70px;padding:0.35rem 0.5rem;font-size:0.82rem;text-align:right;' + (avisoVazioE ? borderObrigE : '') + '">' +
+          ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right;' + (avisoVazioE ? borderObrigE : '') + '">' +
         '</div>' +
       '</div>';
     }
@@ -9396,8 +9415,12 @@ function atualizarImpostoUI() {
   const tipo = document.getElementById('c-imposto-tipo')?.value || 'nenhum';
   const grp = document.getElementById('grp-imposto-valor');
   const lbl = document.getElementById('c-imposto-valor-lbl');
+  const prefixo = document.getElementById('c-imposto-valor-prefix');
+  const sufixo = document.getElementById('c-imposto-valor-suffix');
   if (grp) grp.style.display = tipo === 'nenhum' ? 'none' : '';
   if (lbl) lbl.textContent = tipo === 'fixo' ? 'Valor mensal (R$)' : 'Percentual (%)';
+  if (prefixo) prefixo.style.display = tipo === 'fixo' ? '' : 'none';
+  if (sufixo) sufixo.style.display = tipo === 'percentual' ? '' : 'none';
 }
 
 function mostrarInfoImposto() {
@@ -9410,7 +9433,9 @@ function mostrarInfoImposto() {
 function atualizarModoPrecUI() {
   const modo = document.getElementById('c-prec-modo')?.value || 'markup';
   const lbl = document.getElementById('c-prec-valor-lbl');
+  const suf = document.getElementById('c-prec-valor-suffix');
   if (lbl) lbl.textContent = modo === 'markup' ? 'Markup padrão (×)' : 'Margem padrão (%)';
+  if (suf) suf.textContent = modo === 'markup' ? '×' : '%';
 }
 
 function renderSelectParcelaRef(valorSelecionado) {
@@ -9820,7 +9845,7 @@ function openConfiguracoes() {
   const elImpTipo = document.getElementById('c-imposto-tipo');
   if (elImpTipo) { elImpTipo.value = imp.tipo || 'nenhum'; atualizarImpostoUI(); }
   const elImpValor = document.getElementById('c-imposto-valor');
-  if (elImpValor) elImpValor.value = imp.valor || '';
+  if (elImpValor) elImpValor.value = imp.valor > 0 ? imp.valor.toFixed(2) : '';
 
   // Preenche campos de precificação
   const pc = custosConfig.precConfig || CUSTOS_DEFAULT.precConfig;
