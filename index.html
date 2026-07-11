@@ -2355,10 +2355,15 @@ function mapContrato(r) {
 
 // Total que a NOIVA já pagou (bruto). Usado pra calcular saldo a receber.
 function totalPago(c) {
-  // p.valor = líquido, já refletindo qualquer desconto por forma de pagamento — é o que a cliente
-  // realmente pagou. Bate com calcValorAPagar, que também já é líquido.
+  // Pix e Dinheiro: o desconto é dado à cliente, então ela realmente paga o líquido.
+  // Cartão e Débito: a cliente é cobrada o valor cheio (bruto) — a tarifa da maquininha,
+  // absorvida ou não, é negociação entre o ateliê e a operadora, não afeta o que a cliente pagou.
   if (Array.isArray(c.pagamentos) && c.pagamentos.length) {
-    return c.pagamentos.reduce((s,p) => s + (parseFloat(p.valor)||0), 0);
+    return c.pagamentos.reduce((s,p) => {
+      const usaLiquido = p.forma === 'Pix' || p.forma === 'Dinheiro';
+      const valor = usaLiquido ? p.valor : (p.bruto ?? p.valor);
+      return s + (parseFloat(valor)||0);
+    }, 0);
   }
   return parseFloat(c.pago) || 0;
 }
@@ -3068,11 +3073,8 @@ function calcValorAPagar(c) {
   const temPag = Array.isArray(c.pagamentos) && c.pagamentos.length > 0;
   if (c.formaPag === 'pix' && temPag)     return round2(base * (1 - getDescontoPix()));
   if (c.formaPag === 'dinheiro' && temPag) return round2(base * (1 - getDescontoDinheiro()));
-  if (c.formaPag === 'credito' && temPag) {
-    const n    = (c.pagamentos[0] && c.pagamentos[0].parcelas) || 1;
-    const taxa = getTaxaParcela(n);
-    return isParcelaAbsorvida(n) ? round2(base * (1 - taxa)) : base;
-  }
+  // Cartão nunca reduz o valor a pagar: a tarifa (absorvida ou não) é custo/negociação do ateliê
+  // com a maquininha — a cliente é cobrada o valor cheio no cartão dela de qualquer forma.
   return base;
 }
 
@@ -3457,11 +3459,11 @@ function contratoCardHTML(c) {
     
     <div class="contract-meta"><span>💍 ${d}/${m}/${y}</span><span>${c.envio==='Correios'?'📦':'🤝'} ${c.envio}${c.estado?' · '+c.estado:''}</span></div>
     <div class="payment-progress"><div class="payment-bar" style="width:${pctBarra}%${corBarraInline}"></div></div>
+    <div class="contract-value" style="text-align:right;margin-top:0.3rem">Total R$ ${c.valorBruto.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} · Valor a pagar R$ ${valorAPagarCard.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
     <div class="contract-footer">
       <div class="contract-pieces">${pecasStr}</div>
       <div style="text-align:right">
-        <div class="contract-value">Total R$ ${c.valorBruto.toLocaleString('pt-BR',{minimumFractionDigits:0})} · Valor a pagar R$ ${valorAPagarCard.toLocaleString('pt-BR',{minimumFractionDigits:0})}</div>
-        ${pago > 0 ? `<div style="font-size:0.62rem;color:var(--sage);margin-top:0.05rem">R$ ${pago.toLocaleString('pt-BR',{minimumFractionDigits:0})} pago</div>` : ''}
+        ${pago > 0 ? `<div style="font-size:0.62rem;color:var(--sage);margin-top:0.05rem">R$ ${pago.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} pago</div>` : ''}
         <div class="contract-saldo" style="${saldo<=0?'color:var(--sage)':devedor?'color:var(--bordeaux);font-weight:600':''}">${saldo>0.01?'R$ '+saldo.toFixed(2).replace('.',',')+ ' a receber':'Quitado ✓'}</div>
       </div>
     </div>
