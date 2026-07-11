@@ -2385,7 +2385,7 @@ function isDevedor(c) {
   if (c.formaPag === 'reserva') {
     const prazo = custosConfig.prazoReserva;
     if (prazo === null || prazo === undefined) return false; // ainda não configurado — sem enforcement
-    const saldo = c.valorBruto - totalPago(c);
+    const saldo = calcValorAPagar(c) - totalPago(c);
     if (saldo <= 0.01) return false;
     const dataCas = new Date(c.casamento+'T12:00:00'); dataCas.setHours(0,0,0,0);
     const limite = new Date(dataCas); limite.setDate(limite.getDate() - prazo);
@@ -2396,7 +2396,7 @@ function isDevedor(c) {
     if (!c.entrega) return false; // só conta a partir do momento em que a peça é marcada como entregue/pronta
     const prazo = custosConfig.prazoEntrega;
     if (prazo === null || prazo === undefined) return false; // ainda não configurado — sem enforcement
-    const saldo = c.valorBruto - totalPago(c);
+    const saldo = calcValorAPagar(c) - totalPago(c);
     if (saldo <= 0.01) return false;
     const dataEntrega = new Date(c.entrega+'T12:00:00'); dataEntrega.setHours(0,0,0,0);
     const limite = new Date(dataEntrega); limite.setDate(limite.getDate() + prazo);
@@ -3450,7 +3450,7 @@ function contratoCardHTML(c) {
     <div class="contract-footer">
       <div class="contract-pieces">${pecasStr}</div>
       <div style="text-align:right">
-        <div class="contract-value">R$ ${c.valorBruto.toLocaleString('pt-BR',{minimumFractionDigits:0})}</div>
+        <div class="contract-value">Total R$ ${c.valorBruto.toLocaleString('pt-BR',{minimumFractionDigits:0})} · Valor a pagar R$ ${valorAPagarCard.toLocaleString('pt-BR',{minimumFractionDigits:0})}</div>
         ${pago > 0 ? `<div style="font-size:0.62rem;color:var(--sage);margin-top:0.05rem">R$ ${pago.toLocaleString('pt-BR',{minimumFractionDigits:0})} pago</div>` : ''}
         <div class="contract-saldo" style="${saldo<=0?'color:var(--sage)':devedor?'color:var(--bordeaux);font-weight:600':''}">${saldo>0.01?'R$ '+saldo.toFixed(2).replace('.',',')+ ' a receber':'Quitado ✓'}</div>
       </div>
@@ -3567,8 +3567,8 @@ function renderFinanceiro() {
         </div>
       </div>
       <div class="fin-month-body">
-        <div class="fin-row"><span class="lbl">Contratado</span><span class="val" style="color:var(--brown)">${contratadoMes>0?'R$ '+contratadoMes.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</span></div>
-        <div class="fin-row"><span class="lbl">Recebido</span><span class="val green">${recebidoMes>0?'R$ '+recebidoMes.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</span></div>
+        <div class="fin-row"><span class="lbl">Novos contratos</span><span class="val" style="color:var(--brown)">${contratadoMes>0?'R$ '+contratadoMes.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</span></div>
+        <div class="fin-row"><span class="lbl">Recebido no mês</span><span class="val green">${recebidoMes>0?'R$ '+recebidoMes.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</span></div>
         <div class="fin-row"><span class="lbl">Saída</span><span class="val red">${saidMes>0?'− R$ '+saidMes.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</span></div>
         <div class="fin-divider"></div>
         <div class="fin-row"><span class="lbl">Resultado líquido</span><span class="val gold">${resMes!==0?'R$ '+resMes.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</span></div>
@@ -7489,7 +7489,7 @@ function exportarDadosPDF() {
 <div class="meta">Conta: ${esc(email)} · Gerado em: ${dataExp} · ${contratos.length} contrato(s) · ${gastos.length} despesa(s)</div>
 
 <h2>1. Contratos</h2>
-${rowsC ? `<table><thead><tr><th>Nome</th><th>Contrato</th><th>Casamento</th><th>Cidade</th><th style="text-align:right">Valor</th><th>Forma pag.</th><th>Situação</th></tr></thead><tbody>${rowsC}</tbody></table>` : '<p class="vazio">Nenhum contrato cadastrado.</p>'}
+${rowsC ? `<table><thead><tr><th>Nome</th><th>Contrato</th><th>Casamento</th><th>Cidade</th><th style="text-align:right">Valor bruto</th><th>Forma pag.</th><th>Situação</th></tr></thead><tbody>${rowsC}</tbody></table>` : '<p class="vazio">Nenhum contrato cadastrado.</p>'}
 
 <h2>2. Pagamentos registrados</h2>
 ${rowsP ? `<table><thead><tr><th>Noiva</th><th>Data</th><th>Forma</th><th style="text-align:right">Bruto</th><th style="text-align:right">Líquido</th><th>Status</th></tr></thead><tbody>${rowsP}</tbody></table>` : '<p class="vazio">Nenhum pagamento registrado.</p>'}
@@ -9185,7 +9185,7 @@ async function salvarEImprimirFicha() {
 function gerarImpressaoFicha(c, f) {
   const w = window.open('', '_blank');
   const dataCas = c.casamento ? c.casamento.split('-').reverse().join('/') : '';
-  const valorFmt = 'R$ ' + (c.valorBruto || 0).toLocaleString('pt-BR', {minimumFractionDigits:2});
+  const valorFmt = 'R$ ' + calcValorAPagar(c).toLocaleString('pt-BR', {minimumFractionDigits:2});
 
   const pecasHtml = c.pecas && c.pecas.length ? c.pecas.map(p => {
     const vUnit = (parseFloat(p.valor) || 0).toLocaleString('pt-BR', {minimumFractionDigits:2});
