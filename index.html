@@ -2355,11 +2355,10 @@ function mapContrato(r) {
 
 // Total que a NOIVA já pagou (bruto). Usado pra calcular saldo a receber.
 function totalPago(c) {
-  // Usa p.bruto = o que a noiva pagou (valor cobrado dela)
-  // p.valor = líquido que entra no caixa (após taxa absorvida)
-  // Saldo da noiva deve ser sobre o bruto
+  // p.valor = líquido, já refletindo qualquer desconto por forma de pagamento — é o que a cliente
+  // realmente pagou. Bate com calcValorAPagar, que também já é líquido.
   if (Array.isArray(c.pagamentos) && c.pagamentos.length) {
-    return c.pagamentos.reduce((s,p) => s + (parseFloat(p.bruto ?? p.valor)||0), 0);
+    return c.pagamentos.reduce((s,p) => s + (parseFloat(p.valor)||0), 0);
   }
   return parseFloat(c.pago) || 0;
 }
@@ -3416,18 +3415,29 @@ function contratoCardHTML(c) {
   const devedor = isDevedor(c);
 
   let diasBadge = '';
-  if (c.chegada && !['Concluído', 'Enviado'].includes(status)) {
+  let pctBarra = pct; // antes de entrar em produção: barra reflete o progresso de pagamento
+  let corBarraInline = ''; // sem override — usa o gradiente padrão do CSS
+  const finalizado = ['Concluído', 'Enviado'].includes(status);
+
+  if (finalizado) {
+    pctBarra = 100;
+    corBarraInline = ';background:var(--muted-light)';
+  } else if (c.chegada) {
     const chegada = new Date(c.chegada+'T12:00:00');
     const diasPassados = Math.floor((hoje - chegada)/(1000*60*60*24));
-    
+
     const prazoConfigurado = custosConfig.prazoProducao || 120;
     const restam = prazoConfigurado - diasPassados;
-    
+
     const cor = restam <= 15 ? 'var(--bordeaux)' : restam <= 30 ? 'var(--gold)' : 'var(--sage)';
     const textoBadge = restam < 0 ? `${diasPassados} dias de produção - ${Math.abs(restam)} dias atrasado` : `${diasPassados} dias de produção - restam ${restam} dias`;
-    
+
     // Adicionado text-transform: uppercase no style
     diasBadge = `<span style="font-size:0.55rem;letter-spacing:0.08em;padding:0.22rem 0.55rem;border-radius:20px;font-weight:600;white-space:nowrap;background:rgba(0,0,0,0.04);border:1px solid ${cor};color:${cor};text-transform:uppercase">${textoBadge}</span>`;
+
+    // Durante a produção, a barra passa a refletir o prazo (mesma cor do badge), não mais o pagamento
+    pctBarra = Math.min(100, Math.max(0, Math.round((diasPassados / prazoConfigurado) * 100)));
+    corBarraInline = `;background:${cor}`;
   }
 
   const cardStyle = devedor ? 'background:rgba(122,37,53,0.08);border:1px solid rgba(122,37,53,0.4);' : '';
@@ -3446,7 +3456,7 @@ function contratoCardHTML(c) {
     <div class="contract-name" style="margin-bottom: 0.6rem; font-size: 1.25rem;">${c.nome}</div>
     
     <div class="contract-meta"><span>💍 ${d}/${m}/${y}</span><span>${c.envio==='Correios'?'📦':'🤝'} ${c.envio}${c.estado?' · '+c.estado:''}</span></div>
-    <div class="payment-progress"><div class="payment-bar" style="width:${pct}%"></div></div>
+    <div class="payment-progress"><div class="payment-bar" style="width:${pctBarra}%${corBarraInline}"></div></div>
     <div class="contract-footer">
       <div class="contract-pieces">${pecasStr}</div>
       <div style="text-align:right">
