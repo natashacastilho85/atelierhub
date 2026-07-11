@@ -8533,9 +8533,9 @@ function recalcularCard(pecaId) {
   const elLucro = document.getElementById('prec-lucro-' + pecaId);
   if (elLucro) elLucro.textContent = fmtR(r.precoCalc - r.custoTotalReal - r.impostoValor);
   const elLucroPix = document.getElementById('prec-lucro-pix-' + pecaId);
-  if (elLucroPix) elLucroPix.textContent = fmtR(r.precoCalc * (1 - r.tarifaPix) - r.custoTotalReal);
+  if (elLucroPix) elLucroPix.textContent = fmtR((d.precoVenda > 0 ? d.precoVenda : r.precoCalc) * (1 - r.tarifaPix) - r.custoTotalReal);
   const elLucroCartao = document.getElementById('prec-lucro-cartao-' + pecaId);
-  if (elLucroCartao) elLucroCartao.textContent = fmtR(r.precoCalc * (1 - r.taxaRefCartao) - r.custoTotalReal);
+  if (elLucroCartao) elLucroCartao.textContent = fmtR((d.precoVenda > 0 ? d.precoVenda : r.precoCalc) * (1 - r.taxaRefCartao) - r.custoTotalReal);
   const elCalcLbl = document.getElementById('prec-calclbl-' + pecaId);
   if (elCalcLbl) elCalcLbl.textContent = r.modo === 'markup'
     ? 'Preço Markup (' + r.markup.toFixed(2) + '×)'
