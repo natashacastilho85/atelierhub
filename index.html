@@ -6323,14 +6323,11 @@ async function saveEditContrato() {
     });
   });
 
-  if (dados.forma_pag !== 'misto' && pagsExistentes.length === 0) {
-    // Sem pagamentos — regenera do zero (comportamento inalterado)
-    const pagamentosReg = gerarPagamentosIniciais(dados.forma_pag, dados.valor_bruto, dados.contrato, dados.desconto);
-    if (pagamentosReg.length > 0) {
-      pagamentosFinal = pagamentosReg;
-      pagamentosMudaram = true;
-    }
-  }
+  // Removido: bloco que regenerava um pagamento automaticamente sempre que a lista estava vazia.
+  // Isso recriava um pagamento "fantasma" (às vezes zerado) toda vez que a edição era salva com
+  // pagamentos=[] — inclusive quando o usuário tinha apagado o(s) pagamento(s) de propósito.
+  // Se um contrato precisa de um pagamento inicial, ele deve ser registrado explicitamente
+  // (Registrar pagamento ou a janelinha de peça), nunca gerado sozinho aqui.
 
   if (precisaVirarMisto && dados.forma_pag !== 'misto') {
     dados.forma_pag = 'misto';
