@@ -1076,7 +1076,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
               <div id="fil-col-pagamento" style="display:none;margin-bottom:0.5rem">
                 <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.2rem">Forma de pagamento</div>
                 <select id="fil-forma" style="width:100%;padding:0.4rem 0.5rem;border:1px solid rgba(184,134,42,0.35);border-radius:8px;font-family:'Calibri',sans-serif;font-size:0.82rem;background:var(--cream);color:var(--dark)">
-                  <option value="">Qualquer</option><option value="pix">Pix</option><option value="debito">Débito</option><option value="dinheiro">Dinheiro</option><option value="credito">Crédito</option><option value="reserva">Reserva antecipada</option><option value="entrega_prazo">Entrada + saldo na entrega</option><option value="misto">Misto (Pix, Cartão e/ou Dinheiro)</option>
+                  <option value="">Qualquer</option><option value="pix">Pix</option><option value="debito">Débito</option><option value="dinheiro">Dinheiro</option><option value="credito">Crédito</option><option value="reserva">Reserva antecipada</option><option value="entrega_prazo">Entrada + saldo na entrega</option><option value="misto">Misto (Pix, Cartão, Dinheiro e/ou Débito)</option>
                 </select>
               </div>
               <div id="fil-col-presente" style="display:none;margin-bottom:0.5rem">
@@ -1323,7 +1323,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         <option value="credito">Crédito</option>
         <option value="reserva">Reserva antecipada</option>
         <option value="entrega_prazo">Entrada + saldo na entrega</option>
-        <option value="misto">Misto (Pix, Cartão e/ou Dinheiro)</option>
+        <option value="misto">Misto (Pix, Cartão, Dinheiro e/ou Débito)</option>
       </select>
       <div class="field-hint" id="hint-reserva">
         Mínimo de R$ 300 na entrada. Saldo restante pago da forma que a noiva preferir.
@@ -1335,6 +1335,25 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     <div class="field-group" id="grp-credito" style="display:none">
       <label class="field-label">Parcelas no cartão</label>
       <select class="field-input" id="c-credito-parc"></select>
+    </div>
+    <div class="field-group" id="c-credito-cartao-desc-grp" style="display:none">
+      <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+        <input type="checkbox" id="c-credito-cartao-aplicar-desconto" onchange="atualizarCartaoDescUI('c-credito-cartao')" style="width:14px;height:14px;accent-color:var(--brown)">
+        Aplicar desconto
+      </label>
+      <div class="field-row" id="c-credito-cartao-desc-campos" style="display:none;margin-top:0.4rem">
+        <div class="field-group" style="max-width:75px">
+          <label class="field-label">Tipo</label>
+          <select class="field-input" id="c-credito-cartao-desc-tipo">
+            <option value="percentual">%</option>
+            <option value="valor">R$</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Valor do desconto</label>
+          <input class="field-input" id="c-credito-cartao-desc-valor" type="number" placeholder="0" step="0.01" min="0">
+        </div>
+      </div>
     </div>
     <div class="field-group" id="grp-desconto-inicial" style="display:none">
       <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
@@ -1350,12 +1369,19 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
             <option value="Pix">Pix</option>
             <option value="Cartão">Cartão</option>
             <option value="Dinheiro">Dinheiro</option>
+            <option value="Débito">Débito</option>
           </select>
         </div>
         <div class="field-group" id="c-reserva-grp-parc" style="display:none">
           <label class="field-label">Parcelas</label>
           <select class="field-input" id="c-reserva-parc"></select>
         </div>
+      </div>
+      <div class="field-group" id="c-reserva-grp-desconto" style="display:none">
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+          <input type="checkbox" id="c-reserva-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
+          Aplicar desconto padrão
+        </label>
       </div>
       <div class="field-group">
         <label class="field-label">Entrada já recebida (R$)</label>
@@ -1371,12 +1397,19 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
             <option value="Pix">Pix</option>
             <option value="Cartão">Cartão</option>
             <option value="Dinheiro">Dinheiro</option>
+            <option value="Débito">Débito</option>
           </select>
         </div>
         <div class="field-group" id="c-entregaprazo-grp-parc" style="display:none">
           <label class="field-label">Parcelas</label>
           <select class="field-input" id="c-entregaprazo-parc"></select>
         </div>
+      </div>
+      <div class="field-group" id="c-entregaprazo-grp-desconto" style="display:none">
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+          <input type="checkbox" id="c-entregaprazo-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
+          Aplicar desconto padrão
+        </label>
       </div>
       <div class="field-group">
         <label class="field-label">Entrada já recebida (R$)</label>
@@ -1388,12 +1421,18 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       <div class="field-row">
         <div class="field-group">
           <label class="field-label">Pago em Pix (R$)</label>
-          <input class="field-input" id="c-pago-pix" type="number" placeholder="0,00" step="0.01" min="0">
+          <input class="field-input" id="c-pago-pix" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('c')">
         </div>
         <div class="field-group">
           <label class="field-label">Pago em Cartão (R$)</label>
-          <input class="field-input" id="c-pago-cartao" type="number" placeholder="0,00" step="0.01" min="0">
+          <input class="field-input" id="c-pago-cartao" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('c')">
         </div>
+      </div>
+      <div class="field-group" id="c-misto-pix-grp-desconto" style="display:none">
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+          <input type="checkbox" id="c-misto-pix-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
+          Aplicar desconto padrão no Pix
+        </label>
       </div>
 
       <div class="field-row">
@@ -1404,8 +1443,46 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         </div>
         <div class="field-group">
           <label class="field-label">Pago em Dinheiro (R$)</label>
-          <input class="field-input" id="c-pago-dinheiro" type="number" placeholder="0,00" step="0.01" min="0">
+          <input class="field-input" id="c-pago-dinheiro" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('c')">
         </div>
+      </div>
+      <div class="field-group" id="c-misto-cartao-desc-grp" style="display:none">
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+          <input type="checkbox" id="c-misto-cartao-aplicar-desconto" onchange="atualizarCartaoDescUI('c-misto-cartao')" style="width:14px;height:14px;accent-color:var(--brown)">
+          Aplicar desconto no Cartão
+        </label>
+        <div class="field-row" id="c-misto-cartao-desc-campos" style="display:none;margin-top:0.4rem">
+          <div class="field-group" style="max-width:75px">
+            <label class="field-label">Tipo</label>
+            <select class="field-input" id="c-misto-cartao-desc-tipo">
+              <option value="percentual">%</option>
+              <option value="valor">R$</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Valor do desconto</label>
+            <input class="field-input" id="c-misto-cartao-desc-valor" type="number" placeholder="0" step="0.01" min="0">
+          </div>
+        </div>
+      </div>
+      <div class="field-group" id="c-misto-dinheiro-grp-desconto" style="display:none">
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+          <input type="checkbox" id="c-misto-dinheiro-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
+          Aplicar desconto padrão no Dinheiro
+        </label>
+      </div>
+
+      <div class="field-row">
+        <div class="field-group">
+          <label class="field-label">Pago em Débito (R$)</label>
+          <input class="field-input" id="c-pago-debito" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('c')">
+        </div>
+      </div>
+      <div class="field-group" id="c-misto-debito-grp-desconto" style="display:none">
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+          <input type="checkbox" id="c-misto-debito-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
+          Aplicar desconto padrão no Débito
+        </label>
       </div>
     </div>
 
@@ -1581,7 +1658,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         <option value="credito">Crédito</option>
         <option value="reserva">Reserva antecipada</option>
         <option value="entrega_prazo">Entrada + saldo na entrega</option>
-        <option value="misto">Misto (Pix, Cartão e/ou Dinheiro)</option>
+        <option value="misto">Misto (Pix, Cartão, Dinheiro e/ou Débito)</option>
       </select>
     </div>
     <div class="field-row">
@@ -1602,6 +1679,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
             <option value="Pix">Pix</option>
             <option value="Cartão">Cartão</option>
             <option value="Dinheiro">Dinheiro</option>
+            <option value="Débito">Débito</option>
           </select>
         </div>
         <div class="field-group" id="e-reserva-grp-parc" style="display:none">
@@ -1609,10 +1687,16 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
           <select class="field-input" id="e-reserva-parc"></select>
         </div>
       </div>
+      <div class="field-group" id="e-reserva-grp-desconto" style="display:none">
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+          <input type="checkbox" id="e-reserva-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
+          Aplicar desconto padrão
+        </label>
+      </div>
       <div class="field-group">
         <label class="field-label">Entrada já recebida (R$)</label>
         <input class="field-input" id="e-pago" type="number" placeholder="Mín. R$ 300,00" step="1" min="0">
-        <div class="field-hint visible" style="font-size:0.65rem;color:var(--muted);margin-top:0.3rem">Valor que a noiva já pagou de entrada. Sem descontos.</div>
+        <div class="field-hint visible" style="font-size:0.65rem;color:var(--muted);margin-top:0.3rem">Valor que a noiva já pagou de entrada.</div>
       </div>
     </div>
     <div id="e-grp-pago-entregaprazo" style="display:none">
@@ -1623,6 +1707,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
             <option value="Pix">Pix</option>
             <option value="Cartão">Cartão</option>
             <option value="Dinheiro">Dinheiro</option>
+            <option value="Débito">Débito</option>
           </select>
         </div>
         <div class="field-group" id="e-entregaprazo-grp-parc" style="display:none">
@@ -1630,22 +1715,34 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
           <select class="field-input" id="e-entregaprazo-parc"></select>
         </div>
       </div>
+      <div class="field-group" id="e-entregaprazo-grp-desconto" style="display:none">
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+          <input type="checkbox" id="e-entregaprazo-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
+          Aplicar desconto padrão
+        </label>
+      </div>
       <div class="field-group">
         <label class="field-label">Entrada já recebida (R$)</label>
         <input class="field-input" id="e-entregaprazo-pago" type="number" placeholder="0,00" step="1" min="0">
-        <div class="field-hint visible" style="font-size:0.65rem;color:var(--muted);margin-top:0.3rem">Valor que a noiva já pagou de entrada. Sem descontos.</div>
+        <div class="field-hint visible" style="font-size:0.65rem;color:var(--muted);margin-top:0.3rem">Valor que a noiva já pagou de entrada.</div>
       </div>
     </div>
     <div id="e-grp-pago-misto" style="display:none">
       <div class="field-row">
         <div class="field-group">
           <label class="field-label">Pago em Pix (R$)</label>
-          <input class="field-input" id="e-pago-pix" type="number" placeholder="0,00" step="0.01" min="0">
+          <input class="field-input" id="e-pago-pix" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('e')">
         </div>
         <div class="field-group">
           <label class="field-label">Pago em Cartão (R$)</label>
-          <input class="field-input" id="e-pago-cartao" type="number" placeholder="0,00" step="0.01" min="0">
+          <input class="field-input" id="e-pago-cartao" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('e')">
         </div>
+      </div>
+      <div class="field-group" id="e-misto-pix-grp-desconto" style="display:none">
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+          <input type="checkbox" id="e-misto-pix-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
+          Aplicar desconto padrão no Pix
+        </label>
       </div>
 
       <div class="field-row">
@@ -1656,8 +1753,46 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         </div>
         <div class="field-group">
           <label class="field-label">Pago em Dinheiro (R$)</label>
-          <input class="field-input" id="e-pago-dinheiro" type="number" placeholder="0,00" step="0.01" min="0">
+          <input class="field-input" id="e-pago-dinheiro" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('e')">
         </div>
+      </div>
+      <div class="field-group" id="e-misto-cartao-desc-grp" style="display:none">
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+          <input type="checkbox" id="e-misto-cartao-aplicar-desconto" onchange="atualizarCartaoDescUI('e-misto-cartao')" style="width:14px;height:14px;accent-color:var(--brown)">
+          Aplicar desconto no Cartão
+        </label>
+        <div class="field-row" id="e-misto-cartao-desc-campos" style="display:none;margin-top:0.4rem">
+          <div class="field-group" style="max-width:75px">
+            <label class="field-label">Tipo</label>
+            <select class="field-input" id="e-misto-cartao-desc-tipo">
+              <option value="percentual">%</option>
+              <option value="valor">R$</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Valor do desconto</label>
+            <input class="field-input" id="e-misto-cartao-desc-valor" type="number" placeholder="0" step="0.01" min="0">
+          </div>
+        </div>
+      </div>
+      <div class="field-group" id="e-misto-dinheiro-grp-desconto" style="display:none">
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+          <input type="checkbox" id="e-misto-dinheiro-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
+          Aplicar desconto padrão no Dinheiro
+        </label>
+      </div>
+
+      <div class="field-row">
+        <div class="field-group">
+          <label class="field-label">Pago em Débito (R$)</label>
+          <input class="field-input" id="e-pago-debito" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('e')">
+        </div>
+      </div>
+      <div class="field-group" id="e-misto-debito-grp-desconto" style="display:none">
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+          <input type="checkbox" id="e-misto-debito-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
+          Aplicar desconto padrão no Débito
+        </label>
       </div>
     </div>
 
@@ -1732,6 +1867,26 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         <label class="field-label">Parcelas</label>
         <select class="field-input" id="pag-parcelas" onchange="atualizarPreviewPag()">
         </select>
+      </div>
+    </div>
+
+    <div class="field-group" id="pag-cartao-desc-grp" style="display:none">
+      <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+        <input type="checkbox" id="pag-cartao-aplicar-desconto" onchange="atualizarCartaoDescUI('pag-cartao'); atualizarPreviewPag();" style="width:14px;height:14px;accent-color:var(--brown)">
+        Aplicar desconto
+      </label>
+      <div class="field-row" id="pag-cartao-desc-campos" style="display:none;margin-top:0.4rem">
+        <div class="field-group" style="max-width:75px">
+          <label class="field-label">Tipo</label>
+          <select class="field-input" id="pag-cartao-desc-tipo" onchange="atualizarPreviewPag()">
+            <option value="percentual">%</option>
+            <option value="valor">R$</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Valor do desconto</label>
+          <input class="field-input" id="pag-cartao-desc-valor" type="number" placeholder="0" step="0.01" min="0" oninput="atualizarPreviewPag()">
+        </div>
       </div>
     </div>
 
@@ -2368,12 +2523,12 @@ function mapContrato(r) {
 
 // Total que a NOIVA já pagou (bruto). Usado pra calcular saldo a receber.
 function totalPago(c) {
-  // Pix e Dinheiro: o desconto é dado à cliente, então ela realmente paga o líquido.
-  // Cartão e Débito: a cliente é cobrada o valor cheio (bruto) — a tarifa da maquininha,
+  // Pix, Dinheiro e Débito: o desconto é dado à cliente, então ela realmente paga o líquido.
+  // Cartão: a cliente é cobrada o valor cheio (bruto) — a tarifa da maquininha,
   // absorvida ou não, é negociação entre o ateliê e a operadora, não afeta o que a cliente pagou.
   if (Array.isArray(c.pagamentos) && c.pagamentos.length) {
     return c.pagamentos.reduce((s,p) => {
-      const usaLiquido = p.forma === 'Pix' || p.forma === 'Dinheiro';
+      const usaLiquido = p.forma === 'Pix' || p.forma === 'Dinheiro' || p.forma === 'Débito';
       const valor = usaLiquido ? p.valor : (p.bruto ?? p.valor);
       return s + (parseFloat(valor)||0);
     }, 0);
@@ -3014,33 +3169,43 @@ function gerarPagamentosIniciais(forma, valor, dataContrato, desconto) {
   const base = round2(parseFloat(valor) || 0);
   if (forma === 'pix') {
     const chkIni = document.getElementById('c-aplicar-desconto-inicial');
-    const semDescontoIni = chkIni && !chkIni.checked;
-    const taxaPix = semDescontoIni ? 0 : getDescontoPix();
-    const noivaPaga = round2(base * (1 - taxaPix));
+    const aplicarDesconto = !chkIni || chkIni.checked;
+    const noivaPaga = calcLiquidoComDesconto(base, 'Pix', aplicarDesconto);
     return [{ data, valor: noivaPaga, bruto: base, forma: 'Pix', status: 'Realizado' }];
   } else if (forma === 'debito') {
-    // Débito: valor cheio, sem desconto ao cliente e sem taxa (por padrão configurável em custosConfig)
-    return [{ data, valor: base, bruto: base, forma: 'Débito', status: 'Realizado' }];
+    const chkIniDeb = document.getElementById('c-aplicar-desconto-inicial');
+    const aplicarDescontoDeb = !chkIniDeb || chkIniDeb.checked;
+    const noivaPagaDebito = calcLiquidoComDesconto(base, 'Débito', aplicarDescontoDeb);
+    return [{ data, valor: noivaPagaDebito, bruto: base, forma: 'Débito', status: 'Realizado' }];
   } else if (forma === 'dinheiro') {
     const chkIniDin = document.getElementById('c-aplicar-desconto-inicial');
-    const semDescontoIniDin = chkIniDin && !chkIniDin.checked;
-    const taxaDinheiro = semDescontoIniDin ? 0 : getDescontoDinheiro();
-    const noivaPagaDinheiro = round2(base * (1 - taxaDinheiro));
+    const aplicarDescontoDin = !chkIniDin || chkIniDin.checked;
+    const noivaPagaDinheiro = calcLiquidoComDesconto(base, 'Dinheiro', aplicarDescontoDin);
     return [{ data, valor: noivaPagaDinheiro, bruto: base, forma: 'Dinheiro', status: 'Realizado' }];
   } else if (forma === 'credito') {
     const parcEl = document.getElementById('c-credito-parc');
     const n = parcEl ? (parseInt(parcEl.value) || 1) : 1;
-    const taxa = getTaxaParcela(n);
-    const absorvido = isParcelaAbsorvida(n);
-    const liquido = absorvido ? round2(base * (1 - taxa)) : base;
-    return [{ data, valor: liquido, bruto: base, forma: 'Cartão', parcelas: n, status: 'Realizado' }];
+    const chkCC = document.getElementById('c-credito-cartao-aplicar-desconto');
+    const descontoAtivoCC = !!(chkCC && chkCC.checked);
+    const tipoCC = document.getElementById('c-credito-cartao-desc-tipo')?.value || 'percentual';
+    const valorDescCC = parseFloat(document.getElementById('c-credito-cartao-desc-valor')?.value) || 0;
+    const rCC = calcCartao(base, descontoAtivoCC, tipoCC, valorDescCC, n);
+    const pagCC = { data, valor: rCC.liquido, bruto: rCC.bruto, forma: 'Cartão', parcelas: n, status: 'Realizado' };
+    if (descontoAtivoCC && valorDescCC > 0) { pagCC.descontoCartaoTipo = tipoCC; pagCC.descontoCartaoValor = valorDescCC; }
+    return [pagCC];
   } else if (forma === 'reserva') {
     const pagoEntrada = round2(parseFloat(document.getElementById('c-pago').value) || 0);
     const formaEntrada = document.getElementById('c-reserva-forma')?.value || 'Pix';
     const parcEntrada = formaEntrada === 'Cartão'
       ? (parseInt(document.getElementById('c-reserva-parc')?.value) || 1)
       : null;
-    const pag = { data, valor: pagoEntrada, bruto: pagoEntrada, forma: formaEntrada, status: 'Realizado' };
+    let liquidoEntrada = pagoEntrada;
+    if (formaEntrada === 'Pix' || formaEntrada === 'Dinheiro' || formaEntrada === 'Débito') {
+      const chkResDesc = document.getElementById('c-reserva-aplicar-desconto');
+      const aplicarDescReserva = !!(chkResDesc && chkResDesc.checked); // padrão desmarcado — Reserva nunca descontou até agora
+      liquidoEntrada = calcLiquidoComDesconto(pagoEntrada, formaEntrada, aplicarDescReserva);
+    }
+    const pag = { data, valor: liquidoEntrada, bruto: pagoEntrada, forma: formaEntrada, status: 'Realizado' };
     if (parcEntrada) pag.parcelas = parcEntrada;
     return [pag];
   } else if (forma === 'entrega_prazo') {
@@ -3049,27 +3214,48 @@ function gerarPagamentosIniciais(forma, valor, dataContrato, desconto) {
     const parcEntradaE = formaEntradaE === 'Cartão'
       ? (parseInt(document.getElementById('c-entregaprazo-parc')?.value) || 1)
       : null;
-    const pagE = { data, valor: pagoEntradaE, bruto: pagoEntradaE, forma: formaEntradaE, status: 'Realizado' };
+    let liquidoEntradaE = pagoEntradaE;
+    if (formaEntradaE === 'Pix' || formaEntradaE === 'Dinheiro' || formaEntradaE === 'Débito') {
+      const chkEntDesc = document.getElementById('c-entregaprazo-aplicar-desconto');
+      const aplicarDescEntrega = !!(chkEntDesc && chkEntDesc.checked); // padrão desmarcado — Entrega+Prazo nunca descontou até agora
+      liquidoEntradaE = calcLiquidoComDesconto(pagoEntradaE, formaEntradaE, aplicarDescEntrega);
+    }
+    const pagE = { data, valor: liquidoEntradaE, bruto: pagoEntradaE, forma: formaEntradaE, status: 'Realizado' };
     if (parcEntradaE) pagE.parcelas = parcEntradaE;
     return [pagE];
   } else if (forma === 'misto') {
     const pPix = parseFloat(document.getElementById('c-pago-pix').value) || 0;
     const pCartao = parseFloat(document.getElementById('c-pago-cartao').value) || 0;
     const pDinheiro = parseFloat(document.getElementById('c-pago-dinheiro').value) || 0;
+    const pDebito = parseFloat(document.getElementById('c-pago-debito').value) || 0;
     const n = parseInt(document.getElementById('c-pago-cartao-parc').value) || 1;
     const p = [];
-    // No misto: Pix, Cartão e Dinheiro entram pelo valor cheio (sem desconto automático)
+    // No misto, cada forma decide por si: por padrão entra cheio, mas as checkboxes de
+    // desconto (Pix/Dinheiro/Débito) permitem aplicar o desconto configurado, se marcadas.
     if (pPix > 0) {
-      p.push({ data, valor: pPix, bruto: pPix, forma: 'Pix', status: 'Realizado' });
+      const chkMPix = document.getElementById('c-misto-pix-aplicar-desconto');
+      const liquidoPix = calcLiquidoComDesconto(pPix, 'Pix', !!(chkMPix && chkMPix.checked));
+      p.push({ data, valor: liquidoPix, bruto: pPix, forma: 'Pix', status: 'Realizado' });
     }
     if (pCartao > 0) {
-      const taxaMisto = getTaxaParcela(n);
-      const absorvidoMisto = isParcelaAbsorvida(n);
-      const liquidoMisto = absorvidoMisto ? round2(pCartao * (1 - taxaMisto)) : pCartao;
-      p.push({ data, valor: liquidoMisto, bruto: pCartao, forma: 'Cartão', parcelas: n, status: 'Realizado' });
+      const chkMCartao = document.getElementById('c-misto-cartao-aplicar-desconto');
+      const descAtivoMCartao = !!(chkMCartao && chkMCartao.checked);
+      const tipoMCartao = document.getElementById('c-misto-cartao-desc-tipo')?.value || 'percentual';
+      const valorDescMCartao = parseFloat(document.getElementById('c-misto-cartao-desc-valor')?.value) || 0;
+      const rMCartao = calcCartao(pCartao, descAtivoMCartao, tipoMCartao, valorDescMCartao, n);
+      const pagMCartao = { data, valor: rMCartao.liquido, bruto: rMCartao.bruto, forma: 'Cartão', parcelas: n, status: 'Realizado' };
+      if (descAtivoMCartao && valorDescMCartao > 0) { pagMCartao.descontoCartaoTipo = tipoMCartao; pagMCartao.descontoCartaoValor = valorDescMCartao; }
+      p.push(pagMCartao);
     }
     if (pDinheiro > 0) {
-      p.push({ data, valor: pDinheiro, bruto: pDinheiro, forma: 'Dinheiro', status: 'Realizado' });
+      const chkMDin = document.getElementById('c-misto-dinheiro-aplicar-desconto');
+      const liquidoDin = calcLiquidoComDesconto(pDinheiro, 'Dinheiro', !!(chkMDin && chkMDin.checked));
+      p.push({ data, valor: liquidoDin, bruto: pDinheiro, forma: 'Dinheiro', status: 'Realizado' });
+    }
+    if (pDebito > 0) {
+      const chkMDeb = document.getElementById('c-misto-debito-aplicar-desconto');
+      const liquidoDeb = calcLiquidoComDesconto(pDebito, 'Débito', !!(chkMDeb && chkMDeb.checked));
+      p.push({ data, valor: liquidoDeb, bruto: pDebito, forma: 'Débito', status: 'Realizado' });
     }
     return p;
   }
@@ -3086,6 +3272,7 @@ function calcValorAPagar(c) {
   const temPag = Array.isArray(c.pagamentos) && c.pagamentos.length > 0;
   if (c.formaPag === 'pix' && temPag)     return round2(base * (1 - getDescontoPix()));
   if (c.formaPag === 'dinheiro' && temPag) return round2(base * (1 - getDescontoDinheiro()));
+  if (c.formaPag === 'debito' && temPag)  return round2(base * (1 - getDescontoDebito()));
   // Cartão nunca reduz o valor a pagar: a tarifa (absorvida ou não) é custo/negociação do ateliê
   // com a maquininha — a cliente é cobrada o valor cheio no cartão dela de qualquer forma.
   return base;
@@ -3207,16 +3394,56 @@ function preencherSelectParcelas(selectId, valorSelecionado) {
   if (valorSelecionado) el.value = valorSelecionado;
 }
 
+function atualizarDescMistoVisibilidade(prefixo) {
+  const pares = [
+    ['pago-pix', 'misto-pix-grp-desconto', 'misto-pix-aplicar-desconto'],
+    ['pago-cartao', 'misto-cartao-desc-grp', 'misto-cartao-aplicar-desconto'],
+    ['pago-dinheiro', 'misto-dinheiro-grp-desconto', 'misto-dinheiro-aplicar-desconto'],
+    ['pago-debito', 'misto-debito-grp-desconto', 'misto-debito-aplicar-desconto'],
+  ];
+  pares.forEach(([campoId, grpId, chkId]) => {
+    const valor = parseFloat(document.getElementById(prefixo + '-' + campoId)?.value) || 0;
+    const grp = document.getElementById(prefixo + '-' + grpId);
+    if (!grp) return;
+    const vaiMostrar = valor > 0;
+    if (vaiMostrar && grp.style.display === 'none') {
+      // transição de escondido pra visível: reseta o checkbox (não faz isso a cada dígito digitado)
+      const chk = document.getElementById(prefixo + '-' + chkId);
+      if (chk) chk.checked = false;
+      // Cartão tem campos extras (tipo/valor do desconto) que os outros não têm — limpa junto
+      if (campoId === 'pago-cartao') {
+        const campos = document.getElementById(prefixo + '-misto-cartao-desc-campos');
+        if (campos) campos.style.display = 'none';
+        const tipo = document.getElementById(prefixo + '-misto-cartao-desc-tipo');
+        if (tipo) tipo.value = 'percentual';
+        const valorDesc = document.getElementById(prefixo + '-misto-cartao-desc-valor');
+        if (valorDesc) valorDesc.value = '';
+      }
+    }
+    grp.style.display = vaiMostrar ? '' : 'none';
+  });
+}
+
 function onReservaFormaChange(prefixo) {
   const forma = document.getElementById(prefixo + '-reserva-forma')?.value;
   const grpParc = document.getElementById(prefixo + '-reserva-grp-parc');
   const selParc = document.getElementById(prefixo + '-reserva-parc');
-  if (!grpParc) return;
-  if (forma === 'Cartão') {
-    grpParc.style.display = '';
-    if (selParc) selParc.innerHTML = getOpcoesParcelasSimples();
-  } else {
-    grpParc.style.display = 'none';
+  const grpDesc = document.getElementById(prefixo + '-reserva-grp-desconto');
+  if (grpParc) {
+    if (forma === 'Cartão') {
+      grpParc.style.display = '';
+      if (selParc) selParc.innerHTML = getOpcoesParcelasSimples();
+    } else {
+      grpParc.style.display = 'none';
+    }
+  }
+  if (grpDesc) {
+    const elegivel = (forma === 'Pix' || forma === 'Dinheiro' || forma === 'Débito');
+    grpDesc.style.display = elegivel ? '' : 'none';
+    if (elegivel) {
+      const chk = document.getElementById(prefixo + '-reserva-aplicar-desconto');
+      if (chk) chk.checked = false; // padrão desmarcado — Reserva nunca descontou até agora
+    }
   }
 }
 
@@ -3224,12 +3451,22 @@ function onEntregaPrazoFormaChange(prefixo) {
   const forma = document.getElementById(prefixo + '-entregaprazo-forma')?.value;
   const grpParc = document.getElementById(prefixo + '-entregaprazo-grp-parc');
   const selParc = document.getElementById(prefixo + '-entregaprazo-parc');
-  if (!grpParc) return;
-  if (forma === 'Cartão') {
-    grpParc.style.display = '';
-    if (selParc) selParc.innerHTML = getOpcoesParcelasSimples();
-  } else {
-    grpParc.style.display = 'none';
+  const grpDesc = document.getElementById(prefixo + '-entregaprazo-grp-desconto');
+  if (grpParc) {
+    if (forma === 'Cartão') {
+      grpParc.style.display = '';
+      if (selParc) selParc.innerHTML = getOpcoesParcelasSimples();
+    } else {
+      grpParc.style.display = 'none';
+    }
+  }
+  if (grpDesc) {
+    const elegivel = (forma === 'Pix' || forma === 'Dinheiro' || forma === 'Débito');
+    grpDesc.style.display = elegivel ? '' : 'none';
+    if (elegivel) {
+      const chk = document.getElementById(prefixo + '-entregaprazo-aplicar-desconto');
+      if (chk) chk.checked = false; // padrão desmarcado — Entrega+Prazo nunca descontou até agora
+    }
   }
 }
 
@@ -3264,7 +3501,7 @@ function onFormaPagChange(val) {
   const grpEntregaPrazo = document.getElementById('grp-pago-entregaprazo');
   const grpMisto = document.getElementById('grp-pago-misto');
 
-  ['c-pago','c-pago-pix','c-pago-cartao','c-pago-dinheiro','c-entregaprazo-pago'].forEach(id => {
+  ['c-pago','c-pago-pix','c-pago-cartao','c-pago-dinheiro','c-pago-debito','c-entregaprazo-pago'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -3277,12 +3514,14 @@ function onFormaPagChange(val) {
     if (grpMisto) grpMisto.style.display = 'none';
     if (grpCredito) grpCredito.style.display = 'none';
     if (grpDescInicial) grpDescInicial.style.display = 'none';
+    onReservaFormaChange('c');
   } else if (val === 'entrega_prazo') {
     if (grpReserva) grpReserva.style.display = 'none';
     if (grpEntregaPrazo) grpEntregaPrazo.style.display = '';
     if (grpMisto) grpMisto.style.display = 'none';
     if (grpCredito) grpCredito.style.display = 'none';
     if (grpDescInicial) grpDescInicial.style.display = 'none';
+    onEntregaPrazoFormaChange('c');
   } else if (val === 'misto') {
     if (grpReserva) grpReserva.style.display = 'none';
     if (grpEntregaPrazo) grpEntregaPrazo.style.display = 'none';
@@ -3290,6 +3529,13 @@ function onFormaPagChange(val) {
     if (grpCredito) grpCredito.style.display = 'none';
     if (grpDescInicial) grpDescInicial.style.display = 'none';
     preencherSelectParcelas('c-pago-cartao-parc');
+    // Sincroniza os 4 sub-grupos de desconto (Pix/Cartão/Dinheiro/Débito) com os campos recém-limpos —
+    // sem isso, um sub-grupo podia ficar visível/marcado de um contrato anterior, mesmo com campo vazio.
+    ['c-misto-pix-grp-desconto','c-misto-cartao-desc-grp','c-misto-dinheiro-grp-desconto','c-misto-debito-grp-desconto'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+    atualizarDescMistoVisibilidade('c');
   } else if (val === 'credito') {
     if (grpReserva) grpReserva.style.display = 'none';
     if (grpEntregaPrazo) grpEntregaPrazo.style.display = 'none';
@@ -3297,13 +3543,24 @@ function onFormaPagChange(val) {
     if (grpCredito) grpCredito.style.display = '';
     if (grpDescInicial) grpDescInicial.style.display = 'none';
     preencherSelectParcelas('c-credito-parc');
+    const grpCartaoDescCredito = document.getElementById('c-credito-cartao-desc-grp');
+    if (grpCartaoDescCredito) {
+      grpCartaoDescCredito.style.display = '';
+      const chkCC = document.getElementById('c-credito-cartao-aplicar-desconto');
+      if (chkCC) chkCC.checked = false;
+      const tipoCC = document.getElementById('c-credito-cartao-desc-tipo');
+      if (tipoCC) tipoCC.value = 'percentual';
+      const valorCC = document.getElementById('c-credito-cartao-desc-valor');
+      if (valorCC) valorCC.value = '';
+      atualizarCartaoDescUI('c-credito-cartao');
+    }
   } else {
     if (grpReserva) grpReserva.style.display = 'none';
     if (grpEntregaPrazo) grpEntregaPrazo.style.display = 'none';
     if (grpMisto) grpMisto.style.display = 'none';
     if (grpCredito) grpCredito.style.display = 'none';
     if (grpDescInicial) {
-      grpDescInicial.style.display = (val === 'pix' || val === 'dinheiro') ? '' : 'none';
+      grpDescInicial.style.display = (val === 'pix' || val === 'dinheiro' || val === 'debito') ? '' : 'none';
       const chk = document.getElementById('c-aplicar-desconto-inicial');
       if (chk) chk.checked = true;
     }
@@ -3751,14 +4008,15 @@ function atualizarPreviewParcelasGasto() {
   if (!data || !valor || !cartaoId) { prev.style.display = 'none'; return; }
   const cartao = (custosConfig.cartoes || []).find(c => c.id === cartaoId);
   if (!cartao) { prev.style.display = 'none'; return; }
-  const valorParcela = valor / numParcelas;
+  const valorParcelaBruta = Math.round((valor / numParcelas) * 100) / 100;
+  const valorUltimaParcelaPreview = Math.round((valor - valorParcelaBruta * (numParcelas - 1)) * 100) / 100;
   const { parcelas, primeiraNoMesSeguinte } = calcularParcelasDatas(data, cartao, numParcelas);
   const fmt = v => 'R$ ' + v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  let html = `<div style="font-weight:600;color:var(--brown);margin-bottom:0.4rem">${numParcelas}× de ${fmt(valorParcela)}</div>`;
+  let html = `<div style="font-weight:600;color:var(--brown);margin-bottom:0.4rem">${numParcelas}× de ${fmt(valorParcelaBruta)}${valorUltimaParcelaPreview !== valorParcelaBruta ? ' (última: '+fmt(valorUltimaParcelaPreview)+')' : ''}</div>`;
   if (primeiraNoMesSeguinte) {
     html += `<div style="color:var(--muted);font-style:italic;margin-bottom:0.3rem">Compra registrada em ${data.split('-').reverse().join('/')} (R$ 0,00)</div>`;
   }
-  html += parcelas.map((p,i) => `<div style="display:flex;justify-content:space-between"><span>(${i+1}/${numParcelas}) ${p.mesLabel}</span><span>${fmt(valorParcela)}</span></div>`).join('');
+  html += parcelas.map((p,i) => `<div style="display:flex;justify-content:space-between"><span>(${i+1}/${numParcelas}) ${p.mesLabel}</span><span>${fmt(i === parcelas.length-1 ? valorUltimaParcelaPreview : valorParcelaBruta)}</span></div>`).join('');
   prev.innerHTML = html;
   prev.style.display = '';
 }
@@ -3972,6 +4230,9 @@ async function saveGasto() {
 
 async function criarParcelasNoBanco(produto, fornecedor, dataCompra, valorTotal, cartao, numParcelas) {
   const valorParcela = Math.round((valorTotal / numParcelas) * 100) / 100;
+  // A última parcela absorve a diferença de arredondamento, garantindo que a soma bate
+  // exatamente com o valor total da compra (ex: R$100 em 3x não pode virar R$99,99).
+  const valorUltimaParcela = Math.round((valorTotal - valorParcela * (numParcelas - 1)) * 100) / 100;
   const { parcelas, primeiraNoMesSeguinte } = calcularParcelasDatas(dataCompra, cartao, numParcelas);
   const registros = [];
   // Registro zerado de compra (quando parcela cai no mês seguinte)
@@ -3990,11 +4251,12 @@ async function criarParcelasNoBanco(produto, fornecedor, dataCompra, valorTotal,
   }
   // Parcelas numeradas
   parcelas.forEach((p, i) => {
+    const ehUltima = i === parcelas.length - 1;
     registros.push({
       produto: produto + ` (${i+1}/${numParcelas})`,
       fornecedor,
       data: p.data,
-      valor: valorParcela,
+      valor: ehUltima ? valorUltimaParcela : valorParcela,
       forma: 'Cartão',
       parcela_num: i + 1,
       parcela_total: numParcelas,
@@ -5046,7 +5308,7 @@ function renderComparativos() {
     ['Débito',   formas.debito],
     ['Dinheiro', formas.dinheiro],
     ['Crédito',  formas.credito],
-    ['Misto (Pix, Cartão e/ou Dinheiro)', formas.misto],
+    ['Misto (Pix, Cartão, Dinheiro e/ou Débito)', formas.misto],
     ['Reserva',  formas.reserva],
     ['Entrega+Prazo', formas.entrega_prazo],
   ].filter(function(f){return f[1]>0;}).map(function(f) {
@@ -5455,7 +5717,8 @@ function openDetail(id) {
   const fmtData = s => s ? s.split('-').reverse().join('/') : '—';
   const _pixPctDetalhe = Math.round(getDescontoPix() * 100);
   const _dinheiroPctDetalhe = Math.round(getDescontoDinheiro() * 100);
-  const formaTxt = { pix: _pixPctDetalhe > 0 ? `Pix (${_pixPctDetalhe}% desc. noiva)` : 'Pix', debito:'Débito', dinheiro: _dinheiroPctDetalhe > 0 ? `Dinheiro (${_dinheiroPctDetalhe}% desc. noiva)` : 'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto (Pix, Cartão e/ou Dinheiro)' };
+  const _debitoPctDetalhe = Math.round(getDescontoDebito() * 100);
+  const formaTxt = { pix: _pixPctDetalhe > 0 ? `Pix (${_pixPctDetalhe}% desc. noiva)` : 'Pix', debito: _debitoPctDetalhe > 0 ? `Débito (${_debitoPctDetalhe}% desc. noiva)` : 'Débito', dinheiro: _dinheiroPctDetalhe > 0 ? `Dinheiro (${_dinheiroPctDetalhe}% desc. noiva)` : 'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto (Pix, Cartão, Dinheiro e/ou Débito)' };
   const telLimpo = (c.telefone||'').replace(/\D/g,'');
   const telFormatado = c.telefoneInternacional ? (c.telefone || '') : formatarTelefone(c.telefone || '');
   const linkWaBtn = telLimpo ? `javascript:abrirWhatsBusiness('${telLimpo}', null, ${c.telefoneInternacional ? 'true' : 'false'})` : '';
@@ -5493,11 +5756,13 @@ function openDetail(id) {
     const totalPix = totalPagoPorForma(c, 'Pix');
     const totalCart = totalPagoPorForma(c, 'Cartão');
     const totalDin = totalPagoPorForma(c, 'Dinheiro');
-    const totalOutros = pago - totalPix - totalCart - totalDin;
+    const totalDeb = totalPagoPorForma(c, 'Débito');
+    const totalOutros = pago - totalPix - totalCart - totalDin - totalDeb;
     const linhasMisto = [
       ['Em Pix', totalPix],
       ['Em Cartão', totalCart],
       ['Em Dinheiro', totalDin],
+      ['Em Débito', totalDeb],
       ['Outras formas', totalOutros]
     ].filter(([,v]) => v > 0.001);
     mistoHtml = `<div style="margin-top:0.5rem;padding:0.6rem 0.8rem;background:rgba(184,134,42,0.06);border-radius:4px;font-size:0.72rem">
@@ -5564,8 +5829,15 @@ function openDetail(id) {
           if (taxaValDinheiro > 0) {
             linhas += `<div class="detail-row"><span class="dl" style="color:var(--muted)">Dinheiro (${Math.round(_txDinheiroDet*100)}%)</span><span class="dv" style="color:var(--bordeaux)">− ${fmtR(taxaValDinheiro)}</span></div>`;
           }
+        } else if (temPag && c.formaPag === 'debito') {
+          const _txDebitoDet = getDescontoDebito();
+          const taxaValDebito = round2(base * _txDebitoDet);
+          if (taxaValDebito > 0) {
+            linhas += `<div class="detail-row"><span class="dl" style="color:var(--muted)">Débito (${Math.round(_txDebitoDet*100)}%)</span><span class="dv" style="color:var(--bordeaux)">− ${fmtR(taxaValDebito)}</span></div>`;
+          }
         } else if (temPag && c.formaPag === 'credito') {
-          const nD = (c.pagamentos[0].parcelas) || 1;
+          const _pCreditoDet = c.pagamentos.find(p => !p.origemPeca) || c.pagamentos[0];
+          const nD = (_pCreditoDet && _pCreditoDet.parcelas) || 1;
           const taxaD = getTaxaParcela(nD);
           if (isParcelaAbsorvida(nD) && taxaD > 0) {
             const taxaVal = round2(base * taxaD);
@@ -5806,30 +6078,65 @@ function abrirEdicaoContrato(id) {
   // Pega o "primeiro pagamento" (entrada inicial) — assume que é o que foi gerado no cadastro
   const pags = Array.isArray(c.pagamentos) ? c.pagamentos : [];
   if (c.formaPag === 'reserva') {
-    // Soma o valor BRUTO de todas as entradas Pix que estavam ali (normalmente só 1, a entrada)
-    // Pra simplificar, pega o bruto do primeiro pagamento se existir
-    const primeiro = pags[0];
-    const valor = primeiro ? (primeiro.bruto !== undefined ? primeiro.bruto : primeiro.valor) : '';
-    document.getElementById('e-pago').value = valor || '';
+    // O valor em si é preenchido mais abaixo, junto com forma/checkbox (usa a mesma busca
+    // que ignora pagamentos de peça — ver bloco "Carrega forma da entrada da reserva").
   } else if (c.formaPag === 'entrega_prazo') {
-    const primeiroE = pags[0];
-    const valorE = primeiroE ? (primeiroE.bruto !== undefined ? primeiroE.bruto : primeiroE.valor) : '';
-    document.getElementById('e-entregaprazo-pago').value = valorE || '';
+    // Idem — valor preenchido mais abaixo, junto com forma/checkbox.
   } else if (c.formaPag === 'misto') {
-    // Identifica o primeiro Pix, Cartão e Dinheiro entre os pagamentos
-    const pPix = pags.find(p => p.forma === 'Pix');
-    const pCart = pags.find(p => p.forma === 'Cartão');
-    const pDin = pags.find(p => p.forma === 'Dinheiro');
+    // Identifica a primeira ocorrência de cada forma (Pix, Cartão, Dinheiro, Débito) — o pagamento
+    // inicial do misto. Não depende da data, pela mesma razão da Reserva: pode ter sido apagado e
+    // re-registrado com outra data. A mesma regra que salvarEditContrato usa.
+    const pPix = pags.find(p => p.forma === 'Pix' && !p.origemPeca);
+    const pCart = pags.find(p => p.forma === 'Cartão' && !p.origemPeca);
+    const pDin = pags.find(p => p.forma === 'Dinheiro' && !p.origemPeca);
+    const pDeb = pags.find(p => p.forma === 'Débito' && !p.origemPeca);
     document.getElementById('e-pago-pix').value = pPix ? (pPix.bruto !== undefined ? pPix.bruto : pPix.valor) : '';
-    document.getElementById('e-pago-cartao').value = pCart ? (pCart.bruto !== undefined ? pCart.bruto : pCart.valor) : '';
+    // Cartão: se teve desconto aplicado, reconstrói o valor de referência original (antes do desconto)
+    // pra reabrir a edição mostrar o número que a usuária realmente digitou, não o já reduzido.
+    let valorRefCartao = '';
+    if (pCart) {
+      const brutoCart = pCart.bruto !== undefined ? pCart.bruto : pCart.valor;
+      if (pCart.descontoCartaoTipo && pCart.descontoCartaoValor) {
+        valorRefCartao = pCart.descontoCartaoTipo === 'valor'
+          ? round2(brutoCart + pCart.descontoCartaoValor)
+          : round2(brutoCart / (1 - pCart.descontoCartaoValor / 100));
+      } else {
+        valorRefCartao = brutoCart;
+      }
+    }
+    document.getElementById('e-pago-cartao').value = valorRefCartao;
     document.getElementById('e-pago-dinheiro').value = pDin ? (pDin.bruto !== undefined ? pDin.bruto : pDin.valor) : '';
+    document.getElementById('e-pago-debito').value = pDeb ? (pDeb.bruto !== undefined ? pDeb.bruto : pDeb.valor) : '';
+    // Reflete se cada forma já tinha desconto aplicado, e mostra o grupo de desconto se houver valor
+    atualizarDescMistoVisibilidade('e');
+    [['e-misto-pix-aplicar-desconto', pPix], ['e-misto-dinheiro-aplicar-desconto', pDin], ['e-misto-debito-aplicar-desconto', pDeb]].forEach(([chkId, pag]) => {
+      if (!pag) return;
+      const chk = document.getElementById(chkId);
+      if (chk) {
+        const brutoP = parseFloat(pag.bruto ?? pag.valor) || 0;
+        const valorP = parseFloat(pag.valor) || 0;
+        chk.checked = Math.abs(brutoP - valorP) > 0.01;
+      }
+    });
+    // Cartão: restaura a caixinha e os campos de desconto, se o pagamento existente já tinha um
+    if (pCart && pCart.descontoCartaoTipo && pCart.descontoCartaoValor) {
+      const chkCartaoPop = document.getElementById('e-misto-cartao-aplicar-desconto');
+      if (chkCartaoPop) chkCartaoPop.checked = true;
+      const tipoCartaoPop = document.getElementById('e-misto-cartao-desc-tipo');
+      if (tipoCartaoPop) tipoCartaoPop.value = pCart.descontoCartaoTipo;
+      const valorCartaoPop = document.getElementById('e-misto-cartao-desc-valor');
+      if (valorCartaoPop) valorCartaoPop.value = pCart.descontoCartaoValor;
+      atualizarCartaoDescUI('e-misto-cartao');
+    }
     // e-pago-cartao-parc será restaurado após onFormaPagEditChange popular o select
   }
   // Carrega forma da entrada da reserva (antes de onFormaPagEditChange)
   if (c.formaPag === 'reserva') {
-    const primeiroRPag = c.pagamentos && c.pagamentos[0];
+    const primeiroRPag = c.pagamentos && c.pagamentos.find(p => !p.origemPeca);
     const formaEntradaReserva = (primeiroRPag && primeiroRPag.forma) || 'Pix';
     const parcEntradaReserva = (primeiroRPag && primeiroRPag.parcelas) || null;
+    const valorEntradaReserva = primeiroRPag ? (primeiroRPag.bruto !== undefined ? primeiroRPag.bruto : primeiroRPag.valor) : '';
+    document.getElementById('e-pago').value = valorEntradaReserva || '';
     const elReservaForma = document.getElementById('e-reserva-forma');
     if (elReservaForma) {
       elReservaForma.value = ['Cartão','Dinheiro'].includes(formaEntradaReserva) ? formaEntradaReserva : 'Pix';
@@ -5838,13 +6145,24 @@ function abrirEdicaoContrato(id) {
         const selParc = document.getElementById('e-reserva-parc');
         if (selParc) selParc.value = parcEntradaReserva;
       }
+      // Reflete se a entrada já registrada tinha desconto aplicado — não assume sempre desmarcado ao reabrir
+      if (primeiroRPag && (formaEntradaReserva === 'Pix' || formaEntradaReserva === 'Dinheiro' || formaEntradaReserva === 'Débito')) {
+        const chkRes = document.getElementById('e-reserva-aplicar-desconto');
+        if (chkRes) {
+          const brutoR = parseFloat(primeiroRPag.bruto ?? primeiroRPag.valor) || 0;
+          const valorR = parseFloat(primeiroRPag.valor) || 0;
+          chkRes.checked = Math.abs(brutoR - valorR) > 0.01;
+        }
+      }
     }
   }
   // Carrega forma da entrada de Entrega+Prazo (antes de onFormaPagEditChange)
   if (c.formaPag === 'entrega_prazo') {
-    const primeiroEPag = c.pagamentos && c.pagamentos[0];
+    const primeiroEPag = c.pagamentos && c.pagamentos.find(p => !p.origemPeca);
     const formaEntradaE = (primeiroEPag && primeiroEPag.forma) || 'Pix';
     const parcEntradaE2 = (primeiroEPag && primeiroEPag.parcelas) || null;
+    const valorEntradaE2 = primeiroEPag ? (primeiroEPag.bruto !== undefined ? primeiroEPag.bruto : primeiroEPag.valor) : '';
+    document.getElementById('e-entregaprazo-pago').value = valorEntradaE2 || '';
     const elEntregaPrazoForma = document.getElementById('e-entregaprazo-forma');
     if (elEntregaPrazoForma) {
       elEntregaPrazoForma.value = ['Cartão','Dinheiro'].includes(formaEntradaE) ? formaEntradaE : 'Pix';
@@ -5853,13 +6171,22 @@ function abrirEdicaoContrato(id) {
         const selParcE = document.getElementById('e-entregaprazo-parc');
         if (selParcE) selParcE.value = parcEntradaE2;
       }
+      // Reflete se a entrada já registrada tinha desconto aplicado — não assume sempre desmarcado ao reabrir
+      if (primeiroEPag && (formaEntradaE === 'Pix' || formaEntradaE === 'Dinheiro' || formaEntradaE === 'Débito')) {
+        const chkEnt = document.getElementById('e-entregaprazo-aplicar-desconto');
+        if (chkEnt) {
+          const brutoE = parseFloat(primeiroEPag.bruto ?? primeiroEPag.valor) || 0;
+          const valorE2 = parseFloat(primeiroEPag.valor) || 0;
+          chkEnt.checked = Math.abs(brutoE - valorE2) > 0.01;
+        }
+      }
     }
   }
   // Mostra/esconde os blocos certos conforme a forma
   onFormaPagEditChange(c.formaPag || 'pix');
   // Misto: re-aplica nº de parcelas real do contrato (onFormaPagEditChange reseta o select)
   if (c.formaPag === 'misto') {
-    const _pCartEdit = (Array.isArray(c.pagamentos) ? c.pagamentos : []).find(p => p.forma === 'Cartão');
+    const _pCartEdit = (Array.isArray(c.pagamentos) ? c.pagamentos : []).find(p => p.forma === 'Cartão' && !p.origemPeca);
     const _selParc = document.getElementById('e-pago-cartao-parc');
     if (_selParc && _pCartEdit && _pCartEdit.parcelas) _selParc.value = _pCartEdit.parcelas;
   }
@@ -6112,6 +6439,27 @@ function _renderModalPagamentoPeca() {
           <label class="field-label">Parcelas</label>
           <select class="field-input" id="mpp-parcelas" style="width:100%"></select>
         </div>
+        <div id="mpp-cartao-desc-grp" style="display:none;margin-bottom:1rem">
+          <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+            <input type="checkbox" id="mpp-cartao-aplicar-desconto" onchange="atualizarCartaoDescUI('mpp-cartao')" style="width:14px;height:14px;accent-color:var(--brown)">
+            Aplicar desconto
+          </label>
+          <div id="mpp-cartao-desc-campos" style="display:none;margin-top:0.4rem">
+            <div style="display:flex;gap:0.5rem">
+              <div style="width:75px">
+                <label class="field-label">Tipo</label>
+                <select class="field-input" id="mpp-cartao-desc-tipo" style="width:100%">
+                  <option value="percentual">%</option>
+                  <option value="valor">R$</option>
+                </select>
+              </div>
+              <div style="flex:1">
+                <label class="field-label">Valor do desconto</label>
+                <input class="field-input" id="mpp-cartao-desc-valor" type="number" placeholder="0" step="0.01" min="0" style="width:100%">
+              </div>
+            </div>
+          </div>
+        </div>
         <div id="mpp-grp-desconto" style="display:none;margin-bottom:1rem">
           <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
             <input type="checkbox" id="mpp-aplicar-desconto" checked style="width:14px;height:14px;accent-color:var(--brown)">
@@ -6148,9 +6496,22 @@ function _selecionarFormaPagamentoPeca(forma) {
   } else {
     grpParc.style.display = 'none';
   }
+  const grpCartaoDescMpp = document.getElementById('mpp-cartao-desc-grp');
+  if (grpCartaoDescMpp) {
+    grpCartaoDescMpp.style.display = forma === 'Cartão' ? '' : 'none';
+    if (forma === 'Cartão') {
+      const chkMppCC = document.getElementById('mpp-cartao-aplicar-desconto');
+      if (chkMppCC) chkMppCC.checked = false;
+      const tipoMppCC = document.getElementById('mpp-cartao-desc-tipo');
+      if (tipoMppCC) tipoMppCC.value = 'percentual';
+      const valorMppCC = document.getElementById('mpp-cartao-desc-valor');
+      if (valorMppCC) valorMppCC.value = '';
+      atualizarCartaoDescUI('mpp-cartao');
+    }
+  }
   const grpDesc = document.getElementById('mpp-grp-desconto');
   if (grpDesc) {
-    grpDesc.style.display = (forma === 'Pix' || forma === 'Dinheiro') ? '' : 'none';
+    grpDesc.style.display = (forma === 'Pix' || forma === 'Dinheiro' || forma === 'Débito') ? '' : 'none';
     const chk = document.getElementById('mpp-aplicar-desconto');
     if (chk) chk.checked = true;
   }
@@ -6174,11 +6535,16 @@ function _confirmarPagamentoPeca() {
   const acrescimo = _modalPecaTemp.acrescimo || 0;
   const valorBase = round2(_modalPecaTemp.precoUnitCatalogo * _modalPecaTemp.qtdDelta + acrescimo - desconto);
   let parcelas = null;
+  let descontoCartaoAtivo = false, descontoCartaoTipo = null, descontoCartaoValor = null;
   if (_modalPecaTemp.forma === 'Cartão') {
     parcelas = parseInt(document.getElementById('mpp-parcelas').value) || 1;
+    const chkMppCC = document.getElementById('mpp-cartao-aplicar-desconto');
+    descontoCartaoAtivo = !!(chkMppCC && chkMppCC.checked);
+    descontoCartaoTipo = document.getElementById('mpp-cartao-desc-tipo')?.value || 'percentual';
+    descontoCartaoValor = parseFloat(document.getElementById('mpp-cartao-desc-valor')?.value) || 0;
   }
   let aplicarDesconto = true;
-  if (_modalPecaTemp.forma === 'Pix' || _modalPecaTemp.forma === 'Dinheiro') {
+  if (_modalPecaTemp.forma === 'Pix' || _modalPecaTemp.forma === 'Dinheiro' || _modalPecaTemp.forma === 'Débito') {
     const chkDesc = document.getElementById('mpp-aplicar-desconto');
     aplicarDesconto = chkDesc ? chkDesc.checked : true;
   }
@@ -6188,6 +6554,9 @@ function _confirmarPagamentoPeca() {
     forma: _modalPecaTemp.forma,
     parcelas,
     aplicarDesconto,
+    descontoCartaoAtivo,
+    descontoCartaoTipo,
+    descontoCartaoValor,
     data
   });
   _fecharModalPagamentoPeca();
@@ -6215,6 +6584,9 @@ function _aplicarEventoPecaEdit(linhaId, evento) {
       forma: evento.forma,
       parcelas: evento.parcelas,
       aplicarDesconto: evento.aplicarDesconto !== false,
+      descontoCartaoAtivo: evento.descontoCartaoAtivo || false,
+      descontoCartaoTipo: evento.descontoCartaoTipo || null,
+      descontoCartaoValor: evento.descontoCartaoValor || null,
       data: evento.data
     });
   }
@@ -6228,15 +6600,18 @@ function onFormaPagEditChange(val) {
     if (grpReserva) grpReserva.style.display = '';
     if (grpEntregaPrazo) grpEntregaPrazo.style.display = 'none';
     if (grpMisto) grpMisto.style.display = 'none';
+    onReservaFormaChange('e');
   } else if (val === 'entrega_prazo') {
     if (grpReserva) grpReserva.style.display = 'none';
     if (grpEntregaPrazo) grpEntregaPrazo.style.display = '';
     if (grpMisto) grpMisto.style.display = 'none';
+    onEntregaPrazoFormaChange('e');
   } else if (val === 'misto') {
     if (grpReserva) grpReserva.style.display = 'none';
     if (grpEntregaPrazo) grpEntregaPrazo.style.display = 'none';
     if (grpMisto) grpMisto.style.display = '';
     preencherSelectParcelas('e-pago-cartao-parc');
+    atualizarDescMistoVisibilidade('e');
   } else {
     if (grpReserva) grpReserva.style.display = 'none';
     if (grpEntregaPrazo) grpEntregaPrazo.style.display = 'none';
@@ -6338,19 +6713,21 @@ async function saveEditContrato() {
     if (!idsLinhasAtuais.has(linhaId)) return;
     const eventos = _eventosPagamentoPecaEdit[linhaId] || [];
     eventos.forEach(ev => {
-      const bruto = round2(ev.valor);
-      let liquido = bruto;
-      if (ev.forma === 'Pix') {
-        liquido = ev.aplicarDesconto === false ? bruto : round2(bruto * (1 - getDescontoPix()));
-      } else if (ev.forma === 'Dinheiro') {
-        liquido = ev.aplicarDesconto === false ? bruto : round2(bruto * (1 - getDescontoDinheiro()));
+      const referencia = round2(ev.valor);
+      let liquido = referencia;
+      let brutoFinal = referencia;
+      let descTipoPeca = null, descValorPeca = null;
+      if (ev.forma === 'Pix' || ev.forma === 'Dinheiro' || ev.forma === 'Débito') {
+        liquido = calcLiquidoComDesconto(referencia, ev.forma, ev.aplicarDesconto !== false);
       } else if (ev.forma === 'Cartão') {
-        const taxa = getTaxaParcela(ev.parcelas || 1);
-        const absorvido = isParcelaAbsorvida(ev.parcelas || 1);
-        liquido = absorvido ? round2(bruto * (1 - taxa)) : bruto;
+        const rPeca = calcCartao(referencia, ev.descontoCartaoAtivo, ev.descontoCartaoTipo, ev.descontoCartaoValor, ev.parcelas || 1);
+        liquido = rPeca.liquido;
+        brutoFinal = rPeca.bruto;
+        if (ev.descontoCartaoAtivo && ev.descontoCartaoValor > 0) { descTipoPeca = ev.descontoCartaoTipo; descValorPeca = ev.descontoCartaoValor; }
       }
-      const novoPag = { data: ev.data, valor: liquido, bruto, forma: ev.forma, status: 'Realizado' };
+      const novoPag = { data: ev.data, valor: liquido, bruto: brutoFinal, forma: ev.forma, status: 'Realizado', origemPeca: true };
       if (ev.forma === 'Cartão' && ev.parcelas) novoPag.parcelas = ev.parcelas;
+      if (descTipoPeca) { novoPag.descontoCartaoTipo = descTipoPeca; novoPag.descontoCartaoValor = descValorPeca; }
       pagamentosFinal.push(novoPag);
       pagamentosMudaram = true;
     });
@@ -6361,33 +6738,100 @@ async function saveEditContrato() {
     dados.pago = round2(pagamentosFinal.reduce((s,p) => s+(parseFloat(p.valor)||0), 0));
   }
   if (dados.forma_pag === 'misto') {
-    const dataContrato = dados.contrato;
-    const pPix = parseFloat(document.getElementById('e-pago-pix').value) || 0;
-    const pCartao = parseFloat(document.getElementById('e-pago-cartao').value) || 0;
-    const pDinheiro = parseFloat(document.getElementById('e-pago-dinheiro').value) || 0;
-    const parc = document.getElementById('e-pago-cartao-parc').value;
+    // Corrige bug: comparar a soma total e "empurrar" um pagamento novo duplicava valores quando só
+    // uma correção pontual era feita (ex: trocar R$400 por R$450 registrava os dois, não só R$450).
+    // Identifica a primeira ocorrência de cada forma, ignorando pagamentos vindos da janelinha de
+    // peça nova (origemPeca) — não depende da data, então continua funcionando mesmo se esse
+    // pagamento foi apagado e re-registrado depois (via Registrar Pagamento) com outra data.
+    const dataContrato = c.contrato;
+    const parc = parseInt(document.getElementById('e-pago-cartao-parc').value) || 1;
+    let listaMisto = pagamentosFinal;
 
-    // Verifica se os valores digitados são diferentes dos já existentes
-    const existentes = pagamentosFinal;
-    const brutoPix = existentes.filter(p=>p.forma==='Pix').reduce((s,p)=>s+(parseFloat(p.bruto)||parseFloat(p.valor)||0),0);
-    const brutoCart = existentes.filter(p=>p.forma==='Cartão').reduce((s,p)=>s+(parseFloat(p.bruto)||parseFloat(p.valor)||0),0);
-    const brutoDinheiro = existentes.filter(p=>p.forma==='Dinheiro').reduce((s,p)=>s+(parseFloat(p.bruto)||parseFloat(p.valor)||0),0);
+    const camposMisto = [
+      { campoId: 'e-pago-pix', forma: 'Pix', chkId: 'e-misto-pix-aplicar-desconto' },
+      { campoId: 'e-pago-cartao', forma: 'Cartão', chkId: null },
+      { campoId: 'e-pago-dinheiro', forma: 'Dinheiro', chkId: 'e-misto-dinheiro-aplicar-desconto' },
+      { campoId: 'e-pago-debito', forma: 'Débito', chkId: 'e-misto-debito-aplicar-desconto' },
+    ];
 
-    const novosPags = [];
-    if (pPix > 0 && Math.abs(pPix - brutoPix) > 0.01) {
-      // Pix no misto: entra cheio (sem taxa absorvida)
-      novosPags.push({ data: dataContrato, valor: round2(pPix), bruto: pPix, forma: 'Pix', status: 'Realizado' });
+    camposMisto.forEach(({ campoId, forma, chkId }) => {
+      const valorDigitado = round2(parseFloat(document.getElementById(campoId)?.value) || 0);
+      if (valorDigitado <= 0) return; // campo vazio: não mexe (nem cria, nem apaga um pagamento existente)
+
+      let liquido = valorDigitado;
+      let brutoFinal = valorDigitado;
+      let descTipoCartao = null, descValorCartao = null;
+      if (forma === 'Cartão') {
+        const chkCartaoM = document.getElementById('e-misto-cartao-aplicar-desconto');
+        const descAtivoM = !!(chkCartaoM && chkCartaoM.checked);
+        const tipoM = document.getElementById('e-misto-cartao-desc-tipo')?.value || 'percentual';
+        const valorDescM = parseFloat(document.getElementById('e-misto-cartao-desc-valor')?.value) || 0;
+        const rM = calcCartao(valorDigitado, descAtivoM, tipoM, valorDescM, parc);
+        liquido = rM.liquido;
+        brutoFinal = rM.bruto;
+        if (descAtivoM && valorDescM > 0) { descTipoCartao = tipoM; descValorCartao = valorDescM; }
+      } else {
+        const chk = document.getElementById(chkId);
+        liquido = calcLiquidoComDesconto(valorDigitado, forma, !!(chk && chk.checked));
+      }
+
+      const idxExistente = listaMisto.findIndex(p => p.forma === forma && !p.origemPeca);
+      // Preserva a data original se já existia; usa a data do contrato só ao criar do zero.
+      const dataPag = idxExistente >= 0 ? listaMisto[idxExistente].data : dataContrato;
+      const novoPag = { data: dataPag, valor: liquido, bruto: brutoFinal, forma, status: 'Realizado' };
+      if (forma === 'Cartão') novoPag.parcelas = parc;
+      if (descTipoCartao) { novoPag.descontoCartaoTipo = descTipoCartao; novoPag.descontoCartaoValor = descValorCartao; }
+
+      if (idxExistente >= 0) {
+        listaMisto[idxExistente] = novoPag;
+      } else {
+        listaMisto = [...listaMisto, novoPag];
+      }
+    });
+
+    dados.pagamentos = listaMisto;
+    dados.pago = round2(listaMisto.reduce((s,p) => s+(parseFloat(p.valor)||0), 0));
+  }
+
+  if (dados.forma_pag === 'reserva' || dados.forma_pag === 'entrega_prazo') {
+    // Corrige bug: a entrada de Reserva/Entrega+Prazo nunca era lida de volta ao salvar a edição
+    // (só era preenchida na tela, nunca gravada). Identifica "a entrada" como o primeiro pagamento
+    // que não veio da janelinha de peça nova (não depende de posição nem data) — importante porque,
+    // se ela foi apagada e re-registrada depois via Registrar Pagamento, pode não estar mais datada
+    // no dia da assinatura, e porque um pagamento de peça pode já ter sido processado antes neste
+    // mesmo salvamento.
+    const prefixoEntrada = dados.forma_pag === 'reserva' ? 'e-reserva' : 'e-entregaprazo';
+    const campoValor = dados.forma_pag === 'reserva' ? 'e-pago' : 'e-entregaprazo-pago';
+    const valorEntrada = round2(parseFloat(document.getElementById(campoValor)?.value) || 0);
+    const formaEntrada = document.getElementById(prefixoEntrada + '-forma')?.value || 'Pix';
+    const parcEntrada = formaEntrada === 'Cartão'
+      ? (parseInt(document.getElementById(prefixoEntrada + '-parc')?.value) || 1)
+      : null;
+
+    let liquidoEntrada = valorEntrada;
+    if (formaEntrada === 'Pix' || formaEntrada === 'Dinheiro' || formaEntrada === 'Débito') {
+      const chkEntrada = document.getElementById(prefixoEntrada + '-aplicar-desconto');
+      liquidoEntrada = calcLiquidoComDesconto(valorEntrada, formaEntrada, !!(chkEntrada && chkEntrada.checked));
     }
-    if (pCartao > 0 && Math.abs(pCartao - brutoCart) > 0.01) {
-      // Cartão no misto: entra cheio (sem taxa absorvida)
-      novosPags.push({ data: dataContrato, valor: round2(pCartao), bruto: pCartao, forma: 'Cartão', parcelas: parseInt(parc), status: 'Realizado' });
-    }
-    if (pDinheiro > 0 && Math.abs(pDinheiro - brutoDinheiro) > 0.01) {
-      // Dinheiro no misto: entra cheio (sem desconto automático)
-      novosPags.push({ data: dataContrato, valor: round2(pDinheiro), bruto: pDinheiro, forma: 'Dinheiro', status: 'Realizado' });
-    }
-    if (novosPags.length > 0) {
-      dados.pagamentos = [...existentes, ...novosPags];
+    // Cartão na entrada de Reserva/Entrega+Prazo: taxa sempre repassada à cliente (nunca absorvida) — valor cheio
+
+    const listaAtual = pagamentosFinal;
+    // Ignora pagamentos vindos da janelinha de peça nova (marcados com origemPeca) — só eles não
+    // contam como "a entrada", mesmo que tenham sido processados antes neste mesmo salvamento.
+    const idxEntradaReal = listaAtual.findIndex(p => !p.origemPeca);
+    const jaTemEntrada = idxEntradaReal >= 0;
+    // Preserva a data original do pagamento se ele já existia (pode não bater com a data do
+    // contrato). Só usa a data do contrato ao criar o primeiro pagamento do zero.
+    const dataEntrada = jaTemEntrada ? listaAtual[idxEntradaReal].data : c.contrato;
+    const novaEntrada = { data: dataEntrada, valor: liquidoEntrada, bruto: valorEntrada, forma: formaEntrada, status: 'Realizado' };
+    if (parcEntrada) novaEntrada.parcelas = parcEntrada;
+
+    if (jaTemEntrada) {
+      listaAtual[idxEntradaReal] = novaEntrada;
+      dados.pagamentos = listaAtual;
+      dados.pago = round2(listaAtual.reduce((s,p) => s+(parseFloat(p.valor)||0), 0));
+    } else if (valorEntrada > 0) {
+      dados.pagamentos = [novaEntrada, ...listaAtual];
       dados.pago = round2(dados.pagamentos.reduce((s,p) => s+(parseFloat(p.valor)||0), 0));
     }
   }
@@ -6471,7 +6915,7 @@ function openNovoPagamento(contratoId) {
   const pago = totalPago(c);
   const saldo = round2(vap - pago);
   const fmtV = v => v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const _formaLabelPag = { pix:'Pix', debito:'Débito', dinheiro:'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto (Pix, Cartão e/ou Dinheiro)' };
+  const _formaLabelPag = { pix:'Pix', debito:'Débito', dinheiro:'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto (Pix, Cartão, Dinheiro e/ou Débito)' };
   document.getElementById('pag-info').innerHTML = `<strong>${c.nome}</strong><br>Total: R$ ${fmtV(vap)} · Pago: R$ ${fmtV(pago)} · <strong style="color:var(--brown)">Saldo: R$ ${fmtV(saldo)}</strong><br><span style="color:var(--muted)">Forma: ${_formaLabelPag[c.formaPag]||c.formaPag}</span>`;
   const h = new Date();
   const hStr = `${h.getFullYear()}-${String(h.getMonth()+1).padStart(2,'0')}-${String(h.getDate()).padStart(2,'0')}`;
@@ -6479,6 +6923,12 @@ function openNovoPagamento(contratoId) {
   document.getElementById('pag-valor').value = '';
   const chkDesc = document.getElementById('pag-aplicar-desconto');
   if (chkDesc) chkDesc.checked = true;
+  const chkCartaoDescReset = document.getElementById('pag-cartao-aplicar-desconto');
+  if (chkCartaoDescReset) chkCartaoDescReset.checked = false;
+  const tipoCartaoReset = document.getElementById('pag-cartao-desc-tipo');
+  if (tipoCartaoReset) tipoCartaoReset.value = 'percentual';
+  const valorCartaoReset = document.getElementById('pag-cartao-desc-valor');
+  if (valorCartaoReset) valorCartaoReset.value = '';
   // Default forma baseado na forma de pagamento do contrato
   const formaDefault = c.formaPag === 'misto' ? 'Pix' : c.formaPag === 'credito' ? 'Cartão' : c.formaPag === 'debito' ? 'Débito' : c.formaPag === 'dinheiro' ? 'Dinheiro' : 'Pix';
   document.getElementById('pag-forma').value = formaDefault;
@@ -6488,6 +6938,12 @@ function openNovoPagamento(contratoId) {
   openDrawer('drawer-pag');
 }
 
+function atualizarCartaoDescUI(prefixo) {
+  const chk = document.getElementById(prefixo + '-aplicar-desconto');
+  const campos = document.getElementById(prefixo + '-desc-campos');
+  if (campos) campos.style.display = (chk && chk.checked) ? '' : 'none';
+}
+
 function atualizarPagFormaUI() {
   const forma = document.getElementById('pag-forma').value;
   const grpParc = document.getElementById('pag-parc-grp');
@@ -6495,7 +6951,8 @@ function atualizarPagFormaUI() {
     grpParc.style.display = forma === 'Cartão' ? '' : 'none';
     if (forma === 'Cartão') {
       const c = pagamentoContratoId ? contratos.find(x => x.id === pagamentoContratoId) : null;
-      const parcelasDoContrato = (c && c.pagamentos && c.pagamentos[0] && c.pagamentos[0].parcelas) || null;
+      const _pRefParc = (c && c.pagamentos && c.pagamentos.find(p => !p.origemPeca)) || null;
+      const parcelasDoContrato = (_pRefParc && _pRefParc.parcelas) || null;
       const el = document.getElementById('pag-parcelas');
       if (el) {
         // Reserva e Entrega+Prazo: taxa sempre repassada — sem labels de absorção
@@ -6506,15 +6963,24 @@ function atualizarPagFormaUI() {
       }
     }
   }
+  const grpCartaoDesc = document.getElementById('pag-cartao-desc-grp');
+  if (grpCartaoDesc) {
+    grpCartaoDesc.style.display = forma === 'Cartão' ? '' : 'none';
+    if (forma === 'Cartão') {
+      const chk = document.getElementById('pag-cartao-aplicar-desconto');
+      if (chk) chk.checked = false; // sem desconto padrão no Cartão — decide na hora
+      atualizarCartaoDescUI('pag-cartao');
+    }
+  }
   const grpDesc = document.getElementById('pag-desc-grp');
   if (grpDesc) {
     const c = pagamentoContratoId ? contratos.find(x => x.id === pagamentoContratoId) : null;
-    const semDescontoPossivel = c && (c.formaPag === 'reserva' || c.formaPag === 'entrega_prazo' || c.formaPag === 'misto');
-    const elegivel = (forma === 'Pix' || forma === 'Dinheiro') && !semDescontoPossivel;
+    const elegivel = (forma === 'Pix' || forma === 'Dinheiro' || forma === 'Débito');
     grpDesc.style.display = elegivel ? '' : 'none';
     if (elegivel) {
+      const semDescontoPadrao = c && (c.formaPag === 'reserva' || c.formaPag === 'entrega_prazo' || c.formaPag === 'misto');
       const chk = document.getElementById('pag-aplicar-desconto');
-      if (chk) chk.checked = true;
+      if (chk) chk.checked = !semDescontoPadrao;
     }
   }
 }
@@ -6526,61 +6992,37 @@ function atualizarPreviewPag() {
   if (!el) return;
   if (valor <= 0) { el.textContent = ''; return; }
   const fmt = v => 'R$ ' + v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const c = pagamentoContratoId ? contratos.find(x => x.id === pagamentoContratoId) : null;
-  const isReserva = c && c.formaPag === 'reserva';
-  const isEntregaPrazo = c && c.formaPag === 'entrega_prazo';
 
-  if (isReserva) {
-    el.textContent = `→ entra no caixa: ${fmt(valor)} (sem desconto — reserva)`;
-  } else if (isEntregaPrazo) {
-    el.textContent = `→ entra no caixa: ${fmt(valor)} (sem desconto — entrada/saldo na entrega)`;
-  } else if (forma === 'Pix') {
-    const isMisto = c && c.formaPag === 'misto';
-    if (isMisto) {
-      el.textContent = `→ entra no caixa: ${fmt(valor)} (Pix no misto — valor cheio)`;
+  if (forma === 'Pix' || forma === 'Dinheiro' || forma === 'Débito') {
+    const chkDesc = document.getElementById('pag-aplicar-desconto');
+    const aplicarDesconto = !chkDesc || chkDesc.checked;
+    const liquido = calcLiquidoComDesconto(valor, forma, aplicarDesconto);
+    if (!aplicarDesconto) {
+      el.textContent = `→ entra no caixa: ${fmt(liquido)} (sem desconto)`;
     } else {
-      const chkDesc = document.getElementById('pag-aplicar-desconto');
-      const semDesconto = chkDesc && !chkDesc.checked;
-      if (semDesconto) {
-        el.textContent = `→ entra no caixa: ${fmt(valor)} (sem desconto — exceção aplicada)`;
+      const taxaAtual = forma === 'Pix' ? getDescontoPix() : forma === 'Dinheiro' ? getDescontoDinheiro() : getDescontoDebito();
+      if (taxaAtual > 0) {
+        el.textContent = `→ entra no caixa: ${fmt(liquido)} (após desc. ${Math.round(taxaAtual * 100)}% ${forma})`;
       } else {
-        const _txPix = getDescontoPix();
-        const liquido = valor * (1 - _txPix);
-        el.textContent = `→ entra no caixa: ${fmt(liquido)} (após desc. ${Math.round(_txPix * 100)}% Pix)`;
+        el.textContent = `→ entra no caixa: ${fmt(liquido)} (sem desconto configurado)`;
       }
     }
   } else if (forma === 'Cartão') {
     const parc = parseInt(document.getElementById('pag-parcelas').value) || 1;
-    const taxa = getTaxaParcela(parc);
-    const absorvido = isParcelaAbsorvida(parc);
-    if (absorvido && taxa > 0) {
-      const liquido = valor * (1 - taxa);
-      el.textContent = `→ entra no caixa: ${fmt(liquido)} (após taxa ${(taxa*100).toFixed(2).replace('.',',')}% absorvida por você)`;
-    } else if (!absorvido && taxa > 0) {
-      el.textContent = `→ entra no caixa: ${fmt(valor)} (taxa ${(taxa*100).toFixed(2).replace('.',',')}% repassada à cliente)`;
+    const chkCartaoDesc = document.getElementById('pag-cartao-aplicar-desconto');
+    const descontoAtivo = !!(chkCartaoDesc && chkCartaoDesc.checked);
+    const descontoTipo = document.getElementById('pag-cartao-desc-tipo')?.value || 'percentual';
+    const descontoValor = parseFloat(document.getElementById('pag-cartao-desc-valor')?.value) || 0;
+    const r = calcCartao(valor, descontoAtivo, descontoTipo, descontoValor, parc);
+    const descTxt = descontoAtivo && descontoValor > 0
+      ? ` — desconto de ${descontoTipo === 'valor' ? fmt(descontoValor) : descontoValor + '%'}, cobrado ${fmt(r.bruto)} no cartão`
+      : '';
+    if (r.absorvido && r.taxa > 0) {
+      el.textContent = `→ entra no caixa: ${fmt(r.liquido)} (após taxa ${(r.taxa*100).toFixed(2).replace('.',',')}% absorvida por você${descTxt})`;
+    } else if (!r.absorvido && r.taxa > 0) {
+      el.textContent = `→ entra no caixa: ${fmt(r.liquido)} (taxa ${(r.taxa*100).toFixed(2).replace('.',',')}% repassada à cliente${descTxt})`;
     } else {
-      el.textContent = `→ entra no caixa: ${fmt(valor)} (sem taxa)`;
-    }
-  } else if (forma === 'Débito') {
-    el.textContent = `→ entra no caixa: ${fmt(valor)} (sem taxa)`;
-  } else if (forma === 'Dinheiro') {
-    const isMisto = c && c.formaPag === 'misto';
-    if (isMisto) {
-      el.textContent = `→ entra no caixa: ${fmt(valor)} (Dinheiro no misto — valor cheio)`;
-    } else {
-      const chkDesc = document.getElementById('pag-aplicar-desconto');
-      const semDesconto = chkDesc && !chkDesc.checked;
-      if (semDesconto) {
-        el.textContent = `→ entra no caixa: ${fmt(valor)} (sem desconto — exceção aplicada)`;
-      } else {
-        const _txDinheiro = getDescontoDinheiro();
-        if (_txDinheiro > 0) {
-          const liquido = valor * (1 - _txDinheiro);
-          el.textContent = `→ entra no caixa: ${fmt(liquido)} (após desc. ${Math.round(_txDinheiro * 100)}% Dinheiro)`;
-        } else {
-          el.textContent = `→ entra no caixa: ${fmt(valor)} (sem desconto configurado)`;
-        }
-      }
+      el.textContent = `→ entra no caixa: ${fmt(r.liquido)} (sem taxa${descTxt})`;
     }
   }
 }
@@ -6598,33 +7040,27 @@ async function salvarNovoPagamento() {
   // Calcula líquido (entrada no caixa) e parcelas
   let liquido = valor;
   let parcelas = null;
-  if (c.formaPag === 'reserva' || c.formaPag === 'entrega_prazo') {
-    // Reserva e Entrega+Prazo: sempre cheio — sem desconto Pix, sem absorção no cartão
-    if (forma === 'Cartão') {
-      parcelas = parseInt(document.getElementById('pag-parcelas').value) || 1;
-    }
-    liquido = round2(valor);
-  } else if (forma === 'Pix') {
-    const isMisto = c.formaPag === 'misto';
-    const chkDescPix = document.getElementById('pag-aplicar-desconto');
-    const semDescontoPix = chkDescPix && !chkDescPix.checked;
-    liquido = (isMisto || semDescontoPix) ? round2(valor) : round2(valor * (1 - getDescontoPix()));
+  let brutoFinal = round2(valor);
+  let descontoCartaoTipo = null, descontoCartaoValor = null;
+  if (forma === 'Pix' || forma === 'Dinheiro' || forma === 'Débito') {
+    const chkDesc = document.getElementById('pag-aplicar-desconto');
+    const aplicarDesconto = !chkDesc || chkDesc.checked;
+    liquido = calcLiquidoComDesconto(valor, forma, aplicarDesconto);
   } else if (forma === 'Cartão') {
     parcelas = parseInt(document.getElementById('pag-parcelas').value) || 1;
-    const taxa = getTaxaParcela(parcelas);
-    const absorvido = isParcelaAbsorvida(parcelas);
-    liquido = absorvido ? round2(valor * (1 - taxa)) : round2(valor);
-  } else if (forma === 'Débito') {
-    liquido = round2(valor);
-  } else if (forma === 'Dinheiro') {
-    const isMisto = c.formaPag === 'misto';
-    const chkDescDin = document.getElementById('pag-aplicar-desconto');
-    const semDescontoDin = chkDescDin && !chkDescDin.checked;
-    liquido = (isMisto || semDescontoDin) ? round2(valor) : round2(valor * (1 - getDescontoDinheiro()));
+    const chkCartaoDesc = document.getElementById('pag-cartao-aplicar-desconto');
+    const descontoAtivo = !!(chkCartaoDesc && chkCartaoDesc.checked);
+    const tipo = document.getElementById('pag-cartao-desc-tipo')?.value || 'percentual';
+    const valorDesc = parseFloat(document.getElementById('pag-cartao-desc-valor')?.value) || 0;
+    const r = calcCartao(valor, descontoAtivo, tipo, valorDesc, parcelas);
+    liquido = r.liquido;
+    brutoFinal = r.bruto; // valor cheio antes do desconto vira a referência; bruto é o que foi cobrado no cartão
+    if (descontoAtivo && valorDesc > 0) { descontoCartaoTipo = tipo; descontoCartaoValor = valorDesc; }
   }
 
-  const novoPag = { data, valor: liquido, bruto: round2(valor), forma };
+  const novoPag = { data, valor: liquido, bruto: brutoFinal, forma };
   if (parcelas) novoPag.parcelas = parcelas;
+  if (descontoCartaoTipo) { novoPag.descontoCartaoTipo = descontoCartaoTipo; novoPag.descontoCartaoValor = descontoCartaoValor; }
   const novosPags = [...(c.pagamentos || []), novoPag];
   // Pago legado (compat): soma dos valores líquidos
   const novoPago = novosPags.reduce((s,p)=>s+(parseFloat(p.valor)||0), 0);
@@ -6852,12 +7288,12 @@ const CUSTOS_DEFAULT = {
   itensFixos: [],
   formasPag: [
     { id: 'pix',      label: 'Pix',                 ativa: true,  tipo: 'desconto', taxa: 7,   desconto: true,  absorvido: false, obs: 'Desconto dado à cliente' },
-    { id: 'debito',   label: 'Débito',               ativa: true,  tipo: 'taxa',     taxa: 0,   desconto: false, absorvido: false, obs: '' },
+    { id: 'debito',   label: 'Débito',               ativa: true,  tipo: 'desconto', taxa: 0,   desconto: false, absorvido: false, obs: 'Desconto dado à cliente' },
     { id: 'dinheiro', label: 'Dinheiro',             ativa: true,  tipo: 'desconto', taxa: 0,   desconto: false, absorvido: false, obs: 'Desconto dado à cliente' },
     { id: 'credito',  label: 'Crédito',              ativa: true,  tipo: 'credito',  taxa: 0,   desconto: false, absorvido: false, obs: '' },
     { id: 'reserva',  label: 'Reserva antecipada',   ativa: true,  tipo: 'entrada',  taxa: 0,   desconto: false, absorvido: false, obs: 'Entrada mínima, restante depois' },
     { id: 'entrega_prazo', label: 'Entrada + saldo na entrega', ativa: true, tipo: 'entrada', taxa: 0, desconto: false, absorvido: false, obs: 'Entrada livre, saldo cobrado após a entrega' },
-    { id: 'misto',    label: 'Misto (Pix, Cartão e/ou Dinheiro)', ativa: true,  tipo: 'misto',    taxa: 0,   desconto: false, absorvido: false, obs: '' },
+    { id: 'misto',    label: 'Misto (Pix, Cartão, Dinheiro e/ou Débito)', ativa: true,  tipo: 'misto',    taxa: 0,   desconto: false, absorvido: false, obs: '' },
   ],
   parcelas: [
     { n: 1,  taxa: 0, absorvido: false },
@@ -6914,9 +7350,16 @@ async function carregarCustosSupabase() {
       // Garante que formasPag tem a entrada "debito" (migração de configs antigas)
       if (!custosConfig.formasPag.find(f => f.id === 'debito')) {
         const idxCredito = custosConfig.formasPag.findIndex(f => f.id === 'credito');
-        const entradaDebito = { id: 'debito', label: 'Débito', ativa: true, tipo: 'taxa', taxa: 0, desconto: false, absorvido: false, obs: '' };
+        const entradaDebito = { id: 'debito', label: 'Débito', ativa: true, tipo: 'desconto', taxa: 0, desconto: false, absorvido: false, obs: 'Desconto dado à cliente' };
         if (idxCredito >= 0) custosConfig.formasPag.splice(idxCredito, 0, entradaDebito);
         else custosConfig.formasPag.push(entradaDebito);
+      }
+      // Migra "debito" de tipo 'taxa' (estrutura antiga, sem desconto configurável) pra 'desconto'
+      // (estrutura nova, igual Pix/Dinheiro) — preserva ativa/taxa/desconto já configurados.
+      const _debitoMigrar = custosConfig.formasPag.find(f => f.id === 'debito');
+      if (_debitoMigrar && _debitoMigrar.tipo === 'taxa') {
+        _debitoMigrar.tipo = 'desconto';
+        if (!_debitoMigrar.obs) _debitoMigrar.obs = 'Desconto dado à cliente';
       }
       // Garante que formasPag tem a entrada "dinheiro" (migração de configs antigas)
       if (!custosConfig.formasPag.find(f => f.id === 'dinheiro')) {
@@ -6941,10 +7384,10 @@ async function carregarCustosSupabase() {
         if (idxMisto2 >= 0) custosConfig.formasPag.splice(idxMisto2, 0, entradaEntregaPrazo);
         else custosConfig.formasPag.push(entradaEntregaPrazo);
       }
-      // Atualiza o label do Misto para o texto completo (migração de configs antigas salvas com label curto)
+      // Atualiza o label do Misto para o texto completo (migração de configs antigas salvas com label curto/desatualizado)
       const idxMistoLabel = custosConfig.formasPag.findIndex(f => f.id === 'misto');
-      if (idxMistoLabel >= 0 && custosConfig.formasPag[idxMistoLabel].label !== 'Misto (Pix, Cartão e/ou Dinheiro)') {
-        custosConfig.formasPag[idxMistoLabel].label = 'Misto (Pix, Cartão e/ou Dinheiro)';
+      if (idxMistoLabel >= 0 && custosConfig.formasPag[idxMistoLabel].label !== 'Misto (Pix, Cartão, Dinheiro e/ou Débito)') {
+        custosConfig.formasPag[idxMistoLabel].label = 'Misto (Pix, Cartão, Dinheiro e/ou Débito)';
       }
 
       // Garante que parcelas tem todas as 12 faixas (mescla com o que está salvo)
@@ -7052,6 +7495,44 @@ function getDescontoDinheiro() {
   const formas = custosConfig.formasPag || [];
   const dinheiro = formas.find(f => f.id === 'dinheiro');
   return (dinheiro && dinheiro.ativa && dinheiro.desconto) ? (dinheiro.taxa || 0) / 100 : 0;
+}
+
+function getDescontoDebito() {
+  const formas = custosConfig.formasPag || [];
+  const debito = formas.find(f => f.id === 'debito');
+  return (debito && debito.ativa && debito.desconto) ? (debito.taxa || 0) / 100 : 0;
+}
+
+// Função central: calcula o líquido de um pagamento em Pix/Dinheiro/Débito.
+// aplicarDesconto === false -> entra pelo valor cheio (exceção pontual, ou contrato tipo
+// Reserva/Entrega+Prazo/Misto, onde o padrão é não descontar).
+// aplicarDesconto !== false (true, undefined, etc.) -> aplica o desconto configurado pra essa forma.
+// Chamada de todo lugar que precisa desse cálculo, pra nunca duas fórmulas divergirem.
+function calcLiquidoComDesconto(bruto, forma, aplicarDesconto) {
+  const b = round2(parseFloat(bruto) || 0);
+  if (aplicarDesconto === false) return b;
+  let taxa = 0;
+  if (forma === 'Pix') taxa = getDescontoPix();
+  else if (forma === 'Dinheiro') taxa = getDescontoDinheiro();
+  else if (forma === 'Débito') taxa = getDescontoDebito();
+  return round2(b * (1 - taxa));
+}
+
+// Cartão: desconto opcional (R$ ou %) decidido na hora do pagamento, sem taxa padrão configurada.
+// O desconto reduz o que é cobrado no cartão da cliente PRIMEIRO; a taxa/absorção da parcela se
+// aplica DEPOIS, sobre esse valor já reduzido — refletindo o que de fato sobra pro ateliê.
+function calcCartao(valorReferencia, descontoAtivo, descontoTipo, descontoValor, parcelas) {
+  const ref = round2(parseFloat(valorReferencia) || 0);
+  let bruto = ref;
+  if (descontoAtivo) {
+    const dv = parseFloat(descontoValor) || 0;
+    bruto = descontoTipo === 'valor' ? round2(ref - dv) : round2(ref * (1 - dv / 100));
+    if (bruto < 0) bruto = 0; // segurança: desconto não deixa o valor cobrado ficar negativo
+  }
+  const taxa = getTaxaParcela(parcelas);
+  const absorvido = isParcelaAbsorvida(parcelas);
+  const liquido = absorvido ? round2(bruto * (1 - taxa)) : bruto;
+  return { bruto, liquido, taxa, absorvido };
 }
 
 function atualizarParcelaConfig(n, campo, valor) {
@@ -7437,7 +7918,7 @@ function exportarDadosPDF() {
   const rowsC = contratos.slice().sort((a,b)=>(b.contrato||'').localeCompare(a.contrato||'')).map(c => {
     const saldo = round2(calcValorAPagar(c) - totalPago(c));
     const situacao = saldo <= 0.01 ? 'Quitada ✓' : totalPago(c) > 0 ? 'Entrada paga' : 'Sem pagamento';
-    const formaLabel = { pix:'Pix', debito:'Débito', dinheiro:'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto (Pix, Cartão e/ou Dinheiro)' };
+    const formaLabel = { pix:'Pix', debito:'Débito', dinheiro:'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto (Pix, Cartão, Dinheiro e/ou Débito)' };
     return `<tr>
       <td>${esc(c.nome)}</td>
       <td>${fmtD(c.contrato)}</td>
@@ -8783,8 +9264,8 @@ function confirmarAplicacaoMaterial() {
   const nome = document.getElementById('mat-nome').value.trim();
   const qtdTotal = parseFloat(document.getElementById('mat-qtd-total').value);
   const valorPago = parseFloat(document.getElementById('mat-valor').value);
-  if (!nome || isNaN(qtdTotal) || isNaN(valorPago)) {
-    mostrarAlerta({ emoji: '⚠️', titulo: 'Campos obrigatórios', mensagem: 'Preencha nome, quantidade e valor corretamente.' });
+  if (!nome || isNaN(qtdTotal) || qtdTotal <= 0 || isNaN(valorPago)) {
+    mostrarAlerta({ emoji: '⚠️', titulo: 'Campos obrigatórios', mensagem: 'Preencha nome, quantidade (maior que zero) e valor corretamente.' });
     return;
   }
   // Se for novo material (não edição), não precisa perguntar — salva direto
@@ -8823,8 +9304,8 @@ async function salvarMaterialGlobal(aplicarATodas) {
   const qtdTotal = parseFloat(document.getElementById('mat-qtd-total').value);
   const valorPago = parseFloat(document.getElementById('mat-valor').value);
 
-  if (!nome || isNaN(qtdTotal) || isNaN(valorPago)) { 
-    mostrarAlerta({ emoji: '⚠️', titulo: 'Campos obrigatórios', mensagem: 'Preencha nome, quantidade e valor corretamente.' });
+  if (!nome || isNaN(qtdTotal) || qtdTotal <= 0 || isNaN(valorPago)) { 
+    mostrarAlerta({ emoji: '⚠️', titulo: 'Campos obrigatórios', mensagem: 'Preencha nome, quantidade (maior que zero) e valor corretamente.' });
     return; 
   }
 
@@ -8979,7 +9460,8 @@ function previewCustoModal() {
   const qtdUsada = parseFloat(document.getElementById('modal-mat-qtd').value);
   const el = document.getElementById('modal-mat-custo-calc');
   if (!qtdUsada || qtdUsada <= 0) { el.textContent = ''; return; }
-  const custo = (qtdUsada / m.qtdTotal) * m.valorPago;
+  const qtdTotalModal = parseFloat(m.qtdTotal) || 0;
+  const custo = qtdTotalModal > 0 ? (qtdUsada / qtdTotalModal) * (parseFloat(m.valorPago) || 0) : 0;
   el.textContent = `→ custo: R$ ${custo.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}`;
 }
 
@@ -9551,7 +10033,7 @@ function infoReservaAntecipada() {
   _mostrarInfoModal('Reserva antecipada', [
     'Modalidade com pagamento dividido em <b>entrada + saldo</b>.',
     `<br><br>A cliente paga um valor mínimo de entrada para reservar a data, e quita o restante da forma que preferir — ${txtPrazo}.`,
-    '<br><br>A forma de pagamento do saldo (Pix ou cartão) é configurada no momento do contrato.'
+    '<br><br>A forma de pagamento (Pix, Cartão, Dinheiro ou Débito) é escolhida em cada pagamento. Por padrão, Reserva não aplica desconto — mas se Pix, Dinheiro ou Débito estiverem selecionados, você pode marcar "Aplicar desconto" quando quiser abrir uma exceção.'
   ].join(''));
 }
 
@@ -9563,15 +10045,15 @@ function infoEntregaPrazo() {
   _mostrarInfoModal('Entrada + saldo na entrega', [
     'Modalidade com pagamento dividido em <b>entrada + saldo</b>, mas o prazo de quitação não depende da data do casamento.',
     `<br><br>A cliente paga uma entrada ao fechar o contrato, e quita o restante ${txtPrazo} — ou seja, o prazo só começa a contar quando você marcar a peça como entregue no contrato.`,
-    '<br><br>A forma de pagamento do saldo é configurada no momento do contrato.'
+    '<br><br>A forma de pagamento (Pix, Cartão, Dinheiro ou Débito) é escolhida em cada pagamento. Por padrão não aplica desconto — mas se Pix, Dinheiro ou Débito estiverem selecionados, você pode marcar "Aplicar desconto" quando quiser abrir uma exceção.'
   ].join(''));
 }
 
 function infoMisto() {
   _mostrarInfoModal('Misto', [
-    'A cliente paga usando <b>2 ou mais formas</b>: Pix, Cartão e/ou Dinheiro.',
+    'A cliente paga usando <b>2 ou mais formas</b>: Pix, Cartão, Dinheiro e/ou Débito.',
     '<br><br>Cada parcela é registrada separadamente no histórico de pagamentos.',
-    '<br><br>O desconto do Pix se aplica apenas à parte paga em Pix; a taxa do cartão se aplica apenas à parte paga no cartão. A parte em Dinheiro entra sem desconto automático — se quiser dar desconto, use o campo de desconto do contrato.'
+    '<br><br>A taxa do cartão se aplica apenas à parte paga no cartão. Para Pix, Dinheiro e Débito, você escolhe em cada pagamento se aplica o desconto padrão configurado ou não — o padrão vem desmarcado no Misto, mas pode marcar quando quiser dar o desconto.'
   ].join(''));
 }
 
