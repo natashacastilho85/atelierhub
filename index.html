@@ -1076,7 +1076,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
               <div id="fil-col-pagamento" style="display:none;margin-bottom:0.5rem">
                 <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.2rem">Forma de pagamento</div>
                 <select id="fil-forma" style="width:100%;padding:0.4rem 0.5rem;border:1px solid rgba(184,134,42,0.35);border-radius:8px;font-family:'Calibri',sans-serif;font-size:0.82rem;background:var(--cream);color:var(--dark)">
-                  <option value="">Qualquer</option><option value="pix">Pix</option><option value="debito">Débito</option><option value="dinheiro">Dinheiro</option><option value="credito">Crédito</option><option value="reserva">Reserva antecipada</option><option value="entrega_prazo">Entrada + saldo na entrega</option><option value="misto">Misto (Pix, Cartão, Dinheiro e/ou Débito)</option>
+                  <option value="">Qualquer</option><option value="pix">Pix</option><option value="debito">Débito</option><option value="dinheiro">Dinheiro</option><option value="credito">Crédito</option><option value="reserva">Reserva antecipada</option><option value="entrega_prazo">Entrada + saldo na entrega</option><option value="misto">Misto (Pix, Crédito, Dinheiro e/ou Débito)</option>
                 </select>
               </div>
               <div id="fil-col-presente" style="display:none;margin-bottom:0.5rem">
@@ -1313,17 +1313,13 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       </div>
     </div>
     <div class="field-group">
-      <label class="field-label" style="display:flex;align-items:center;gap:0.35rem">Forma de pagamento
-        <button onclick="(function(){var v=document.getElementById('forma-pag-select').value;if(v==='reserva')infoReservaAntecipada();else if(v==='entrega_prazo')infoEntregaPrazo();else if(v==='misto')infoMisto();})()" id="btn-info-forma-pag" style="background:none;border:none;padding:0;cursor:pointer;font-size:0.8rem;color:var(--muted-light);display:none">ⓘ</button>
+      <label class="field-label" style="display:flex;align-items:center;gap:0.35rem">Tipo de Contrato
+        <button onclick="mostrarInfoTipoContrato('c')" id="c-btn-info-tipo-contrato" style="background:none;border:none;padding:0;cursor:pointer;font-size:0.8rem;color:var(--muted-light);display:none">ⓘ</button>
       </label>
-      <select class="field-input" id="forma-pag-select" onchange="onFormaPagChange(this.value)">
-        <option value="pix">Pix</option>
-        <option value="debito">Débito</option>
-        <option value="dinheiro">Dinheiro</option>
-        <option value="credito">Crédito</option>
+      <select class="field-input" id="c-tipo-contrato" onchange="onTipoContratoChange('c', this.value)">
+        <option value="simples">Pagamento total imediato</option>
         <option value="reserva">Reserva antecipada</option>
-        <option value="entrega_prazo">Entrada + saldo na entrega</option>
-        <option value="misto">Misto (Pix, Cartão, Dinheiro e/ou Débito)</option>
+        <option value="entrega_prazo">Entrada + Saldo na entrega</option>
       </select>
       <div class="field-hint" id="hint-reserva">
         Mínimo de R$ 300 na entrada. Saldo restante pago da forma que a noiva preferir.
@@ -1332,8 +1328,31 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         Saldo restante cobrado após a entrega da peça.
       </div>
     </div>
+    <div class="field-group" id="c-grp-forma-simples">
+      <label class="field-label" style="display:flex;align-items:center;gap:0.35rem">Forma de Pagamento
+        <button onclick="infoMisto()" id="c-btn-info-forma-simples" style="background:none;border:none;padding:0;cursor:pointer;font-size:0.8rem;color:var(--muted-light);display:none">ⓘ</button>
+      </label>
+      <select class="field-input" id="c-forma-simples" onchange="onFormaSimplesChange('c')">
+        <option value="pix">Pix</option>
+        <option value="credito">Crédito</option>
+        <option value="dinheiro">Dinheiro</option>
+        <option value="debito">Débito</option>
+        <option value="misto">Misto</option>
+      </select>
+    </div>
+    <div style="display:none">
+      <select class="field-input" id="forma-pag-select" onchange="onFormaPagChange(this.value)">
+        <option value="pix">Pix</option>
+        <option value="debito">Débito</option>
+        <option value="dinheiro">Dinheiro</option>
+        <option value="credito">Crédito</option>
+        <option value="reserva">Reserva antecipada</option>
+        <option value="entrega_prazo">Entrada + saldo na entrega</option>
+        <option value="misto">Misto (Pix, Crédito, Dinheiro e/ou Débito)</option>
+      </select>
+    </div>
     <div class="field-group" id="grp-credito" style="display:none">
-      <label class="field-label">Parcelas no cartão</label>
+      <label class="field-label">Parcelas no crédito</label>
       <select class="field-input" id="c-credito-parc"></select>
     </div>
     <div class="field-group" id="c-credito-cartao-desc-grp" style="display:none">
@@ -1367,7 +1386,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
           <label class="field-label">Forma da entrada</label>
           <select class="field-input" id="c-reserva-forma" onchange="onReservaFormaChange('c')">
             <option value="Pix">Pix</option>
-            <option value="Cartão">Cartão</option>
+            <option value="Cartão">Crédito</option>
             <option value="Dinheiro">Dinheiro</option>
             <option value="Débito">Débito</option>
           </select>
@@ -1395,7 +1414,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
           <label class="field-label">Forma da entrada</label>
           <select class="field-input" id="c-entregaprazo-forma" onchange="onEntregaPrazoFormaChange('c')">
             <option value="Pix">Pix</option>
-            <option value="Cartão">Cartão</option>
+            <option value="Cartão">Crédito</option>
             <option value="Dinheiro">Dinheiro</option>
             <option value="Débito">Débito</option>
           </select>
@@ -1424,7 +1443,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
           <input class="field-input" id="c-pago-pix" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('c')">
         </div>
         <div class="field-group">
-          <label class="field-label">Pago em Cartão (R$)</label>
+          <label class="field-label">Pago em Crédito (R$)</label>
           <input class="field-input" id="c-pago-cartao" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('c')">
         </div>
       </div>
@@ -1437,7 +1456,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
 
       <div class="field-row">
         <div class="field-group">
-          <label class="field-label">Parcelas no cartão</label>
+          <label class="field-label">Parcelas no crédito</label>
           <select class="field-input" id="c-pago-cartao-parc">
           </select>
         </div>
@@ -1449,7 +1468,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       <div class="field-group" id="c-misto-cartao-desc-grp" style="display:none">
         <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
           <input type="checkbox" id="c-misto-cartao-aplicar-desconto" onchange="atualizarCartaoDescUI('c-misto-cartao')" style="width:14px;height:14px;accent-color:var(--brown)">
-          Aplicar desconto no Cartão
+          Aplicar desconto no Crédito
         </label>
         <div class="field-row" id="c-misto-cartao-desc-campos" style="display:none;margin-top:0.4rem">
           <div class="field-group" style="max-width:75px">
@@ -1548,14 +1567,14 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     </div>
     <div class="field-group"><label class="field-label">Forma de pagamento</label>
       <select class="field-input" id="g-forma" onchange="onFormaPagGastoChange()">
-        <option>Pix</option><option>Débito</option><option>Cartão</option>
+        <option value="Pix">Pix</option><option value="Débito">Débito</option><option value="Cartão">Crédito</option>
       </select>
     </div>
     <!-- Campos extras para Cartão parcelado -->
     <div id="g-grp-cartao" style="display:none">
       <div class="field-row">
         <div class="field-group">
-          <label class="field-label">Cartão</label>
+          <label class="field-label">Crédito</label>
           <select class="field-input" id="g-cartao" onchange="atualizarPreviewParcelasGasto()"></select>
         </div>
         <div class="field-group">
@@ -1650,7 +1669,28 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       <button type="button" class="btn-secondary" style="margin-top:0" onclick="adicionarLinhaPecaEdit()">+ Adicionar peça</button>
     </div>
     <div class="field-group">
-      <label class="field-label">Forma de pagamento</label>
+      <label class="field-label" style="display:flex;align-items:center;gap:0.35rem">Tipo de Contrato
+        <button onclick="mostrarInfoTipoContrato('e')" id="e-btn-info-tipo-contrato" style="background:none;border:none;padding:0;cursor:pointer;font-size:0.8rem;color:var(--muted-light);display:none">ⓘ</button>
+      </label>
+      <select class="field-input" id="e-tipo-contrato" onchange="onTipoContratoChange('e', this.value)">
+        <option value="simples">Pagamento total imediato</option>
+        <option value="reserva">Reserva antecipada</option>
+        <option value="entrega_prazo">Entrada + Saldo na entrega</option>
+      </select>
+    </div>
+    <div class="field-group" id="e-grp-forma-simples">
+      <label class="field-label" style="display:flex;align-items:center;gap:0.35rem">Forma de Pagamento
+        <button onclick="infoMisto()" id="e-btn-info-forma-simples" style="background:none;border:none;padding:0;cursor:pointer;font-size:0.8rem;color:var(--muted-light);display:none">ⓘ</button>
+      </label>
+      <select class="field-input" id="e-forma-simples" onchange="onFormaSimplesChange('e')">
+        <option value="pix">Pix</option>
+        <option value="credito">Crédito</option>
+        <option value="dinheiro">Dinheiro</option>
+        <option value="debito">Débito</option>
+        <option value="misto">Misto</option>
+      </select>
+    </div>
+    <div style="display:none">
       <select class="field-input" id="e-forma-pag" onchange="onFormaPagEditChange(this.value)">
         <option value="pix">Pix</option>
         <option value="debito">Débito</option>
@@ -1658,7 +1698,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         <option value="credito">Crédito</option>
         <option value="reserva">Reserva antecipada</option>
         <option value="entrega_prazo">Entrada + saldo na entrega</option>
-        <option value="misto">Misto (Pix, Cartão, Dinheiro e/ou Débito)</option>
+        <option value="misto">Misto (Pix, Crédito, Dinheiro e/ou Débito)</option>
       </select>
     </div>
     <div class="field-row">
@@ -1677,7 +1717,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
           <label class="field-label">Forma da entrada</label>
           <select class="field-input" id="e-reserva-forma" onchange="onReservaFormaChange('e')">
             <option value="Pix">Pix</option>
-            <option value="Cartão">Cartão</option>
+            <option value="Cartão">Crédito</option>
             <option value="Dinheiro">Dinheiro</option>
             <option value="Débito">Débito</option>
           </select>
@@ -1705,7 +1745,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
           <label class="field-label">Forma da entrada</label>
           <select class="field-input" id="e-entregaprazo-forma" onchange="onEntregaPrazoFormaChange('e')">
             <option value="Pix">Pix</option>
-            <option value="Cartão">Cartão</option>
+            <option value="Cartão">Crédito</option>
             <option value="Dinheiro">Dinheiro</option>
             <option value="Débito">Débito</option>
           </select>
@@ -1734,7 +1774,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
           <input class="field-input" id="e-pago-pix" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('e')">
         </div>
         <div class="field-group">
-          <label class="field-label">Pago em Cartão (R$)</label>
+          <label class="field-label">Pago em Crédito (R$)</label>
           <input class="field-input" id="e-pago-cartao" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('e')">
         </div>
       </div>
@@ -1747,7 +1787,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
 
       <div class="field-row">
         <div class="field-group">
-          <label class="field-label">Parcelas no cartão</label>
+          <label class="field-label">Parcelas no crédito</label>
           <select class="field-input" id="e-pago-cartao-parc">
           </select>
         </div>
@@ -1759,7 +1799,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       <div class="field-group" id="e-misto-cartao-desc-grp" style="display:none">
         <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
           <input type="checkbox" id="e-misto-cartao-aplicar-desconto" onchange="atualizarCartaoDescUI('e-misto-cartao')" style="width:14px;height:14px;accent-color:var(--brown)">
-          Aplicar desconto no Cartão
+          Aplicar desconto no Crédito
         </label>
         <div class="field-row" id="e-misto-cartao-desc-campos" style="display:none;margin-top:0.4rem">
           <div class="field-group" style="max-width:75px">
@@ -1858,7 +1898,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         <label class="field-label">Forma</label>
         <select class="field-input" id="pag-forma" onchange="atualizarPagFormaUI();atualizarPreviewPag()">
           <option value="Pix">Pix</option>
-          <option value="Cartão">Cartão</option>
+          <option value="Cartão">Crédito</option>
           <option value="Débito">Débito</option>
           <option value="Dinheiro">Dinheiro</option>
         </select>
@@ -2907,6 +2947,14 @@ function openFab() {
   document.getElementById('c-envio').value = 'Correios';
   document.getElementById('c-status').value = 'Reserva';
   document.getElementById('forma-pag-select').value = 'pix';
+  document.getElementById('c-tipo-contrato').value = 'simples';
+  document.getElementById('c-forma-simples').value = 'pix';
+  const grpFormaSimplesReset = document.getElementById('c-grp-forma-simples');
+  if (grpFormaSimplesReset) grpFormaSimplesReset.style.display = '';
+  const btnInfoTipoReset = document.getElementById('c-btn-info-tipo-contrato');
+  if (btnInfoTipoReset) btnInfoTipoReset.style.display = 'none';
+  const btnInfoFormaReset = document.getElementById('c-btn-info-forma-simples');
+  if (btnInfoFormaReset) btnInfoFormaReset.style.display = 'none';
   document.getElementById('c-f-iniciais').value = 'Não';
   _preencherSelectPresente('c-f-presente');
   document.getElementById('pecas-selecionadas').innerHTML = '';
@@ -3470,6 +3518,45 @@ function onEntregaPrazoFormaChange(prefixo) {
   }
 }
 
+// Tipo de Contrato e Forma de Pagamento são dois seletores visíveis que, juntos, decidem o
+// mesmo valor que o seletor único de sempre (agora escondido) sempre decidiu sozinho. Eles só
+// calculam esse valor e acionam onFormaPagChange/onFormaPagEditChange exatamente como se o
+// seletor escondido tivesse sido mudado diretamente — nenhuma lógica de cálculo muda.
+function onTipoContratoChange(prefixo, tipo) {
+  const idSelectOculto = prefixo === 'c' ? 'forma-pag-select' : 'e-forma-pag';
+  const grpForma = document.getElementById(prefixo + '-grp-forma-simples');
+  const btnInfoTipo = document.getElementById(prefixo + '-btn-info-tipo-contrato');
+  if (btnInfoTipo) btnInfoTipo.style.display = (tipo === 'reserva' || tipo === 'entrega_prazo') ? '' : 'none';
+
+  let valorFinal;
+  if (tipo === 'simples') {
+    if (grpForma) grpForma.style.display = '';
+    valorFinal = document.getElementById(prefixo + '-forma-simples')?.value || 'pix';
+  } else {
+    if (grpForma) grpForma.style.display = 'none';
+    valorFinal = tipo; // 'reserva' ou 'entrega_prazo'
+  }
+  document.getElementById(idSelectOculto).value = valorFinal;
+  if (prefixo === 'c') onFormaPagChange(valorFinal);
+  else onFormaPagEditChange(valorFinal);
+}
+
+function onFormaSimplesChange(prefixo) {
+  const forma = document.getElementById(prefixo + '-forma-simples').value;
+  const idSelectOculto = prefixo === 'c' ? 'forma-pag-select' : 'e-forma-pag';
+  document.getElementById(idSelectOculto).value = forma;
+  const btnInfoForma = document.getElementById(prefixo + '-btn-info-forma-simples');
+  if (btnInfoForma) btnInfoForma.style.display = (forma === 'misto') ? '' : 'none';
+  if (prefixo === 'c') onFormaPagChange(forma);
+  else onFormaPagEditChange(forma);
+}
+
+function mostrarInfoTipoContrato(prefixo) {
+  const tipo = document.getElementById(prefixo + '-tipo-contrato')?.value;
+  if (tipo === 'reserva') infoReservaAntecipada();
+  else if (tipo === 'entrega_prazo') infoEntregaPrazo();
+}
+
 function onFormaPagChange(val) {
   const hint = document.getElementById('hint-reserva');
   if (hint) {
@@ -3492,10 +3579,6 @@ function onFormaPagChange(val) {
         : `Saldo restante cobrado após a entrega da peça. <strong style="color:var(--bordeaux)">Configure o prazo de quitação em Configurações → Formas de pagamento antes de usar esta opção.</strong>`;
     }
   }
-
-  // Mostra ⓘ em Reserva, Entrega ou Misto
-  const btnInfo = document.getElementById('btn-info-forma-pag');
-  if (btnInfo) btnInfo.style.display = (val === 'reserva' || val === 'entrega_prazo' || val === 'misto') ? 'inline' : 'none';
 
   const grpReserva = document.getElementById('grp-pago-reserva');
   const grpEntregaPrazo = document.getElementById('grp-pago-entregaprazo');
@@ -3909,7 +3992,7 @@ function renderGastos() {
           return `<div class="gasto-item" onclick="editarGasto(${g.id})" style="cursor:pointer;opacity:0.55">
             <div>
               <div class="gasto-nome" style="font-style:italic">${g.produto}${g.fornecedor?' · '+g.fornecedor:''}</div>
-              <div class="gasto-meta">${gd}/${gm}/${gy} · ${g.cartao_nome || g.forma}</div>
+              <div class="gasto-meta">${gd}/${gm}/${gy} · ${g.cartao_nome || formaDisplayLabel(g.forma)}</div>
             </div>
             <div class="gasto-valor" style="font-style:italic;font-size:0.72rem;color:var(--muted)">compra</div>
           </div>`;
@@ -3919,7 +4002,7 @@ function renderGastos() {
         return `<div class="gasto-item" onclick="editarGasto(${g.id})" style="cursor:pointer">
           <div>
             <div class="gasto-nome">${nomeExib}${g.fornecedor?' · '+g.fornecedor:''}</div>
-            <div class="gasto-meta">${gd}/${gm}/${gy} · ${g.forma}${metaCartao}</div>
+            <div class="gasto-meta">${gd}/${gm}/${gy} · ${formaDisplayLabel(g.forma)}${metaCartao}</div>
           </div>
           <div class="gasto-valor">− R$ ${g.valor.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
         </div>`;
@@ -5308,7 +5391,7 @@ function renderComparativos() {
     ['Débito',   formas.debito],
     ['Dinheiro', formas.dinheiro],
     ['Crédito',  formas.credito],
-    ['Misto (Pix, Cartão, Dinheiro e/ou Débito)', formas.misto],
+    ['Misto (Pix, Crédito, Dinheiro e/ou Débito)', formas.misto],
     ['Reserva',  formas.reserva],
     ['Entrega+Prazo', formas.entrega_prazo],
   ].filter(function(f){return f[1]>0;}).map(function(f) {
@@ -5718,7 +5801,7 @@ function openDetail(id) {
   const _pixPctDetalhe = Math.round(getDescontoPix() * 100);
   const _dinheiroPctDetalhe = Math.round(getDescontoDinheiro() * 100);
   const _debitoPctDetalhe = Math.round(getDescontoDebito() * 100);
-  const formaTxt = { pix: _pixPctDetalhe > 0 ? `Pix (${_pixPctDetalhe}% desc. noiva)` : 'Pix', debito: _debitoPctDetalhe > 0 ? `Débito (${_debitoPctDetalhe}% desc. noiva)` : 'Débito', dinheiro: _dinheiroPctDetalhe > 0 ? `Dinheiro (${_dinheiroPctDetalhe}% desc. noiva)` : 'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto (Pix, Cartão, Dinheiro e/ou Débito)' };
+  const formaTxt = { pix: _pixPctDetalhe > 0 ? `Pix (${_pixPctDetalhe}% desc. noiva)` : 'Pix', debito: _debitoPctDetalhe > 0 ? `Débito (${_debitoPctDetalhe}% desc. noiva)` : 'Débito', dinheiro: _dinheiroPctDetalhe > 0 ? `Dinheiro (${_dinheiroPctDetalhe}% desc. noiva)` : 'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto (Pix, Crédito, Dinheiro e/ou Débito)' };
   const telLimpo = (c.telefone||'').replace(/\D/g,'');
   const telFormatado = c.telefoneInternacional ? (c.telefone || '') : formatarTelefone(c.telefone || '');
   const linkWaBtn = telLimpo ? `javascript:abrirWhatsBusiness('${telLimpo}', null, ${c.telefoneInternacional ? 'true' : 'false'})` : '';
@@ -5737,7 +5820,7 @@ function openDetail(id) {
       const temTaxa = Math.abs(bruto - liquido) > 0.01;
       const parc = p.parcelas ? ` ${p.parcelas}×` : '';
       return `<div class="detail-row" style="font-size:0.78rem">
-        <span class="dl">${fmtData(p.data)} · ${p.forma||'—'}${parc}</span>
+        <span class="dl">${fmtData(p.data)} · ${formaDisplayLabel(p.forma)||'—'}${parc}</span>
         <span class="dv" style="display:flex;align-items:center;gap:0.5rem">
           <span style="text-align:right;line-height:1.25">
             <span style="color:var(--dark)">R$ ${liquido.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
@@ -5760,7 +5843,7 @@ function openDetail(id) {
     const totalOutros = pago - totalPix - totalCart - totalDin - totalDeb;
     const linhasMisto = [
       ['Em Pix', totalPix],
-      ['Em Cartão', totalCart],
+      ['Em Crédito', totalCart],
       ['Em Dinheiro', totalDin],
       ['Em Débito', totalDeb],
       ['Outras formas', totalOutros]
@@ -5842,7 +5925,7 @@ function openDetail(id) {
           if (isParcelaAbsorvida(nD) && taxaD > 0) {
             const taxaVal = round2(base * taxaD);
             const pct = Math.round(taxaD * 10000) / 100;
-            linhas += `<div class="detail-row"><span class="dl" style="color:var(--muted)">Cartão ${nD}× (${pct}%)</span><span class="dv" style="color:var(--bordeaux)">− ${fmtR(taxaVal)}</span></div>`;
+            linhas += `<div class="detail-row"><span class="dl" style="color:var(--muted)">Crédito ${nD}× (${pct}%)</span><span class="dv" style="color:var(--bordeaux)">− ${fmtR(taxaVal)}</span></div>`;
           }
         }
         // Misto: sem linha de taxa (Pix e Cartão entram pelo valor cheio)
@@ -6071,6 +6154,18 @@ function abrirEdicaoContrato(id) {
   document.getElementById('e-envio').value = c.envio || 'Correios';
   document.getElementById('e-status').value = c.status || 'Reserva';
   document.getElementById('e-forma-pag').value = c.formaPag || 'pix';
+  {
+    const fpAtual = c.formaPag || 'pix';
+    const ehReservaOuEntrega = (fpAtual === 'reserva' || fpAtual === 'entrega_prazo');
+    document.getElementById('e-tipo-contrato').value = ehReservaOuEntrega ? fpAtual : 'simples';
+    document.getElementById('e-forma-simples').value = ehReservaOuEntrega ? 'pix' : fpAtual;
+    const grpFormaSimplesE = document.getElementById('e-grp-forma-simples');
+    if (grpFormaSimplesE) grpFormaSimplesE.style.display = ehReservaOuEntrega ? 'none' : '';
+    const btnInfoTipoE = document.getElementById('e-btn-info-tipo-contrato');
+    if (btnInfoTipoE) btnInfoTipoE.style.display = ehReservaOuEntrega ? '' : 'none';
+    const btnInfoFormaE = document.getElementById('e-btn-info-forma-simples');
+    if (btnInfoFormaE) btnInfoFormaE.style.display = (fpAtual === 'misto') ? '' : 'none';
+  }
   document.getElementById('e-desconto').value = c.desconto || '';
   document.getElementById('e-acrescimo').value = c.acrescimo || '';
 
@@ -6432,7 +6527,7 @@ function _renderModalPagamentoPeca() {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:1rem" id="mpp-formas">
           <div class="filter-chip" onclick="_selecionarFormaPagamentoPeca('Pix')" data-forma="Pix" style="text-align:center">Pix</div>
           <div class="filter-chip" onclick="_selecionarFormaPagamentoPeca('Débito')" data-forma="Débito" style="text-align:center">Débito</div>
-          <div class="filter-chip" onclick="_selecionarFormaPagamentoPeca('Cartão')" data-forma="Cartão" style="text-align:center">Cartão</div>
+          <div class="filter-chip" onclick="_selecionarFormaPagamentoPeca('Cartão')" data-forma="Cartão" style="text-align:center">Crédito</div>
           <div class="filter-chip" onclick="_selecionarFormaPagamentoPeca('Dinheiro')" data-forma="Dinheiro" style="text-align:center">Dinheiro</div>
         </div>
         <div id="mpp-grp-parcelas" style="display:none;margin-bottom:1rem">
@@ -6915,7 +7010,7 @@ function openNovoPagamento(contratoId) {
   const pago = totalPago(c);
   const saldo = round2(vap - pago);
   const fmtV = v => v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const _formaLabelPag = { pix:'Pix', debito:'Débito', dinheiro:'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto (Pix, Cartão, Dinheiro e/ou Débito)' };
+  const _formaLabelPag = { pix:'Pix', debito:'Débito', dinheiro:'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto (Pix, Crédito, Dinheiro e/ou Débito)' };
   document.getElementById('pag-info').innerHTML = `<strong>${c.nome}</strong><br>Total: R$ ${fmtV(vap)} · Pago: R$ ${fmtV(pago)} · <strong style="color:var(--brown)">Saldo: R$ ${fmtV(saldo)}</strong><br><span style="color:var(--muted)">Forma: ${_formaLabelPag[c.formaPag]||c.formaPag}</span>`;
   const h = new Date();
   const hStr = `${h.getFullYear()}-${String(h.getMonth()+1).padStart(2,'0')}-${String(h.getDate()).padStart(2,'0')}`;
@@ -7015,7 +7110,7 @@ function atualizarPreviewPag() {
     const descontoValor = parseFloat(document.getElementById('pag-cartao-desc-valor')?.value) || 0;
     const r = calcCartao(valor, descontoAtivo, descontoTipo, descontoValor, parc);
     const descTxt = descontoAtivo && descontoValor > 0
-      ? ` — desconto de ${descontoTipo === 'valor' ? fmt(descontoValor) : descontoValor + '%'}, cobrado ${fmt(r.bruto)} no cartão`
+      ? ` — desconto de ${descontoTipo === 'valor' ? fmt(descontoValor) : descontoValor + '%'}, cobrado ${fmt(r.bruto)} no crédito`
       : '';
     if (r.absorvido && r.taxa > 0) {
       el.textContent = `→ entra no caixa: ${fmt(r.liquido)} (após taxa ${(r.taxa*100).toFixed(2).replace('.',',')}% absorvida por você${descTxt})`;
@@ -7088,7 +7183,7 @@ async function excluirPagamento(contratoId, idx) {
   mostrarConfirm({
     emoji: '🗑️',
     titulo: 'Excluir pagamento?',
-    mensagem: `${p.forma||''}${parc} — R$ ${valFmt} será removido do histórico.`,
+    mensagem: `${formaDisplayLabel(p.forma)||''}${parc} — R$ ${valFmt} será removido do histórico.`,
     txtConfirmar: 'Excluir',
     onConfirmar: async () => {
       const novosPags = c.pagamentos.filter((_, i) => i !== idx);
@@ -7293,7 +7388,7 @@ const CUSTOS_DEFAULT = {
     { id: 'credito',  label: 'Crédito',              ativa: true,  tipo: 'credito',  taxa: 0,   desconto: false, absorvido: false, obs: '' },
     { id: 'reserva',  label: 'Reserva antecipada',   ativa: true,  tipo: 'entrada',  taxa: 0,   desconto: false, absorvido: false, obs: 'Entrada mínima, restante depois' },
     { id: 'entrega_prazo', label: 'Entrada + saldo na entrega', ativa: true, tipo: 'entrada', taxa: 0, desconto: false, absorvido: false, obs: 'Entrada livre, saldo cobrado após a entrega' },
-    { id: 'misto',    label: 'Misto (Pix, Cartão, Dinheiro e/ou Débito)', ativa: true,  tipo: 'misto',    taxa: 0,   desconto: false, absorvido: false, obs: '' },
+    { id: 'misto',    label: 'Misto (Pix, Crédito, Dinheiro e/ou Débito)', ativa: true,  tipo: 'misto',    taxa: 0,   desconto: false, absorvido: false, obs: '' },
   ],
   parcelas: [
     { n: 1,  taxa: 0, absorvido: false },
@@ -7386,8 +7481,8 @@ async function carregarCustosSupabase() {
       }
       // Atualiza o label do Misto para o texto completo (migração de configs antigas salvas com label curto/desatualizado)
       const idxMistoLabel = custosConfig.formasPag.findIndex(f => f.id === 'misto');
-      if (idxMistoLabel >= 0 && custosConfig.formasPag[idxMistoLabel].label !== 'Misto (Pix, Cartão, Dinheiro e/ou Débito)') {
-        custosConfig.formasPag[idxMistoLabel].label = 'Misto (Pix, Cartão, Dinheiro e/ou Débito)';
+      if (idxMistoLabel >= 0 && custosConfig.formasPag[idxMistoLabel].label !== 'Misto (Pix, Crédito, Dinheiro e/ou Débito)') {
+        custosConfig.formasPag[idxMistoLabel].label = 'Misto (Pix, Crédito, Dinheiro e/ou Débito)';
       }
 
       // Garante que parcelas tem todas as 12 faixas (mescla com o que está salvo)
@@ -7521,6 +7616,12 @@ function calcLiquidoComDesconto(bruto, forma, aplicarDesconto) {
 // Cartão: desconto opcional (R$ ou %) decidido na hora do pagamento, sem taxa padrão configurada.
 // O desconto reduz o que é cobrado no cartão da cliente PRIMEIRO; a taxa/absorção da parcela se
 // aplica DEPOIS, sobre esse valor já reduzido — refletindo o que de fato sobra pro ateliê.
+// Traduz o rótulo de exibição: o dado gravado continua "Cartão" (compatibilidade com tudo já
+// salvo), mas na tela mostramos "Crédito" — deixa Débito e Crédito com nomes paralelos.
+function formaDisplayLabel(forma) {
+  return forma === 'Cartão' ? 'Crédito' : forma;
+}
+
 function calcCartao(valorReferencia, descontoAtivo, descontoTipo, descontoValor, parcelas) {
   const ref = round2(parseFloat(valorReferencia) || 0);
   let bruto = ref;
@@ -7918,7 +8019,7 @@ function exportarDadosPDF() {
   const rowsC = contratos.slice().sort((a,b)=>(b.contrato||'').localeCompare(a.contrato||'')).map(c => {
     const saldo = round2(calcValorAPagar(c) - totalPago(c));
     const situacao = saldo <= 0.01 ? 'Quitada ✓' : totalPago(c) > 0 ? 'Entrada paga' : 'Sem pagamento';
-    const formaLabel = { pix:'Pix', debito:'Débito', dinheiro:'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto (Pix, Cartão, Dinheiro e/ou Débito)' };
+    const formaLabel = { pix:'Pix', debito:'Débito', dinheiro:'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto (Pix, Crédito, Dinheiro e/ou Débito)' };
     return `<tr>
       <td>${esc(c.nome)}</td>
       <td>${fmtD(c.contrato)}</td>
@@ -7935,7 +8036,7 @@ function exportarDadosPDF() {
     (Array.isArray(c.pagamentos) ? c.pagamentos : []).map(p => `<tr>
       <td>${esc(c.nome)}</td>
       <td>${fmtD(p.data)}</td>
-      <td>${esc(p.forma||'—')}</td>
+      <td>${esc(formaDisplayLabel(p.forma)||'—')}</td>
       <td style="text-align:right">${fmtR(p.bruto??p.valor)}</td>
       <td style="text-align:right">${fmtR(p.valor)}</td>
       <td>${esc(p.status||'Realizado')}</td>
@@ -7947,7 +8048,7 @@ function exportarDadosPDF() {
     <td>${fmtD(g.data)}</td>
     <td>${esc(g.produto||'—')}</td>
     <td>${esc(g.fornecedor||'—')}</td>
-    <td>${esc(g.forma||'—')}</td>
+    <td>${esc(formaDisplayLabel(g.forma)||'—')}</td>
     <td style="text-align:right">${fmtR(g.valor)}</td>
   </tr>`).join('');
   const totalG = gastos.reduce((s,g)=>s+(parseFloat(g.valor)||0),0);
@@ -8519,7 +8620,7 @@ function renderPrecCard(p, d, valorHora, custoFixoHora, cardIdx) {
         <span class="val" id="prec-pix-${p.id}">${fmtR(r.precoPix)}</span>
       </div>
       <div class="prec-res-row">
-        <span class="lbl">Preço Cartão</span>
+        <span class="lbl">Preço Crédito</span>
         <span class="val" id="prec-cartao-${p.id}">${fmtR(r.precoCartao)}</span>
       </div>
 
@@ -8538,7 +8639,7 @@ function renderPrecCard(p, d, valorHora, custoFixoHora, cardIdx) {
         <span class="val" style="color:var(--sage)" id="prec-lucro-pix-${p.id}">${fmtR((d.precoVenda > 0 ? d.precoVenda : r.precoCalc) * (1 - r.tarifaPix) - r.custoTotalReal)}</span>
       </div>
       <div class="prec-res-row">
-        <span class="lbl" style="color:var(--sage)">Lucro no Cartão</span>
+        <span class="lbl" style="color:var(--sage)">Lucro no Crédito</span>
         <span class="val" style="color:var(--sage)" id="prec-lucro-cartao-${p.id}">${fmtR((d.precoVenda > 0 ? d.precoVenda : r.precoCalc) * (1 - r.taxaRefCartao) - r.custoTotalReal)}</span>
       </div>
 
@@ -8918,7 +9019,7 @@ function mostrarInfoPrecoVenda() {
       <div style="font-size:1rem;font-weight:600;color:var(--dark);margin-bottom:0.8rem">💰 Preço de venda</div>
       <div style="font-size:0.82rem;color:var(--muted);line-height:1.6">
         É o valor final que você vai divulgar e cobrar da cliente — o que aparece na sua tabela de produtos.<br><br>
-        Use os preços calculados acima (Markup/Margem, Pix e Cartão) como referência, e defina aqui o valor que faz sentido para o seu posicionamento e mercado.
+        Use os preços calculados acima (Markup/Margem, Pix e Crédito) como referência, e defina aqui o valor que faz sentido para o seu posicionamento e mercado.
       </div>
       <button onclick="this.closest('div[style*=fixed]').remove()"
         style="width:100%;margin-top:1.2rem;padding:0.7rem;border:none;border-radius:10px;background:var(--brown);color:white;font-size:0.88rem;font-weight:600;cursor:pointer">
@@ -9150,7 +9251,7 @@ function simularMargem(pecaId, margemVal) {
   const cor = lucro >= 0 ? 'var(--sage)' : 'var(--bordeaux)';
   const aviso = lucro < 0 ? ` <span style="font-size:0.7rem;color:var(--bordeaux)">⚠ Prejuízo!</span>` : '';
 
-  el.innerHTML = `<span style="color:${cor}"><strong>Cartão: ${fmt(r.precoCartao)}</strong> · Pix: ${fmt(r.precoBase)} · lucro ${fmt(lucro)}</span>${aviso}`;
+  el.innerHTML = `<span style="color:${cor}"><strong>Crédito: ${fmt(r.precoCartao)}</strong> · Pix: ${fmt(r.precoBase)} · lucro ${fmt(lucro)}</span>${aviso}`;
 }
 
 
@@ -9960,9 +10061,9 @@ function mostrarInfoTarifaPix() {
 
 function mostrarInfoParcelaRef() {
   _mostrarInfoModal('Parcela de referência para preço cartão',
-    'Define qual parcela do cartão será usada para calcular o Preço Cartão exibido no card de cada peça.<br><br>' +
-    'Exemplo: se você escolher 3× e a taxa de 3× for absorvida pelo atelier, o Preço Cartão já virá com essa taxa embutida — é o valor que você cobra da cliente na maquininha.<br><br>' +
-    'Se a taxa de 3× for repassada à cliente, o Preço Cartão exibido será igual ao Preço Markup/Margem — a taxa fica por conta da cliente na maquininha.');
+    'Define qual parcela do crédito será usada para calcular o Preço Crédito exibido no card de cada peça.<br><br>' +
+    'Exemplo: se você escolher 3× e a taxa de 3× for absorvida pelo atelier, o Preço Crédito já virá com essa taxa embutida — é o valor que você cobra da cliente na maquininha.<br><br>' +
+    'Se a taxa de 3× for repassada à cliente, o Preço Crédito exibido será igual ao Preço Markup/Margem — a taxa fica por conta da cliente na maquininha.');
 }
 
 function infoTicketMedio() {
@@ -10033,7 +10134,7 @@ function infoReservaAntecipada() {
   _mostrarInfoModal('Reserva antecipada', [
     'Modalidade com pagamento dividido em <b>entrada + saldo</b>.',
     `<br><br>A cliente paga um valor mínimo de entrada para reservar a data, e quita o restante da forma que preferir — ${txtPrazo}.`,
-    '<br><br>A forma de pagamento (Pix, Cartão, Dinheiro ou Débito) é escolhida em cada pagamento. Por padrão, Reserva não aplica desconto — mas se Pix, Dinheiro ou Débito estiverem selecionados, você pode marcar "Aplicar desconto" quando quiser abrir uma exceção.'
+    '<br><br>A forma de pagamento (Pix, Crédito, Dinheiro ou Débito) é escolhida em cada pagamento. Por padrão, Reserva não aplica desconto — mas se Pix, Dinheiro ou Débito estiverem selecionados, você pode marcar "Aplicar desconto" quando quiser abrir uma exceção.'
   ].join(''));
 }
 
@@ -10045,15 +10146,15 @@ function infoEntregaPrazo() {
   _mostrarInfoModal('Entrada + saldo na entrega', [
     'Modalidade com pagamento dividido em <b>entrada + saldo</b>, mas o prazo de quitação não depende da data do casamento.',
     `<br><br>A cliente paga uma entrada ao fechar o contrato, e quita o restante ${txtPrazo} — ou seja, o prazo só começa a contar quando você marcar a peça como entregue no contrato.`,
-    '<br><br>A forma de pagamento (Pix, Cartão, Dinheiro ou Débito) é escolhida em cada pagamento. Por padrão não aplica desconto — mas se Pix, Dinheiro ou Débito estiverem selecionados, você pode marcar "Aplicar desconto" quando quiser abrir uma exceção.'
+    '<br><br>A forma de pagamento (Pix, Crédito, Dinheiro ou Débito) é escolhida em cada pagamento. Por padrão não aplica desconto — mas se Pix, Dinheiro ou Débito estiverem selecionados, você pode marcar "Aplicar desconto" quando quiser abrir uma exceção.'
   ].join(''));
 }
 
 function infoMisto() {
   _mostrarInfoModal('Misto', [
-    'A cliente paga usando <b>2 ou mais formas</b>: Pix, Cartão, Dinheiro e/ou Débito.',
+    'A cliente paga usando <b>2 ou mais formas</b>: Pix, Crédito, Dinheiro e/ou Débito.',
     '<br><br>Cada parcela é registrada separadamente no histórico de pagamentos.',
-    '<br><br>A taxa do cartão se aplica apenas à parte paga no cartão. Para Pix, Dinheiro e Débito, você escolhe em cada pagamento se aplica o desconto padrão configurado ou não — o padrão vem desmarcado no Misto, mas pode marcar quando quiser dar o desconto.'
+    '<br><br>A taxa do crédito se aplica apenas à parte paga no crédito. Para Pix, Dinheiro e Débito, você escolhe em cada pagamento se aplica o desconto padrão configurado ou não — o padrão vem desmarcado no Misto, mas pode marcar quando quiser dar o desconto.'
   ].join(''));
 }
 
