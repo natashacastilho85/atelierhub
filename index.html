@@ -1304,12 +1304,26 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     </div>
     <div class="field-row">
       <div class="field-group">
-        <label class="field-label">Desconto (R$)</label>
-        <input class="field-input" id="c-desconto" type="number" placeholder="0,00" step="0.01" min="0">
+        <label class="field-label">Desconto</label>
+        <div style="display:flex;gap:0.4rem">
+          <select class="field-input" id="c-desconto-tipo" style="max-width:70px" onchange="atualizarPreviewDescAcresc('c')">
+            <option value="valor">R$</option>
+            <option value="percentual">%</option>
+          </select>
+          <input class="field-input" id="c-desconto" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarPreviewDescAcresc('c')">
+        </div>
+        <div class="field-hint" id="c-desconto-preview" style="font-size:0.68rem;color:var(--muted);margin-top:0.2rem"></div>
       </div>
       <div class="field-group">
-        <label class="field-label">Acréscimo (R$)</label>
-        <input class="field-input" id="c-acrescimo" type="number" placeholder="0,00" step="0.01" min="0">
+        <label class="field-label">Acréscimo</label>
+        <div style="display:flex;gap:0.4rem">
+          <select class="field-input" id="c-acrescimo-tipo" style="max-width:70px" onchange="atualizarPreviewDescAcresc('c')">
+            <option value="valor">R$</option>
+            <option value="percentual">%</option>
+          </select>
+          <input class="field-input" id="c-acrescimo" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarPreviewDescAcresc('c')">
+        </div>
+        <div class="field-hint" id="c-acrescimo-preview" style="font-size:0.68rem;color:var(--muted);margin-top:0.2rem"></div>
       </div>
     </div>
     <div class="field-group">
@@ -1377,7 +1391,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     <div class="field-group" id="grp-desconto-inicial" style="display:none">
       <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
         <input type="checkbox" id="c-aplicar-desconto-inicial" checked style="width:14px;height:14px;accent-color:var(--brown)">
-        Aplicar desconto padrão
+        Aplicar desconto padrão<span id="c-desconto-inicial-pct"></span>
       </label>
     </div>
     <div id="grp-pago-reserva" style="display:none">
@@ -1703,12 +1717,26 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     </div>
     <div class="field-row">
       <div class="field-group">
-        <label class="field-label">Desconto (R$)</label>
-        <input class="field-input" id="e-desconto" type="number" placeholder="0,00" step="0.01" min="0">
+        <label class="field-label">Desconto</label>
+        <div style="display:flex;gap:0.4rem">
+          <select class="field-input" id="e-desconto-tipo" style="max-width:70px" onchange="atualizarPreviewDescAcresc('e')">
+            <option value="valor">R$</option>
+            <option value="percentual">%</option>
+          </select>
+          <input class="field-input" id="e-desconto" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarPreviewDescAcresc('e')">
+        </div>
+        <div class="field-hint" id="e-desconto-preview" style="font-size:0.68rem;color:var(--muted);margin-top:0.2rem"></div>
       </div>
       <div class="field-group">
-        <label class="field-label">Acréscimo (R$)</label>
-        <input class="field-input" id="e-acrescimo" type="number" placeholder="0,00" step="0.01" min="0">
+        <label class="field-label">Acréscimo</label>
+        <div style="display:flex;gap:0.4rem">
+          <select class="field-input" id="e-acrescimo-tipo" style="max-width:70px" onchange="atualizarPreviewDescAcresc('e')">
+            <option value="valor">R$</option>
+            <option value="percentual">%</option>
+          </select>
+          <input class="field-input" id="e-acrescimo" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarPreviewDescAcresc('e')">
+        </div>
+        <div class="field-hint" id="e-acrescimo-preview" style="font-size:0.68rem;color:var(--muted);margin-top:0.2rem"></div>
       </div>
     </div>
     <div id="e-grp-pago-reserva" style="display:none">
@@ -2551,6 +2579,8 @@ function mapContrato(r) {
     pago: parseFloat(r.pago) || 0,
     desconto: parseFloat(r.desconto) || 0,
     acrescimo: parseFloat(r.acrescimo) || 0,
+    descontoMeta: r.desconto_meta || null,
+    acrescimoMeta: r.acrescimo_meta || null,
     cadastro: r.created_at ? r.created_at.slice(0,10) : '',
     telefone: r.telefone || '',
     telefoneInternacional: r.telefone_internacional || false,
@@ -2941,9 +2971,15 @@ function goTabById(tab) {
 function openFab() {
   // Limpa o formulário antes de abrir
   ['c-nome','c-telefone','c-casamento','c-contrato','c-cidade','c-estado',
-   'c-desconto','c-pago','c-pago-pix','c-pago-cartao','c-pago-dinheiro',
+   'c-desconto','c-acrescimo','c-pago','c-pago-pix','c-pago-cartao','c-pago-dinheiro',
    'c-f-noiva','c-f-noivo','c-f-insta','c-f-buque','c-f-cerimonial','c-f-indicacao','c-f-obs-geral'
   ].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('c-desconto-tipo').value = 'valor';
+  document.getElementById('c-acrescimo-tipo').value = 'valor';
+  const cDescPreviewReset = document.getElementById('c-desconto-preview');
+  if (cDescPreviewReset) cDescPreviewReset.textContent = '';
+  const cAcrescPreviewReset = document.getElementById('c-acrescimo-preview');
+  if (cAcrescPreviewReset) cAcrescPreviewReset.textContent = '';
   document.getElementById('c-envio').value = 'Correios';
   document.getElementById('c-status').value = 'Reserva';
   document.getElementById('forma-pag-select').value = 'pix';
@@ -3156,8 +3192,10 @@ async function saveContrato() {
   const telIntlEl = document.getElementById('c-tel-intl');
   const telefoneInternacional = telIntlEl ? telIntlEl.checked : false;
   const formaPag = document.getElementById('forma-pag-select').value;
-  const desconto = round2(parseFloat(document.getElementById('c-desconto').value) || 0);
-  const acrescimo = round2(parseFloat(document.getElementById('c-acrescimo').value) || 0);
+  const descontoTipoDigitado = document.getElementById('c-desconto-tipo')?.value || 'valor';
+  const descontoValorDigitado = document.getElementById('c-desconto').value;
+  const acrescimoTipoDigitado = document.getElementById('c-acrescimo-tipo')?.value || 'valor';
+  const acrescimoValorDigitado = document.getElementById('c-acrescimo').value;
 
   const linhas = document.querySelectorAll('#pecas-selecionadas > div');
   const pecasSel = [];
@@ -3173,6 +3211,11 @@ async function saveContrato() {
     pecasSel.push({ nome: p.nome, valor: precoCalculado, qtd });
     valorBruto += precoCalculado * qtd;
   });
+  valorBruto = round2(valorBruto);
+  const desconto = calcDescAcrescValor(valorBruto, descontoTipoDigitado, descontoValorDigitado);
+  const acrescimo = calcDescAcrescValor(valorBruto, acrescimoTipoDigitado, acrescimoValorDigitado);
+  const descontoMeta = (parseFloat(descontoValorDigitado) || 0) > 0 ? { tipo: descontoTipoDigitado, digitado: parseFloat(descontoValorDigitado) } : null;
+  const acrescimoMeta = (parseFloat(acrescimoValorDigitado) || 0) > 0 ? { tipo: acrescimoTipoDigitado, digitado: parseFloat(acrescimoValorDigitado) } : null;
 
   // Coleta os dados da ficha com os IDs sincronizados
   const presenteVal = _lerPresenteCheckboxes('c-f-presente');
@@ -3197,7 +3240,8 @@ async function saveContrato() {
     const [novoContrato] = await sbInsert('contratos', {
       nome, status, casamento, contrato, cidade, estado, envio, telefone,
       telefone_internacional: telefoneInternacional,
-      forma_pag: formaPag, valor_bruto: valorFinal, desconto, acrescimo, pecas: pecasSel,
+      forma_pag: formaPag, valor_bruto: valorFinal, desconto, acrescimo,
+      desconto_meta: descontoMeta, acrescimo_meta: acrescimoMeta, pecas: pecasSel,
       pagamentos: pagamentosIni, ficha_producao: ficha, presente: presenteVal
     });
     const novoMapeado = mapContrato(novoContrato);
@@ -3431,8 +3475,9 @@ function confirmarPecaNovo(pecaId) {
   const div = document.createElement('div');
   div.style.cssText = 'display:grid;grid-template-columns:1fr 60px 24px;gap:0.4rem;align-items:center';
   // Usa um select com a peça já selecionada + campo de qtd
-  div.innerHTML = `<select class="field-input" style="padding:0.5rem 0.6rem;font-size:0.82rem">${_optsLinhaPeca(pecaId)}</select><input class="field-input" type="number" min="1" value="1" style="padding:0.5rem 0.4rem;text-align:center;font-size:0.82rem"><button type="button" onclick="this.parentElement.remove()" style="background:none;border:none;color:var(--bordeaux);font-size:1.2rem;cursor:pointer;padding:0;line-height:1">×</button>`;
+  div.innerHTML = `<select class="field-input" style="padding:0.5rem 0.6rem;font-size:0.82rem" onchange="atualizarPreviewDescAcresc('c')">${_optsLinhaPeca(pecaId)}</select><input class="field-input" type="number" min="1" value="1" style="padding:0.5rem 0.4rem;text-align:center;font-size:0.82rem" onchange="atualizarPreviewDescAcresc('c')"><button type="button" onclick="this.parentElement.remove(); atualizarPreviewDescAcresc('c');" style="background:none;border:none;color:var(--bordeaux);font-size:1.2rem;cursor:pointer;padding:0;line-height:1">×</button>`;
   container.appendChild(div);
+  atualizarPreviewDescAcresc('c');
 }
 
 function preencherSelectParcelas(selectId, valorSelecionado) {
@@ -3642,10 +3687,25 @@ function onFormaPagChange(val) {
     if (grpEntregaPrazo) grpEntregaPrazo.style.display = 'none';
     if (grpMisto) grpMisto.style.display = 'none';
     if (grpCredito) grpCredito.style.display = 'none';
+    const grpCartaoDescCreditoReset = document.getElementById('c-credito-cartao-desc-grp');
+    if (grpCartaoDescCreditoReset) {
+      grpCartaoDescCreditoReset.style.display = 'none';
+      const chkCCReset = document.getElementById('c-credito-cartao-aplicar-desconto');
+      if (chkCCReset) chkCCReset.checked = false;
+      const tipoCCReset = document.getElementById('c-credito-cartao-desc-tipo');
+      if (tipoCCReset) tipoCCReset.value = 'percentual';
+      const valorCCReset = document.getElementById('c-credito-cartao-desc-valor');
+      if (valorCCReset) valorCCReset.value = '';
+    }
     if (grpDescInicial) {
       grpDescInicial.style.display = (val === 'pix' || val === 'dinheiro' || val === 'debito') ? '' : 'none';
       const chk = document.getElementById('c-aplicar-desconto-inicial');
       if (chk) chk.checked = true;
+      const spanPct = document.getElementById('c-desconto-inicial-pct');
+      if (spanPct) {
+        const taxa = val === 'pix' ? getDescontoPix() : val === 'dinheiro' ? getDescontoDinheiro() : val === 'debito' ? getDescontoDebito() : 0;
+        spanPct.textContent = taxa > 0 ? ` (${Math.round(taxa * 100)}%)` : '';
+      }
     }
   }
 }
@@ -6166,8 +6226,20 @@ function abrirEdicaoContrato(id) {
     const btnInfoFormaE = document.getElementById('e-btn-info-forma-simples');
     if (btnInfoFormaE) btnInfoFormaE.style.display = (fpAtual === 'misto') ? '' : 'none';
   }
-  document.getElementById('e-desconto').value = c.desconto || '';
-  document.getElementById('e-acrescimo').value = c.acrescimo || '';
+  if (c.descontoMeta && c.descontoMeta.tipo) {
+    document.getElementById('e-desconto-tipo').value = c.descontoMeta.tipo;
+    document.getElementById('e-desconto').value = c.descontoMeta.digitado ?? '';
+  } else {
+    document.getElementById('e-desconto-tipo').value = 'valor';
+    document.getElementById('e-desconto').value = c.desconto || '';
+  }
+  if (c.acrescimoMeta && c.acrescimoMeta.tipo) {
+    document.getElementById('e-acrescimo-tipo').value = c.acrescimoMeta.tipo;
+    document.getElementById('e-acrescimo').value = c.acrescimoMeta.digitado ?? '';
+  } else {
+    document.getElementById('e-acrescimo-tipo').value = 'valor';
+    document.getElementById('e-acrescimo').value = c.acrescimo || '';
+  }
 
   // Preencher campos de pagamento conforme forma
   // Pega o "primeiro pagamento" (entrada inicial) — assume que é o que foi gerado no cadastro
@@ -6307,6 +6379,7 @@ function abrirEdicaoContrato(id) {
     div.innerHTML = `<select class="field-input" style="padding:0.5rem 0.6rem;font-size:0.82rem">${opts}</select><input class="field-input" type="number" min="1" value="${p.qtd}" style="padding:0.5rem 0.4rem;text-align:center;font-size:0.82rem" onchange="_qtdPecaEditChange(${linhaId})"><button type="button" onclick="_removerLinhaPecaEdit(${linhaId})" style="background:none;border:none;color:var(--bordeaux);font-size:1.2rem;cursor:pointer;padding:0;line-height:1">×</button>`;
     cont.appendChild(div);
   });
+  atualizarPreviewDescAcresc('e');
 
   closeDrawer('drawer-detail');
   openDrawer('drawer-edit');
@@ -6386,6 +6459,7 @@ function _removerLinhaPecaEdit(linhaId) {
     // Peça adicionada nesta mesma sessão — remove direto, sem confirmação
     delete _eventosPagamentoPecaEdit[linhaId];
     div.remove();
+    atualizarPreviewDescAcresc('e');
     return;
   }
   const nomeSel = div.querySelector('select').selectedOptions[0]?.textContent || 'peça';
@@ -6399,6 +6473,7 @@ function _removerLinhaPecaEdit(linhaId) {
     onConfirmar: () => {
       delete _eventosPagamentoPecaEdit[linhaId];
       div.remove();
+      atualizarPreviewDescAcresc('e');
     }
   });
 }
@@ -6457,6 +6532,7 @@ function _qtdPecaEditChange(linhaId) {
       onConfirmar: () => {
         div.dataset.qtdBase = String(qtdNova);
         div.dataset.valorTotalBase = String(round2(valorPorUnidade * qtdNova));
+        atualizarPreviewDescAcresc('e');
       },
       onCancelar: () => { input.value = qtdBase; }
     });
@@ -6672,6 +6748,7 @@ function _aplicarEventoPecaEdit(linhaId, evento) {
   const valorTotalAnterior = parseFloat(div.dataset.valorTotalBase) || 0;
   div.dataset.valorTotalBase = String(round2(valorTotalAnterior + evento.valorTotalDelta));
   div.dataset.qtdBase = String(qtdAtual);
+  atualizarPreviewDescAcresc('e');
   if (!evento.semPagamento) {
     if (!_eventosPagamentoPecaEdit[linhaId]) _eventosPagamentoPecaEdit[linhaId] = [];
     _eventosPagamentoPecaEdit[linhaId].push({
@@ -6721,6 +6798,11 @@ async function saveEditContrato() {
   const eTelIntlEl2 = document.getElementById('e-tel-intl');
   const telefoneInternacionalEdit = eTelIntlEl2 ? eTelIntlEl2.checked : false;
 
+  const descontoTipoDigitadoE = document.getElementById('e-desconto-tipo')?.value || 'valor';
+  const descontoValorDigitadoE = document.getElementById('e-desconto').value;
+  const acrescimoTipoDigitadoE = document.getElementById('e-acrescimo-tipo')?.value || 'valor';
+  const acrescimoValorDigitadoE = document.getElementById('e-acrescimo').value;
+
   const dados = {
     nome: document.getElementById('e-nome').value,
     telefone: telefoneInternacionalEdit
@@ -6735,8 +6817,6 @@ async function saveEditContrato() {
     entrega: document.getElementById('e-entrega').value || null,
     envio: document.getElementById('e-envio').value,
     status: document.getElementById('e-status').value,
-    desconto: round2(parseFloat(document.getElementById('e-desconto').value) || 0),
-    acrescimo: round2(parseFloat(document.getElementById('e-acrescimo').value) || 0),
     forma_pag: document.getElementById('e-forma-pag').value
   };
 
@@ -6759,6 +6839,10 @@ async function saveEditContrato() {
   dados.pecas = pecasSel;
   valorBruto = round2(valorBruto);
   dados.valor_bruto = valorBruto;
+  dados.desconto = calcDescAcrescValor(valorBruto, descontoTipoDigitadoE, descontoValorDigitadoE);
+  dados.acrescimo = calcDescAcrescValor(valorBruto, acrescimoTipoDigitadoE, acrescimoValorDigitadoE);
+  dados.desconto_meta = (parseFloat(descontoValorDigitadoE) || 0) > 0 ? { tipo: descontoTipoDigitadoE, digitado: parseFloat(descontoValorDigitadoE) } : null;
+  dados.acrescimo_meta = (parseFloat(acrescimoValorDigitadoE) || 0) > 0 ? { tipo: acrescimoTipoDigitadoE, digitado: parseFloat(acrescimoValorDigitadoE) } : null;
 
   // Coleta os dados da ficha na edição
   dados.presente = _lerPresenteCheckboxes('e-f-presente');
@@ -7620,6 +7704,52 @@ function calcLiquidoComDesconto(bruto, forma, aplicarDesconto) {
 // salvo), mas na tela mostramos "Crédito" — deixa Débito e Crédito com nomes paralelos.
 function formaDisplayLabel(forma) {
   return forma === 'Cartão' ? 'Crédito' : forma;
+}
+
+// Desconto/Acréscimo no valor total das peças: pode ser digitado em R$ ou em %. O valor final em
+// R$ é sempre o que fica gravado em c.desconto/c.acrescimo (nada que já usa esses campos muda).
+// Tipo + valor digitado ficam guardados à parte, só pra reconstruir certo ao reabrir a edição —
+// mesmo esquema já usado pro desconto do Cartão.
+function calcDescAcrescValor(valorBruto, tipo, valorDigitado) {
+  const vd = parseFloat(valorDigitado) || 0;
+  return tipo === 'percentual' ? round2(valorBruto * (vd / 100)) : round2(vd);
+}
+
+function calcValorBrutoAtual(prefixo) {
+  const containerId = prefixo === 'c' ? 'pecas-selecionadas' : 'e-pecas-selecionadas';
+  const linhas = document.querySelectorAll('#' + containerId + ' > div');
+  let total = 0;
+  linhas.forEach(linha => {
+    const sel = linha.querySelector('select');
+    const qtdEl = linha.querySelector('input[type=number]');
+    if (!sel || !qtdEl) return;
+    const pid = parseInt(sel.value);
+    const p = pecas.find(x => x.id === pid);
+    if (!p) return;
+    const qtd = parseInt(qtdEl.value) || 1;
+    if (prefixo === 'c') {
+      total += (getPrecoPecaCalculado(pid) || 0) * qtd;
+    } else {
+      total += parseFloat(linha.dataset.valorTotalBase) || 0;
+    }
+  });
+  return round2(total);
+}
+
+function atualizarPreviewDescAcresc(prefixo) {
+  const valorBruto = calcValorBrutoAtual(prefixo);
+  ['desconto', 'acrescimo'].forEach(campo => {
+    const tipo = document.getElementById(prefixo + '-' + campo + '-tipo')?.value || 'valor';
+    const valorDigitado = document.getElementById(prefixo + '-' + campo)?.value;
+    const preview = document.getElementById(prefixo + '-' + campo + '-preview');
+    if (!preview) return;
+    if (tipo === 'percentual' && valorDigitado) {
+      const final = calcDescAcrescValor(valorBruto, tipo, valorDigitado);
+      preview.textContent = `= R$ ${final.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+    } else {
+      preview.textContent = '';
+    }
+  });
 }
 
 function calcCartao(valorReferencia, descontoAtivo, descontoTipo, descontoValor, parcelas) {
