@@ -42,9 +42,21 @@ function addBusinessDays(dateStr, days) {
   return d.toISOString().split('T')[0];
 }
 
-function totalPago(pagamentos) {
-  if (!Array.isArray(pagamentos)) return 0;
-  return pagamentos.reduce((s, p) => s + (parseFloat(p.bruto ?? p.valor) || 0), 0);
+function totalPago(c) {
+  // Precisa bater exatamente com a mesma função no app (index.html): Pix, Dinheiro e Débito
+  // usam o líquido (a cliente pagou menos, por causa do desconto); Cartão usa o bruto (a
+  // cliente é cobrada o valor cheio, a taxa da maquininha é custo do ateliê, não da cliente).
+  // Assinatura igual à do app: recebe o contrato inteiro, não só o array de pagamentos —
+  // permite o fallback abaixo pro campo legado 'pago', pra contratos retroativos/fora do
+  // fluxo padrão que ainda não tenham nenhum pagamento no array.
+  if (Array.isArray(c?.pagamentos) && c.pagamentos.length) {
+    return c.pagamentos.reduce((s, p) => {
+      const usaLiquido = p.forma === 'Pix' || p.forma === 'Dinheiro' || p.forma === 'Débito';
+      const valor = usaLiquido ? p.valor : (p.bruto ?? p.valor);
+      return s + (parseFloat(valor) || 0);
+    }, 0);
+  }
+  return parseFloat(c?.pago) || 0;
 }
 
 // ── Envia push para todos os dispositivos do usuário ──
@@ -104,7 +116,7 @@ async function verificarNotificacoes() {
 
   const { data: contratos, error } = await supabase
     .from('contratos')
-    .select('id, casamento, status, forma_pag, pagamentos, valor_bruto, chegada, entrega, nome, user_id')
+    .select('id, casamento, status, forma_pag, pagamentos, pago, valor_bruto, acrescimo, desconto, chegada, entrega, nome, user_id')
     .neq('status', 'Cancelado');
 
   if (error) { console.error('[notif] Erro ao buscar contratos:', error); return; }
@@ -176,7 +188,8 @@ async function verificarNotificacoes() {
       if (cfg) {
         const diasAntes = cfg.prazo + cfg.notifDias;
         if (addDays(cas, -diasAntes) === today) {
-          const saldo = (parseFloat(c.valor_bruto) || 0) - totalPago(c.pagamentos);
+          const baseC = (parseFloat(c.valor_bruto) || 0) + (parseFloat(c.acrescimo) || 0) - (parseFloat(c.desconto) || 0);
+          const saldo = baseC - totalPago(c);
           if (saldo > 0.01)
             await disparar(uid, `reserva-${id}`, '💰 Lembrete reserva',
               `${c.nome} — saldo de R$${saldo.toFixed(2).replace('.', ',')} em aberto`, id);
@@ -192,7 +205,8 @@ async function verificarNotificacoes() {
       if (cfgE) {
         const dataEntrega = c.entrega.split('T')[0];
         if (addDays(dataEntrega, cfgE.diasAviso) === today) {
-          const saldo = (parseFloat(c.valor_bruto) || 0) - totalPago(c.pagamentos);
+          const baseC2 = (parseFloat(c.valor_bruto) || 0) + (parseFloat(c.acrescimo) || 0) - (parseFloat(c.desconto) || 0);
+          const saldo = baseC2 - totalPago(c);
           if (saldo > 0.01)
             await disparar(uid, `entregaprazo-${id}`, '💰 Lembrete de saldo',
               `${c.nome} — saldo de R$${saldo.toFixed(2).replace('.', ',')} em aberto`, id);
