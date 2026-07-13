@@ -1331,9 +1331,6 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         <button onclick="mostrarInfoTipoContrato('c')" id="c-btn-info-tipo-contrato" style="background:none;border:none;padding:0;cursor:pointer;font-size:0.8rem;color:var(--muted-light);display:none">ⓘ</button>
       </label>
       <select class="field-input" id="c-tipo-contrato" onchange="onTipoContratoChange('c', this.value)">
-        <option value="simples">Pagamento total imediato</option>
-        <option value="reserva">Reserva antecipada</option>
-        <option value="entrega_prazo">Entrada + Saldo na entrega</option>
       </select>
       <div class="field-hint" id="hint-reserva">
         Mínimo de R$ 300 na entrada. Saldo restante pago da forma que a noiva preferir.
@@ -1347,11 +1344,6 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         <button onclick="infoMisto()" id="c-btn-info-forma-simples" style="background:none;border:none;padding:0;cursor:pointer;font-size:0.8rem;color:var(--muted-light);display:none">ⓘ</button>
       </label>
       <select class="field-input" id="c-forma-simples" onchange="onFormaSimplesChange('c')">
-        <option value="pix">Pix</option>
-        <option value="credito">Crédito</option>
-        <option value="dinheiro">Dinheiro</option>
-        <option value="debito">Débito</option>
-        <option value="misto">Misto</option>
       </select>
     </div>
     <div style="display:none">
@@ -1369,25 +1361,6 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       <label class="field-label">Parcelas no crédito</label>
       <select class="field-input" id="c-credito-parc"></select>
     </div>
-    <div class="field-group" id="c-credito-cartao-desc-grp" style="display:none">
-      <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
-        <input type="checkbox" id="c-credito-cartao-aplicar-desconto" onchange="atualizarCartaoDescUI('c-credito-cartao')" style="width:14px;height:14px;accent-color:var(--brown)">
-        Aplicar desconto
-      </label>
-      <div class="field-row" id="c-credito-cartao-desc-campos" style="display:none;margin-top:0.4rem">
-        <div class="field-group" style="max-width:75px">
-          <label class="field-label">Tipo</label>
-          <select class="field-input" id="c-credito-cartao-desc-tipo">
-            <option value="percentual">%</option>
-            <option value="valor">R$</option>
-          </select>
-        </div>
-        <div class="field-group">
-          <label class="field-label">Valor do desconto</label>
-          <input class="field-input" id="c-credito-cartao-desc-valor" type="number" placeholder="0" step="0.01" min="0">
-        </div>
-      </div>
-    </div>
     <div class="field-group" id="grp-desconto-inicial" style="display:none">
       <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
         <input type="checkbox" id="c-aplicar-desconto-inicial" checked style="width:14px;height:14px;accent-color:var(--brown)">
@@ -1398,12 +1371,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       <div class="field-row">
         <div class="field-group">
           <label class="field-label">Forma da entrada</label>
-          <select class="field-input" id="c-reserva-forma" onchange="onReservaFormaChange('c')">
-            <option value="Pix">Pix</option>
-            <option value="Cartão">Crédito</option>
-            <option value="Dinheiro">Dinheiro</option>
-            <option value="Débito">Débito</option>
-          </select>
+          <select class="field-input" id="c-reserva-forma" onchange="onReservaFormaChange('c')"></select>
         </div>
         <div class="field-group" id="c-reserva-grp-parc" style="display:none">
           <label class="field-label">Parcelas</label>
@@ -1426,12 +1394,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       <div class="field-row">
         <div class="field-group">
           <label class="field-label">Forma da entrada</label>
-          <select class="field-input" id="c-entregaprazo-forma" onchange="onEntregaPrazoFormaChange('c')">
-            <option value="Pix">Pix</option>
-            <option value="Cartão">Crédito</option>
-            <option value="Dinheiro">Dinheiro</option>
-            <option value="Débito">Débito</option>
-          </select>
+          <select class="field-input" id="c-entregaprazo-forma" onchange="onEntregaPrazoFormaChange('c')"></select>
         </div>
         <div class="field-group" id="c-entregaprazo-grp-parc" style="display:none">
           <label class="field-label">Parcelas</label>
@@ -1452,11 +1415,11 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     </div>
     <div id="grp-pago-misto" style="display:none">
       <div class="field-row">
-        <div class="field-group">
+        <div class="field-group" id="c-misto-pix-grp-campo">
           <label class="field-label">Pago em Pix (R$)</label>
           <input class="field-input" id="c-pago-pix" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('c')">
         </div>
-        <div class="field-group">
+        <div class="field-group" id="c-misto-cartao-grp-campo">
           <label class="field-label">Pago em Crédito (R$)</label>
           <input class="field-input" id="c-pago-cartao" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('c')">
         </div>
@@ -1468,13 +1431,13 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         </label>
       </div>
 
-      <div class="field-row">
+      <div class="field-row" id="c-misto-cartao-grp-parc">
         <div class="field-group">
           <label class="field-label">Parcelas no crédito</label>
           <select class="field-input" id="c-pago-cartao-parc">
           </select>
         </div>
-        <div class="field-group">
+        <div class="field-group" id="c-misto-dinheiro-grp-campo">
           <label class="field-label">Pago em Dinheiro (R$)</label>
           <input class="field-input" id="c-pago-dinheiro" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('c')">
         </div>
@@ -1505,7 +1468,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         </label>
       </div>
 
-      <div class="field-row">
+      <div class="field-row" id="c-misto-debito-grp-campo">
         <div class="field-group">
           <label class="field-label">Pago em Débito (R$)</label>
           <input class="field-input" id="c-pago-debito" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('c')">
@@ -1687,9 +1650,6 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         <button onclick="mostrarInfoTipoContrato('e')" id="e-btn-info-tipo-contrato" style="background:none;border:none;padding:0;cursor:pointer;font-size:0.8rem;color:var(--muted-light);display:none">ⓘ</button>
       </label>
       <select class="field-input" id="e-tipo-contrato" onchange="onTipoContratoChange('e', this.value)">
-        <option value="simples">Pagamento total imediato</option>
-        <option value="reserva">Reserva antecipada</option>
-        <option value="entrega_prazo">Entrada + Saldo na entrega</option>
       </select>
     </div>
     <div class="field-group" id="e-grp-forma-simples">
@@ -1697,11 +1657,6 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         <button onclick="infoMisto()" id="e-btn-info-forma-simples" style="background:none;border:none;padding:0;cursor:pointer;font-size:0.8rem;color:var(--muted-light);display:none">ⓘ</button>
       </label>
       <select class="field-input" id="e-forma-simples" onchange="onFormaSimplesChange('e')">
-        <option value="pix">Pix</option>
-        <option value="credito">Crédito</option>
-        <option value="dinheiro">Dinheiro</option>
-        <option value="debito">Débito</option>
-        <option value="misto">Misto</option>
       </select>
     </div>
     <div style="display:none">
@@ -1743,12 +1698,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       <div class="field-row">
         <div class="field-group">
           <label class="field-label">Forma da entrada</label>
-          <select class="field-input" id="e-reserva-forma" onchange="onReservaFormaChange('e')">
-            <option value="Pix">Pix</option>
-            <option value="Cartão">Crédito</option>
-            <option value="Dinheiro">Dinheiro</option>
-            <option value="Débito">Débito</option>
-          </select>
+          <select class="field-input" id="e-reserva-forma" onchange="onReservaFormaChange('e')"></select>
         </div>
         <div class="field-group" id="e-reserva-grp-parc" style="display:none">
           <label class="field-label">Parcelas</label>
@@ -1771,12 +1721,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       <div class="field-row">
         <div class="field-group">
           <label class="field-label">Forma da entrada</label>
-          <select class="field-input" id="e-entregaprazo-forma" onchange="onEntregaPrazoFormaChange('e')">
-            <option value="Pix">Pix</option>
-            <option value="Cartão">Crédito</option>
-            <option value="Dinheiro">Dinheiro</option>
-            <option value="Débito">Débito</option>
-          </select>
+          <select class="field-input" id="e-entregaprazo-forma" onchange="onEntregaPrazoFormaChange('e')"></select>
         </div>
         <div class="field-group" id="e-entregaprazo-grp-parc" style="display:none">
           <label class="field-label">Parcelas</label>
@@ -1797,11 +1742,11 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     </div>
     <div id="e-grp-pago-misto" style="display:none">
       <div class="field-row">
-        <div class="field-group">
+        <div class="field-group" id="e-misto-pix-grp-campo">
           <label class="field-label">Pago em Pix (R$)</label>
           <input class="field-input" id="e-pago-pix" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('e')">
         </div>
-        <div class="field-group">
+        <div class="field-group" id="e-misto-cartao-grp-campo">
           <label class="field-label">Pago em Crédito (R$)</label>
           <input class="field-input" id="e-pago-cartao" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('e')">
         </div>
@@ -1813,13 +1758,13 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         </label>
       </div>
 
-      <div class="field-row">
+      <div class="field-row" id="e-misto-cartao-grp-parc">
         <div class="field-group">
           <label class="field-label">Parcelas no crédito</label>
           <select class="field-input" id="e-pago-cartao-parc">
           </select>
         </div>
-        <div class="field-group">
+        <div class="field-group" id="e-misto-dinheiro-grp-campo">
           <label class="field-label">Pago em Dinheiro (R$)</label>
           <input class="field-input" id="e-pago-dinheiro" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('e')">
         </div>
@@ -1850,7 +1795,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         </label>
       </div>
 
-      <div class="field-row">
+      <div class="field-row" id="e-misto-debito-grp-campo">
         <div class="field-group">
           <label class="field-label">Pago em Débito (R$)</label>
           <input class="field-input" id="e-pago-debito" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('e')">
@@ -1924,12 +1869,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     <div class="field-row">
       <div class="field-group">
         <label class="field-label">Forma</label>
-        <select class="field-input" id="pag-forma" onchange="atualizarPagFormaUI();atualizarPreviewPag()">
-          <option value="Pix">Pix</option>
-          <option value="Cartão">Crédito</option>
-          <option value="Débito">Débito</option>
-          <option value="Dinheiro">Dinheiro</option>
-        </select>
+        <select class="field-input" id="pag-forma" onchange="atualizarPagFormaUI();atualizarPreviewPag()"></select>
       </div>
       <div class="field-group" id="pag-parc-grp" style="display:none">
         <label class="field-label">Parcelas</label>
@@ -2772,7 +2712,7 @@ async function initApp() {
   carregarBadgeNotif();
   carregarBadgeTarefas();
   // Configura visibilidade inicial do form de novo contrato
-  if (typeof onFormaPagChange === 'function') onFormaPagChange('pix');
+  if (typeof onFormaPagChange === 'function') onFormaPagChange(typeof getPrimeiraFormaAtivaMinuscula === 'function' ? getPrimeiraFormaAtivaMinuscula() : 'pix');
   // Verifica assinatura ou trial — bloqueia acesso se necessário
   await verificarAssinatura();
   if (_falhouCarregamentoInicial) {
@@ -2982,9 +2922,14 @@ function openFab() {
   if (cAcrescPreviewReset) cAcrescPreviewReset.textContent = '';
   document.getElementById('c-envio').value = 'Correios';
   document.getElementById('c-status').value = 'Reserva';
-  document.getElementById('forma-pag-select').value = 'pix';
+  const primeiraFormaAtiva = getPrimeiraFormaAtivaMinuscula();
+  document.getElementById('c-tipo-contrato').innerHTML = getOpcoesTipoContratoHTML('simples');
   document.getElementById('c-tipo-contrato').value = 'simples';
-  document.getElementById('c-forma-simples').value = 'pix';
+  document.getElementById('c-forma-simples').innerHTML = getOpcoesFormaSimplesHTML(primeiraFormaAtiva);
+  document.getElementById('c-forma-simples').value = primeiraFormaAtiva;
+  document.getElementById('c-reserva-forma').innerHTML = getOpcoesFormaPagamentoHTML(null);
+  document.getElementById('c-entregaprazo-forma').innerHTML = getOpcoesFormaPagamentoHTML(null);
+  document.getElementById('forma-pag-select').value = primeiraFormaAtiva;
   const grpFormaSimplesReset = document.getElementById('c-grp-forma-simples');
   if (grpFormaSimplesReset) grpFormaSimplesReset.style.display = '';
   const btnInfoTipoReset = document.getElementById('c-btn-info-tipo-contrato');
@@ -2994,7 +2939,7 @@ function openFab() {
   document.getElementById('c-f-iniciais').value = 'Não';
   _preencherSelectPresente('c-f-presente');
   document.getElementById('pecas-selecionadas').innerHTML = '';
-  onFormaPagChange('pix');
+  onFormaPagChange(primeiraFormaAtiva);
   const celIntl = document.getElementById('c-tel-intl');
   if (celIntl) celIntl.checked = false;
   toggleTelefoneIntl('c', false);
@@ -3277,14 +3222,10 @@ function gerarPagamentosIniciais(forma, valor, dataContrato, desconto) {
   } else if (forma === 'credito') {
     const parcEl = document.getElementById('c-credito-parc');
     const n = parcEl ? (parseInt(parcEl.value) || 1) : 1;
-    const chkCC = document.getElementById('c-credito-cartao-aplicar-desconto');
-    const descontoAtivoCC = !!(chkCC && chkCC.checked);
-    const tipoCC = document.getElementById('c-credito-cartao-desc-tipo')?.value || 'percentual';
-    const valorDescCC = parseFloat(document.getElementById('c-credito-cartao-desc-valor')?.value) || 0;
-    const rCC = calcCartao(base, descontoAtivoCC, tipoCC, valorDescCC, n);
-    const pagCC = { data, valor: rCC.liquido, bruto: rCC.bruto, forma: 'Cartão', parcelas: n, status: 'Realizado' };
-    if (descontoAtivoCC && valorDescCC > 0) { pagCC.descontoCartaoTipo = tipoCC; pagCC.descontoCartaoValor = valorDescCC; }
-    return [pagCC];
+    // Sem desconto específico aqui — pagamento único, então o desconto/acréscimo geral do
+    // contrato (campo "Desconto"/"Acréscimo" no topo) já está embutido em 'base'.
+    const rCC = calcCartao(base, false, null, null, n);
+    return [{ data, valor: rCC.liquido, bruto: rCC.bruto, forma: 'Cartão', parcelas: n, status: 'Realizado' }];
   } else if (forma === 'reserva') {
     const pagoEntrada = round2(parseFloat(document.getElementById('c-pago').value) || 0);
     const formaEntrada = document.getElementById('c-reserva-forma')?.value || 'Pix';
@@ -3664,6 +3605,7 @@ function onFormaPagChange(val) {
       if (el) el.style.display = 'none';
     });
     atualizarDescMistoVisibilidade('c');
+    aplicarVisibilidadeMistoAtiva('c', null);
   } else if (val === 'credito') {
     if (grpReserva) grpReserva.style.display = 'none';
     if (grpEntregaPrazo) grpEntregaPrazo.style.display = 'none';
@@ -3671,32 +3613,11 @@ function onFormaPagChange(val) {
     if (grpCredito) grpCredito.style.display = '';
     if (grpDescInicial) grpDescInicial.style.display = 'none';
     preencherSelectParcelas('c-credito-parc');
-    const grpCartaoDescCredito = document.getElementById('c-credito-cartao-desc-grp');
-    if (grpCartaoDescCredito) {
-      grpCartaoDescCredito.style.display = '';
-      const chkCC = document.getElementById('c-credito-cartao-aplicar-desconto');
-      if (chkCC) chkCC.checked = false;
-      const tipoCC = document.getElementById('c-credito-cartao-desc-tipo');
-      if (tipoCC) tipoCC.value = 'percentual';
-      const valorCC = document.getElementById('c-credito-cartao-desc-valor');
-      if (valorCC) valorCC.value = '';
-      atualizarCartaoDescUI('c-credito-cartao');
-    }
   } else {
     if (grpReserva) grpReserva.style.display = 'none';
     if (grpEntregaPrazo) grpEntregaPrazo.style.display = 'none';
     if (grpMisto) grpMisto.style.display = 'none';
     if (grpCredito) grpCredito.style.display = 'none';
-    const grpCartaoDescCreditoReset = document.getElementById('c-credito-cartao-desc-grp');
-    if (grpCartaoDescCreditoReset) {
-      grpCartaoDescCreditoReset.style.display = 'none';
-      const chkCCReset = document.getElementById('c-credito-cartao-aplicar-desconto');
-      if (chkCCReset) chkCCReset.checked = false;
-      const tipoCCReset = document.getElementById('c-credito-cartao-desc-tipo');
-      if (tipoCCReset) tipoCCReset.value = 'percentual';
-      const valorCCReset = document.getElementById('c-credito-cartao-desc-valor');
-      if (valorCCReset) valorCCReset.value = '';
-    }
     if (grpDescInicial) {
       grpDescInicial.style.display = (val === 'pix' || val === 'dinheiro' || val === 'debito') ? '' : 'none';
       const chk = document.getElementById('c-aplicar-desconto-inicial');
@@ -6217,8 +6138,11 @@ function abrirEdicaoContrato(id) {
   {
     const fpAtual = c.formaPag || 'pix';
     const ehReservaOuEntrega = (fpAtual === 'reserva' || fpAtual === 'entrega_prazo');
+    document.getElementById('e-tipo-contrato').innerHTML = getOpcoesTipoContratoHTML(fpAtual);
     document.getElementById('e-tipo-contrato').value = ehReservaOuEntrega ? fpAtual : 'simples';
-    document.getElementById('e-forma-simples').value = ehReservaOuEntrega ? 'pix' : fpAtual;
+    const formaSimplesAtual = ehReservaOuEntrega ? null : fpAtual;
+    document.getElementById('e-forma-simples').innerHTML = getOpcoesFormaSimplesHTML(formaSimplesAtual || getPrimeiraFormaAtivaMinuscula());
+    document.getElementById('e-forma-simples').value = formaSimplesAtual || getPrimeiraFormaAtivaMinuscula();
     const grpFormaSimplesE = document.getElementById('e-grp-forma-simples');
     if (grpFormaSimplesE) grpFormaSimplesE.style.display = ehReservaOuEntrega ? 'none' : '';
     const btnInfoTipoE = document.getElementById('e-btn-info-tipo-contrato');
@@ -6276,6 +6200,7 @@ function abrirEdicaoContrato(id) {
     document.getElementById('e-pago-debito').value = pDeb ? (pDeb.bruto !== undefined ? pDeb.bruto : pDeb.valor) : '';
     // Reflete se cada forma já tinha desconto aplicado, e mostra o grupo de desconto se houver valor
     atualizarDescMistoVisibilidade('e');
+    aplicarVisibilidadeMistoAtiva('e', c);
     [['e-misto-pix-aplicar-desconto', pPix], ['e-misto-dinheiro-aplicar-desconto', pDin], ['e-misto-debito-aplicar-desconto', pDeb]].forEach(([chkId, pag]) => {
       if (!pag) return;
       const chk = document.getElementById(chkId);
@@ -6306,7 +6231,9 @@ function abrirEdicaoContrato(id) {
     document.getElementById('e-pago').value = valorEntradaReserva || '';
     const elReservaForma = document.getElementById('e-reserva-forma');
     if (elReservaForma) {
-      elReservaForma.value = ['Cartão','Dinheiro'].includes(formaEntradaReserva) ? formaEntradaReserva : 'Pix';
+      const formaEntradaValida = ['Cartão','Dinheiro','Débito'].includes(formaEntradaReserva) ? formaEntradaReserva : 'Pix';
+      elReservaForma.innerHTML = getOpcoesFormaPagamentoHTML(formaEntradaValida);
+      elReservaForma.value = formaEntradaValida;
       onReservaFormaChange('e');
       if (formaEntradaReserva === 'Cartão' && parcEntradaReserva) {
         const selParc = document.getElementById('e-reserva-parc');
@@ -6332,7 +6259,9 @@ function abrirEdicaoContrato(id) {
     document.getElementById('e-entregaprazo-pago').value = valorEntradaE2 || '';
     const elEntregaPrazoForma = document.getElementById('e-entregaprazo-forma');
     if (elEntregaPrazoForma) {
-      elEntregaPrazoForma.value = ['Cartão','Dinheiro'].includes(formaEntradaE) ? formaEntradaE : 'Pix';
+      const formaEntradaEValida = ['Cartão','Dinheiro','Débito'].includes(formaEntradaE) ? formaEntradaE : 'Pix';
+      elEntregaPrazoForma.innerHTML = getOpcoesFormaPagamentoHTML(formaEntradaEValida);
+      elEntregaPrazoForma.value = formaEntradaEValida;
       onEntregaPrazoFormaChange('e');
       if (formaEntradaE === 'Cartão' && parcEntradaE2) {
         const selParcE = document.getElementById('e-entregaprazo-parc');
@@ -6601,10 +6530,7 @@ function _renderModalPagamentoPeca() {
         <button onclick="_desistirModalPagamentoPeca()" style="position:absolute;top:0.8rem;right:0.9rem;background:none;border:none;font-size:1.3rem;color:var(--muted);cursor:pointer;line-height:1;padding:0.2rem">×</button>
         <div style="font-family:'Calibri',serif;font-size:1.05rem;color:var(--brown);margin-bottom:1rem;padding-right:1.5rem">Como foi pago?</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:1rem" id="mpp-formas">
-          <div class="filter-chip" onclick="_selecionarFormaPagamentoPeca('Pix')" data-forma="Pix" style="text-align:center">Pix</div>
-          <div class="filter-chip" onclick="_selecionarFormaPagamentoPeca('Débito')" data-forma="Débito" style="text-align:center">Débito</div>
-          <div class="filter-chip" onclick="_selecionarFormaPagamentoPeca('Cartão')" data-forma="Cartão" style="text-align:center">Crédito</div>
-          <div class="filter-chip" onclick="_selecionarFormaPagamentoPeca('Dinheiro')" data-forma="Dinheiro" style="text-align:center">Dinheiro</div>
+          ${getChipsFormaPagamentoHTML()}
         </div>
         <div id="mpp-grp-parcelas" style="display:none;margin-bottom:1rem">
           <label class="field-label">Parcelas</label>
@@ -6784,6 +6710,7 @@ function onFormaPagEditChange(val) {
     if (grpMisto) grpMisto.style.display = '';
     preencherSelectParcelas('e-pago-cartao-parc');
     atualizarDescMistoVisibilidade('e');
+    aplicarVisibilidadeMistoAtiva('e', null);
   } else {
     if (grpReserva) grpReserva.style.display = 'none';
     if (grpEntregaPrazo) grpEntregaPrazo.style.display = 'none';
@@ -7110,6 +7037,7 @@ function openNovoPagamento(contratoId) {
   if (valorCartaoReset) valorCartaoReset.value = '';
   // Default forma baseado na forma de pagamento do contrato
   const formaDefault = c.formaPag === 'misto' ? 'Pix' : c.formaPag === 'credito' ? 'Cartão' : c.formaPag === 'debito' ? 'Débito' : c.formaPag === 'dinheiro' ? 'Dinheiro' : 'Pix';
+  document.getElementById('pag-forma').innerHTML = getOpcoesFormaPagamentoHTML(formaDefault);
   document.getElementById('pag-forma').value = formaDefault;
   atualizarPagFormaUI();
   atualizarPreviewPag();
@@ -7660,8 +7588,98 @@ function getOpcoesParcelasSimples() {
   }).join('');
 }
 
-function getFormasPagAtivas() {
-  return (custosConfig.formasPag || []).filter(f => f.ativa);
+// Mapa central: id da configuração (custosConfig.formasPag) -> valor minúsculo (tipo de contrato
+// simples) -> valor maiúsculo (forma de um pagamento individual) -> rótulo exibido.
+const MAPA_FORMAS_PAGAMENTO = [
+  { id: 'pix', minusculo: 'pix', maiusculo: 'Pix', label: 'Pix' },
+  { id: 'credito', minusculo: 'credito', maiusculo: 'Cartão', label: 'Crédito' },
+  { id: 'dinheiro', minusculo: 'dinheiro', maiusculo: 'Dinheiro', label: 'Dinheiro' },
+  { id: 'debito', minusculo: 'debito', maiusculo: 'Débito', label: 'Débito' },
+];
+
+// Formas a exibir num seletor: ativas na configuração, OU o valor que o contrato JÁ TEM agora —
+// nunca esconde o que já está em uso, mesmo que tenha sido desativado depois. Se por acaso todas
+// as formas ficarem desativadas ao mesmo tempo, mostra todas mesmo assim (nunca trava vazio).
+function getFormasParaExibir(valorAtual) {
+  const config = custosConfig.formasPag || [];
+  let lista = MAPA_FORMAS_PAGAMENTO.filter(m => {
+    const f = config.find(x => x.id === m.id);
+    const ativa = f ? !!f.ativa : true;
+    const ehAtual = !!valorAtual && (m.minusculo === valorAtual || m.maiusculo === valorAtual);
+    return ativa || ehAtual;
+  });
+  if (lista.length === 0) lista = MAPA_FORMAS_PAGAMENTO;
+  return lista;
+}
+
+// Opções em minúsculo (Forma de Pagamento, dentro de "Pagamento total imediato") — inclui Misto
+function getOpcoesFormaSimplesHTML(valorAtual) {
+  const formas = getFormasParaExibir(valorAtual);
+  let html = formas.map(m => `<option value="${m.minusculo}" ${m.minusculo === valorAtual ? 'selected' : ''}>${m.label}</option>`).join('');
+  const mistoConfig = (custosConfig.formasPag || []).find(f => f.id === 'misto');
+  const mistoAtivo = mistoConfig ? !!mistoConfig.ativa : true;
+  const ehMistoAtual = valorAtual === 'misto';
+  if (mistoAtivo || ehMistoAtual) {
+    html += `<option value="misto" ${ehMistoAtual ? 'selected' : ''}>Misto</option>`;
+  }
+  return html;
+}
+
+// Opções em maiúsculo (um pagamento individual: Registrar Pagamento, Forma da entrada) — sem Misto
+function getOpcoesFormaPagamentoHTML(valorAtual) {
+  const formas = getFormasParaExibir(valorAtual);
+  return formas.map(m => `<option value="${m.maiusculo}" ${m.maiusculo === valorAtual ? 'selected' : ''}>${m.label}</option>`).join('');
+}
+
+// Opções do Tipo de Contrato — Reserva/Entrega+Prazo respeitam ativa/desativa; "Pagamento total
+// imediato" sempre aparece (é a categoria que contém as 5 formas, não uma forma isolada)
+function getOpcoesTipoContratoHTML(valorAtual) {
+  const config = custosConfig.formasPag || [];
+  const reservaAtiva = (config.find(f => f.id === 'reserva')?.ativa) ?? true;
+  const entregaAtiva = (config.find(f => f.id === 'entrega_prazo')?.ativa) ?? true;
+  let html = `<option value="simples" ${valorAtual === 'simples' ? 'selected' : ''}>Pagamento total imediato</option>`;
+  if (reservaAtiva || valorAtual === 'reserva') {
+    html += `<option value="reserva" ${valorAtual === 'reserva' ? 'selected' : ''}>Reserva antecipada</option>`;
+  }
+  if (entregaAtiva || valorAtual === 'entrega_prazo') {
+    html += `<option value="entrega_prazo" ${valorAtual === 'entrega_prazo' ? 'selected' : ''}>Entrada + Saldo na entrega</option>`;
+  }
+  return html;
+}
+
+// Primeira forma ativa (minúsculo) — usada como padrão ao abrir um contrato novo do zero
+// Chips da janelinha de peça — só as formas ativas (sempre um pagamento novo, sem valor a preservar)
+// Esconde o campo de uma forma do Misto se ela estiver desativada — a não ser que o contrato já
+// tenha um pagamento registrado naquela forma (c=null em Novo Contrato, sempre mostra pelo ativa).
+function aplicarVisibilidadeMistoAtiva(prefixo, c) {
+  const mapaCampos = [
+    { id: 'pix', formaPag: 'Pix', campo: prefixo + '-misto-pix-grp-campo', extras: [] },
+    { id: 'credito', formaPag: 'Cartão', campo: prefixo + '-misto-cartao-grp-campo', extras: [prefixo + '-misto-cartao-grp-parc'] },
+    { id: 'dinheiro', formaPag: 'Dinheiro', campo: prefixo + '-misto-dinheiro-grp-campo', extras: [] },
+    { id: 'debito', formaPag: 'Débito', campo: prefixo + '-misto-debito-grp-campo', extras: [] },
+  ];
+  mapaCampos.forEach(m => {
+    const config = (custosConfig.formasPag || []).find(f => f.id === m.id);
+    const ativa = config ? !!config.ativa : true;
+    const temPagamentoExistente = !!(c && Array.isArray(c.pagamentos) && c.pagamentos.some(p => p.forma === m.formaPag));
+    const mostrar = ativa || temPagamentoExistente;
+    const elCampo = document.getElementById(m.campo);
+    if (elCampo) elCampo.style.display = mostrar ? '' : 'none';
+    m.extras.forEach(extraId => {
+      const el = document.getElementById(extraId);
+      if (el) el.style.display = mostrar ? '' : 'none';
+    });
+  });
+}
+
+function getChipsFormaPagamentoHTML() {
+  return getFormasParaExibir(null)
+    .map(m => `<div class="filter-chip" onclick="_selecionarFormaPagamentoPeca('${m.maiusculo}')" data-forma="${m.maiusculo}" style="text-align:center">${m.label}</div>`)
+    .join('');
+}
+
+function getPrimeiraFormaAtivaMinuscula() {
+  return getFormasParaExibir(null)[0]?.minusculo || 'pix';
 }
 
 function getDescontoPix() {
