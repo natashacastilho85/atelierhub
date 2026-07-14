@@ -3354,6 +3354,25 @@ function gerarPagamentosIniciais(forma, valor, dataContrato, desconto) {
 function round2(v) { return Math.round((parseFloat(v)||0) * 100) / 100; }
 
 // ── CÁLCULO GLOBAL DO VALOR A PAGAR ──
+// Soma o desconto que a noiva não deve, concedido em pagamentos Pix/Dinheiro/Débito dentro de um
+// contrato Misto. Cada pagamento já carrega p.bruto (valor nominal digitado) e p.valor (líquido
+// após o desconto vigente NAQUELE momento) — a diferença é o desconto realmente concedido naquela
+// parcela, sem recalcular com a taxa atual de Configurações (que pode ter mudado desde então).
+// Cartão fica de fora: a tarifa (absorvida ou não) é negociação do ateliê com a maquininha, e um
+// eventual cupom de desconto no Cartão já reduz p.bruto na origem (calcCartao) — já está refletido
+// em totalPago() sem precisar de abatimento aqui. Usada tanto no cálculo do valor a pagar quanto na
+// exibição do detalhe do contrato, para nunca divergir (mesmo princípio de calcValorAPagar).
+function descontoMistoConcedido(c) {
+  if (!Array.isArray(c.pagamentos)) return 0;
+  return round2(c.pagamentos
+    .filter(p => p.forma === 'Pix' || p.forma === 'Dinheiro' || p.forma === 'Débito')
+    .reduce((s, p) => {
+      const bruto = parseFloat(p.bruto ?? p.valor) || 0;
+      const liquido = parseFloat(p.valor) || 0;
+      return s + Math.max(0, bruto - liquido);
+    }, 0));
+}
+
 function calcValorAPagar(c) {
   const acr  = parseFloat(c.acrescimo) || 0;
   const desc = parseFloat(c.desconto)  || 0;
@@ -3362,6 +3381,11 @@ function calcValorAPagar(c) {
   if (c.formaPag === 'pix' && temPag)     return round2(base * (1 - getDescontoPix()));
   if (c.formaPag === 'dinheiro' && temPag) return round2(base * (1 - getDescontoDinheiro()));
   if (c.formaPag === 'debito' && temPag)  return round2(base * (1 - getDescontoDebito()));
+  if (c.formaPag === 'misto' && temPag) {
+    // Cliente não deve a diferença de um desconto que o ateliê decidiu dar numa forma específica —
+    // ela só deve o que efetivamente se comprometeu a pagar em cada forma registrada.
+    return round2(base - descontoMistoConcedido(c));
+  }
   // Cartão nunca reduz o valor a pagar: a tarifa (absorvida ou não) é custo/negociação do ateliê
   // com a maquininha — a cliente é cobrada o valor cheio no cartão dela de qualquer forma.
   return base;
@@ -5914,8 +5938,23 @@ function openDetail(id) {
       const bruto = (p.bruto !== undefined && p.bruto !== null) ? parseFloat(p.bruto) : liquido;
       const temTaxa = Math.abs(bruto - liquido) > 0.01;
       const parc = p.parcelas ? ` ${p.parcelas}×` : '';
+      let descTxt = '';
+      if (p.forma === 'Cartão') {
+        const partesCartao = [];
+        if (p.descontoCartaoValor > 0) {
+          partesCartao.push(p.descontoCartaoTipo === 'valor' ? `desc. R$${p.descontoCartaoValor}` : `desc. ${p.descontoCartaoValor}%`);
+        }
+        if (temTaxa) {
+          const pctTaxa = bruto > 0 ? Math.round(((bruto - liquido) / bruto) * 100) : 0;
+          partesCartao.push(`tarifa absorvida${pctTaxa > 0 ? ' ('+pctTaxa+'%)' : ''}`);
+        }
+        if (partesCartao.length) descTxt = ' · ' + partesCartao.join(', ');
+      } else if (temTaxa) {
+        const pctDesc = bruto > 0 ? Math.round(((bruto - liquido) / bruto) * 100) : 0;
+        if (pctDesc > 0) descTxt = ` · ${pctDesc}% desc.`;
+      }
       return `<div class="detail-row" style="font-size:0.78rem">
-        <span class="dl">${fmtData(p.data)} · ${formaDisplayLabel(p.forma)||'—'}${parc}</span>
+        <span class="dl">${fmtData(p.data)} · ${formaDisplayLabel(p.forma)||'—'}${parc}${descTxt}</span>
         <span class="dv" style="display:flex;align-items:center;gap:0.5rem">
           <span style="text-align:right;line-height:1.25">
             <span style="color:var(--dark)">R$ ${liquido.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
@@ -5931,16 +5970,34 @@ function openDetail(id) {
   // Breakdown misto
   let mistoHtml = '';
   if (c.formaPag === 'misto') {
-    const totalPix = totalPagoPorForma(c, 'Pix');
-    const totalCart = totalPagoPorForma(c, 'Cartão');
-    const totalDin = totalPagoPorForma(c, 'Dinheiro');
-    const totalDeb = totalPagoPorForma(c, 'Débito');
-    const totalOutros = pago - totalPix - totalCart - totalDin - totalDeb;
+    const _resumoForma = (forma) => {
+      const pagsForma = pags.filter(p => p.forma === forma);
+      const liq = round2(pagsForma.reduce((s,p)=>s+(parseFloat(p.valor)||0), 0));
+      const bru = round2(pagsForma.reduce((s,p)=>s+(parseFloat(p.bruto ?? p.valor)||0), 0));
+      return { liquido: liq, bruto: bru, diff: round2(bru - liq) };
+    };
+    const rPix  = _resumoForma('Pix');
+    const rCart = _resumoForma('Cartão');
+    const rDin  = _resumoForma('Dinheiro');
+    const rDeb  = _resumoForma('Débito');
+    const totalOutros = pago - rPix.liquido - rCart.liquido - rDin.liquido - rDeb.liquido;
+
+    const _labelDesconto = (base, r) => {
+      if (r.diff <= 0.01 || r.bruto <= 0) return base;
+      const pct = Math.round((r.diff / r.bruto) * 100);
+      return pct > 0 ? `${base} (${pct}% de desconto)` : base;
+    };
+    const _labelCartao = (r) => {
+      if (r.diff <= 0.01 || r.bruto <= 0) return 'Em Crédito';
+      const pct = Math.round((r.diff / r.bruto) * 100);
+      return `Em Crédito (tarifa absorvida${pct > 0 ? ', ' + pct + '%' : ''})`;
+    };
+
     const linhasMisto = [
-      ['Em Pix', totalPix],
-      ['Em Crédito', totalCart],
-      ['Em Dinheiro', totalDin],
-      ['Em Débito', totalDeb],
+      [_labelDesconto('Em Pix', rPix), rPix.liquido],
+      [_labelCartao(rCart), rCart.liquido],
+      [_labelDesconto('Em Dinheiro', rDin), rDin.liquido],
+      [_labelDesconto('Em Débito', rDeb), rDeb.liquido],
       ['Outras formas', totalOutros]
     ].filter(([,v]) => v > 0.001);
     mistoHtml = `<div style="margin-top:0.5rem;padding:0.6rem 0.8rem;background:rgba(184,134,42,0.06);border-radius:4px;font-size:0.72rem">
@@ -6022,8 +6079,12 @@ function openDetail(id) {
             const pct = Math.round(taxaD * 10000) / 100;
             linhas += `<div class="detail-row"><span class="dl" style="color:var(--muted)">Crédito ${nD}× (${pct}%)</span><span class="dv" style="color:var(--bordeaux)">− ${fmtR(taxaVal)}</span></div>`;
           }
+        } else if (temPag && c.formaPag === 'misto') {
+          const descMisto = descontoMistoConcedido(c);
+          if (descMisto > 0.01) {
+            linhas += `<div class="detail-row"><span class="dl" style="color:var(--muted)">Desconto (Pix/Dinheiro/Débito)</span><span class="dv" style="color:var(--bordeaux)">− ${fmtR(descMisto)}</span></div>`;
+          }
         }
-        // Misto: sem linha de taxa (Pix e Cartão entram pelo valor cheio)
         linhas += `<div class="detail-row" style="border-top:1px solid rgba(184,134,42,0.15);padding-top:0.4rem;margin-top:0.2rem">
           <span class="dl" style="color:var(--dark);font-weight:600">Valor a pagar</span>
           <span class="dv" style="color:var(--brown);font-family:'Calibri',serif;font-size:1.1rem">R$ ${valorAPagar.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
