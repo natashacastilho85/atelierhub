@@ -1427,7 +1427,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
           <div class="field-group" id="c-misto-pix-grp-desconto" style="display:none">
             <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
               <input type="checkbox" id="c-misto-pix-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
-              Aplicar desconto padrão no Pix
+              Aplicar desconto padrão no Pix<span id="c-misto-pix-pct"></span>
             </label>
           </div>
         </div>
@@ -1483,7 +1483,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
           <div class="field-group" id="c-misto-dinheiro-grp-desconto" style="display:none">
             <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
               <input type="checkbox" id="c-misto-dinheiro-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
-              Aplicar desconto padrão no Dinheiro
+              Aplicar desconto padrão no Dinheiro<span id="c-misto-dinheiro-pct"></span>
             </label>
           </div>
         </div>
@@ -1502,7 +1502,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
           <div class="field-group" id="c-misto-debito-grp-desconto" style="display:none">
             <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
               <input type="checkbox" id="c-misto-debito-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
-              Aplicar desconto padrão no Débito
+              Aplicar desconto padrão no Débito<span id="c-misto-debito-pct"></span>
             </label>
           </div>
         </div>
@@ -1782,7 +1782,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
           <div class="field-group" id="e-misto-pix-grp-desconto" style="display:none">
             <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
               <input type="checkbox" id="e-misto-pix-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
-              Aplicar desconto padrão no Pix
+              Aplicar desconto padrão no Pix<span id="e-misto-pix-pct"></span>
             </label>
           </div>
         </div>
@@ -1838,7 +1838,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
           <div class="field-group" id="e-misto-dinheiro-grp-desconto" style="display:none">
             <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
               <input type="checkbox" id="e-misto-dinheiro-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
-              Aplicar desconto padrão no Dinheiro
+              Aplicar desconto padrão no Dinheiro<span id="e-misto-dinheiro-pct"></span>
             </label>
           </div>
         </div>
@@ -1857,7 +1857,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
           <div class="field-group" id="e-misto-debito-grp-desconto" style="display:none">
             <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
               <input type="checkbox" id="e-misto-debito-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
-              Aplicar desconto padrão no Débito
+              Aplicar desconto padrão no Débito<span id="e-misto-debito-pct"></span>
             </label>
           </div>
         </div>
@@ -3539,32 +3539,27 @@ function atualizarTotalMisto(prefixo) {
 }
 
 function atualizarDescMistoVisibilidade(prefixo) {
+  // O desconto de cada forma aparece junto com o campo de valor, assim que o card expande — não
+  // espera a usuária digitar nada (bate com o mockup aprovado). Controlado pelo checkbox "usar
+  // esta forma", não mais pelo valor do campo.
   const pares = [
-    ['pago-pix', 'misto-pix-grp-desconto', 'misto-pix-aplicar-desconto'],
-    ['pago-cartao', 'misto-cartao-desc-grp', 'misto-cartao-aplicar-desconto'],
-    ['pago-dinheiro', 'misto-dinheiro-grp-desconto', 'misto-dinheiro-aplicar-desconto'],
-    ['pago-debito', 'misto-debito-grp-desconto', 'misto-debito-aplicar-desconto'],
+    ['pix', 'misto-pix-grp-desconto'],
+    ['cartao', 'misto-cartao-desc-grp'],
+    ['dinheiro', 'misto-dinheiro-grp-desconto'],
+    ['debito', 'misto-debito-grp-desconto'],
   ];
-  pares.forEach(([campoId, grpId, chkId]) => {
-    const valor = parseFloat(document.getElementById(prefixo + '-' + campoId)?.value) || 0;
+  pares.forEach(([formaId, grpId]) => {
+    const usar = document.getElementById(prefixo + '-misto-' + formaId + '-usar');
     const grp = document.getElementById(prefixo + '-' + grpId);
     if (!grp) return;
-    const vaiMostrar = valor > 0;
-    if (vaiMostrar && grp.style.display === 'none') {
-      // transição de escondido pra visível: reseta o checkbox (não faz isso a cada dígito digitado)
-      const chk = document.getElementById(prefixo + '-' + chkId);
-      if (chk) chk.checked = false;
-      // Cartão tem campos extras (tipo/valor do desconto) que os outros não têm — limpa junto
-      if (campoId === 'pago-cartao') {
-        const campos = document.getElementById(prefixo + '-misto-cartao-desc-campos');
-        if (campos) campos.style.display = 'none';
-        const tipo = document.getElementById(prefixo + '-misto-cartao-desc-tipo');
-        if (tipo) tipo.value = 'percentual';
-        const valorDesc = document.getElementById(prefixo + '-misto-cartao-desc-valor');
-        if (valorDesc) valorDesc.value = '';
+    grp.style.display = (usar && usar.checked) ? '' : 'none';
+    if (formaId !== 'cartao') {
+      const spanPct = document.getElementById(prefixo + '-misto-' + formaId + '-pct');
+      if (spanPct) {
+        const taxa = formaId === 'pix' ? getDescontoPix() : formaId === 'dinheiro' ? getDescontoDinheiro() : getDescontoDebito();
+        spanPct.textContent = taxa > 0 ? ` (${Math.round(taxa * 100)}%)` : '';
       }
     }
-    grp.style.display = vaiMostrar ? '' : 'none';
   });
 }
 
