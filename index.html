@@ -1414,73 +1414,101 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       </div>
     </div>
     <div id="grp-pago-misto" style="display:none">
-      <div class="field-row">
-        <div class="field-group" id="c-misto-pix-grp-campo">
-          <label class="field-label">Pago em Pix (R$)</label>
-          <input class="field-input" id="c-pago-pix" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('c')">
-        </div>
-        <div class="field-group" id="c-misto-cartao-grp-campo">
-          <label class="field-label">Pago em Crédito (R$)</label>
-          <input class="field-input" id="c-pago-cartao" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('c')">
-        </div>
-      </div>
-      <div class="field-group" id="c-misto-pix-grp-desconto" style="display:none">
-        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
-          <input type="checkbox" id="c-misto-pix-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
-          Aplicar desconto padrão no Pix
+      <div class="misto-card" id="c-misto-pix-grp-campo" style="border:1px solid rgba(184,134,42,0.25);border-radius:8px;margin-bottom:0.6rem;overflow:hidden;background:white">
+        <label style="display:flex;align-items:center;gap:0.6rem;padding:0.75rem 0.9rem;cursor:pointer;margin:0">
+          <input type="checkbox" id="c-misto-pix-usar" onchange="toggleFormaMisto('c','pix')" style="width:18px;height:18px;accent-color:var(--brown)">
+          <span style="font-size:0.88rem;color:var(--dark);font-weight:600">Pix</span>
         </label>
+        <div id="c-misto-pix-corpo" style="display:none;padding:0 0.9rem 0.9rem;border-top:1px solid rgba(184,134,42,0.12)">
+          <div class="field-group" style="margin-top:0.7rem">
+            <label class="field-label">Valor pago em Pix (R$)</label>
+            <input class="field-input" id="c-pago-pix" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('c')">
+          </div>
+          <div class="field-group" id="c-misto-pix-grp-desconto" style="display:none">
+            <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+              <input type="checkbox" id="c-misto-pix-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
+              Aplicar desconto padrão no Pix
+            </label>
+          </div>
+        </div>
       </div>
 
-      <div class="field-row" id="c-misto-cartao-grp-parc">
-        <div class="field-group">
-          <label class="field-label">Parcelas no crédito</label>
-          <select class="field-input" id="c-pago-cartao-parc">
-          </select>
-        </div>
-        <div class="field-group" id="c-misto-dinheiro-grp-campo">
-          <label class="field-label">Pago em Dinheiro (R$)</label>
-          <input class="field-input" id="c-pago-dinheiro" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('c')">
-        </div>
-      </div>
-      <div class="field-group" id="c-misto-cartao-desc-grp" style="display:none">
-        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
-          <input type="checkbox" id="c-misto-cartao-aplicar-desconto" onchange="atualizarCartaoDescUI('c-misto-cartao')" style="width:14px;height:14px;accent-color:var(--brown)">
-          Aplicar desconto no Crédito
+      <div class="misto-card" id="c-misto-cartao-grp-campo" style="border:1px solid rgba(184,134,42,0.25);border-radius:8px;margin-bottom:0.6rem;overflow:hidden;background:white">
+        <label style="display:flex;align-items:center;gap:0.6rem;padding:0.75rem 0.9rem;cursor:pointer;margin:0">
+          <input type="checkbox" id="c-misto-cartao-usar" onchange="toggleFormaMisto('c','cartao')" style="width:18px;height:18px;accent-color:var(--brown)">
+          <span style="font-size:0.88rem;color:var(--dark);font-weight:600">Crédito</span>
         </label>
-        <div class="field-row" id="c-misto-cartao-desc-campos" style="display:none;margin-top:0.4rem">
-          <div class="field-group" style="max-width:75px">
-            <label class="field-label">Tipo</label>
-            <select class="field-input" id="c-misto-cartao-desc-tipo">
-              <option value="percentual">%</option>
-              <option value="valor">R$</option>
-            </select>
+        <div id="c-misto-cartao-corpo" style="display:none;padding:0 0.9rem 0.9rem;border-top:1px solid rgba(184,134,42,0.12)">
+          <div class="field-group" style="margin-top:0.7rem">
+            <label class="field-label">Valor pago em Crédito (R$)</label>
+            <input class="field-input" id="c-pago-cartao" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('c')">
           </div>
           <div class="field-group">
-            <label class="field-label">Valor do desconto</label>
-            <input class="field-input" id="c-misto-cartao-desc-valor" type="number" placeholder="0" step="0.01" min="0">
+            <label class="field-label">Parcelas no crédito</label>
+            <select class="field-input" id="c-pago-cartao-parc">
+            </select>
+          </div>
+          <div class="field-group" id="c-misto-cartao-desc-grp" style="display:none">
+            <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+              <input type="checkbox" id="c-misto-cartao-aplicar-desconto" onchange="atualizarCartaoDescUI('c-misto-cartao')" style="width:14px;height:14px;accent-color:var(--brown)">
+              Aplicar desconto no Crédito
+            </label>
+            <div class="field-row" id="c-misto-cartao-desc-campos" style="display:none;margin-top:0.4rem">
+              <div class="field-group" style="max-width:75px">
+                <label class="field-label">Tipo</label>
+                <select class="field-input" id="c-misto-cartao-desc-tipo">
+                  <option value="percentual">%</option>
+                  <option value="valor">R$</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Valor do desconto</label>
+                <input class="field-input" id="c-misto-cartao-desc-valor" type="number" placeholder="0" step="0.01" min="0">
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      <div class="field-group" id="c-misto-dinheiro-grp-desconto" style="display:none">
-        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
-          <input type="checkbox" id="c-misto-dinheiro-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
-          Aplicar desconto padrão no Dinheiro
-        </label>
-      </div>
 
-      <div class="field-row" id="c-misto-debito-grp-campo">
-        <div class="field-group">
-          <label class="field-label">Pago em Débito (R$)</label>
-          <input class="field-input" id="c-pago-debito" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('c')">
+      <div class="misto-card" id="c-misto-dinheiro-grp-campo" style="border:1px solid rgba(184,134,42,0.25);border-radius:8px;margin-bottom:0.6rem;overflow:hidden;background:white">
+        <label style="display:flex;align-items:center;gap:0.6rem;padding:0.75rem 0.9rem;cursor:pointer;margin:0">
+          <input type="checkbox" id="c-misto-dinheiro-usar" onchange="toggleFormaMisto('c','dinheiro')" style="width:18px;height:18px;accent-color:var(--brown)">
+          <span style="font-size:0.88rem;color:var(--dark);font-weight:600">Dinheiro</span>
+        </label>
+        <div id="c-misto-dinheiro-corpo" style="display:none;padding:0 0.9rem 0.9rem;border-top:1px solid rgba(184,134,42,0.12)">
+          <div class="field-group" style="margin-top:0.7rem">
+            <label class="field-label">Valor pago em Dinheiro (R$)</label>
+            <input class="field-input" id="c-pago-dinheiro" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('c')">
+          </div>
+          <div class="field-group" id="c-misto-dinheiro-grp-desconto" style="display:none">
+            <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+              <input type="checkbox" id="c-misto-dinheiro-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
+              Aplicar desconto padrão no Dinheiro
+            </label>
+          </div>
         </div>
       </div>
-      <div class="field-group" id="c-misto-debito-grp-desconto" style="display:none">
-        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
-          <input type="checkbox" id="c-misto-debito-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
-          Aplicar desconto padrão no Débito
+
+      <div class="misto-card" id="c-misto-debito-grp-campo" style="border:1px solid rgba(184,134,42,0.25);border-radius:8px;margin-bottom:0.6rem;overflow:hidden;background:white">
+        <label style="display:flex;align-items:center;gap:0.6rem;padding:0.75rem 0.9rem;cursor:pointer;margin:0">
+          <input type="checkbox" id="c-misto-debito-usar" onchange="toggleFormaMisto('c','debito')" style="width:18px;height:18px;accent-color:var(--brown)">
+          <span style="font-size:0.88rem;color:var(--dark);font-weight:600">Débito</span>
         </label>
+        <div id="c-misto-debito-corpo" style="display:none;padding:0 0.9rem 0.9rem;border-top:1px solid rgba(184,134,42,0.12)">
+          <div class="field-group" style="margin-top:0.7rem">
+            <label class="field-label">Valor pago em Débito (R$)</label>
+            <input class="field-input" id="c-pago-debito" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('c')">
+          </div>
+          <div class="field-group" id="c-misto-debito-grp-desconto" style="display:none">
+            <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+              <input type="checkbox" id="c-misto-debito-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
+              Aplicar desconto padrão no Débito
+            </label>
+          </div>
+        </div>
       </div>
     </div>
+    <div id="c-misto-total-box" style="display:none;background:var(--warm-white);border:1px dashed var(--muted-light);border-radius:8px;padding:0.7rem 0.9rem;margin-bottom:0.8rem;font-size:0.82rem;color:var(--muted)"></div>
 
     <!-- INÍCIO DO BLOCO DA FICHA -->
 <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(184,134,42,0.2);">
@@ -1741,73 +1769,101 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       </div>
     </div>
     <div id="e-grp-pago-misto" style="display:none">
-      <div class="field-row">
-        <div class="field-group" id="e-misto-pix-grp-campo">
-          <label class="field-label">Pago em Pix (R$)</label>
-          <input class="field-input" id="e-pago-pix" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('e')">
-        </div>
-        <div class="field-group" id="e-misto-cartao-grp-campo">
-          <label class="field-label">Pago em Crédito (R$)</label>
-          <input class="field-input" id="e-pago-cartao" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('e')">
-        </div>
-      </div>
-      <div class="field-group" id="e-misto-pix-grp-desconto" style="display:none">
-        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
-          <input type="checkbox" id="e-misto-pix-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
-          Aplicar desconto padrão no Pix
+      <div class="misto-card" id="e-misto-pix-grp-campo" style="border:1px solid rgba(184,134,42,0.25);border-radius:8px;margin-bottom:0.6rem;overflow:hidden;background:white">
+        <label style="display:flex;align-items:center;gap:0.6rem;padding:0.75rem 0.9rem;cursor:pointer;margin:0">
+          <input type="checkbox" id="e-misto-pix-usar" onchange="toggleFormaMisto('e','pix')" style="width:18px;height:18px;accent-color:var(--brown)">
+          <span style="font-size:0.88rem;color:var(--dark);font-weight:600">Pix</span>
         </label>
+        <div id="e-misto-pix-corpo" style="display:none;padding:0 0.9rem 0.9rem;border-top:1px solid rgba(184,134,42,0.12)">
+          <div class="field-group" style="margin-top:0.7rem">
+            <label class="field-label">Valor pago em Pix (R$)</label>
+            <input class="field-input" id="e-pago-pix" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('e')">
+          </div>
+          <div class="field-group" id="e-misto-pix-grp-desconto" style="display:none">
+            <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+              <input type="checkbox" id="e-misto-pix-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
+              Aplicar desconto padrão no Pix
+            </label>
+          </div>
+        </div>
       </div>
 
-      <div class="field-row" id="e-misto-cartao-grp-parc">
-        <div class="field-group">
-          <label class="field-label">Parcelas no crédito</label>
-          <select class="field-input" id="e-pago-cartao-parc">
-          </select>
-        </div>
-        <div class="field-group" id="e-misto-dinheiro-grp-campo">
-          <label class="field-label">Pago em Dinheiro (R$)</label>
-          <input class="field-input" id="e-pago-dinheiro" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('e')">
-        </div>
-      </div>
-      <div class="field-group" id="e-misto-cartao-desc-grp" style="display:none">
-        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
-          <input type="checkbox" id="e-misto-cartao-aplicar-desconto" onchange="atualizarCartaoDescUI('e-misto-cartao')" style="width:14px;height:14px;accent-color:var(--brown)">
-          Aplicar desconto no Crédito
+      <div class="misto-card" id="e-misto-cartao-grp-campo" style="border:1px solid rgba(184,134,42,0.25);border-radius:8px;margin-bottom:0.6rem;overflow:hidden;background:white">
+        <label style="display:flex;align-items:center;gap:0.6rem;padding:0.75rem 0.9rem;cursor:pointer;margin:0">
+          <input type="checkbox" id="e-misto-cartao-usar" onchange="toggleFormaMisto('e','cartao')" style="width:18px;height:18px;accent-color:var(--brown)">
+          <span style="font-size:0.88rem;color:var(--dark);font-weight:600">Crédito</span>
         </label>
-        <div class="field-row" id="e-misto-cartao-desc-campos" style="display:none;margin-top:0.4rem">
-          <div class="field-group" style="max-width:75px">
-            <label class="field-label">Tipo</label>
-            <select class="field-input" id="e-misto-cartao-desc-tipo">
-              <option value="percentual">%</option>
-              <option value="valor">R$</option>
-            </select>
+        <div id="e-misto-cartao-corpo" style="display:none;padding:0 0.9rem 0.9rem;border-top:1px solid rgba(184,134,42,0.12)">
+          <div class="field-group" style="margin-top:0.7rem">
+            <label class="field-label">Valor pago em Crédito (R$)</label>
+            <input class="field-input" id="e-pago-cartao" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('e')">
           </div>
           <div class="field-group">
-            <label class="field-label">Valor do desconto</label>
-            <input class="field-input" id="e-misto-cartao-desc-valor" type="number" placeholder="0" step="0.01" min="0">
+            <label class="field-label">Parcelas no crédito</label>
+            <select class="field-input" id="e-pago-cartao-parc">
+            </select>
+          </div>
+          <div class="field-group" id="e-misto-cartao-desc-grp" style="display:none">
+            <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+              <input type="checkbox" id="e-misto-cartao-aplicar-desconto" onchange="atualizarCartaoDescUI('e-misto-cartao')" style="width:14px;height:14px;accent-color:var(--brown)">
+              Aplicar desconto no Crédito
+            </label>
+            <div class="field-row" id="e-misto-cartao-desc-campos" style="display:none;margin-top:0.4rem">
+              <div class="field-group" style="max-width:75px">
+                <label class="field-label">Tipo</label>
+                <select class="field-input" id="e-misto-cartao-desc-tipo">
+                  <option value="percentual">%</option>
+                  <option value="valor">R$</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <label class="field-label">Valor do desconto</label>
+                <input class="field-input" id="e-misto-cartao-desc-valor" type="number" placeholder="0" step="0.01" min="0">
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      <div class="field-group" id="e-misto-dinheiro-grp-desconto" style="display:none">
-        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
-          <input type="checkbox" id="e-misto-dinheiro-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
-          Aplicar desconto padrão no Dinheiro
-        </label>
-      </div>
 
-      <div class="field-row" id="e-misto-debito-grp-campo">
-        <div class="field-group">
-          <label class="field-label">Pago em Débito (R$)</label>
-          <input class="field-input" id="e-pago-debito" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('e')">
+      <div class="misto-card" id="e-misto-dinheiro-grp-campo" style="border:1px solid rgba(184,134,42,0.25);border-radius:8px;margin-bottom:0.6rem;overflow:hidden;background:white">
+        <label style="display:flex;align-items:center;gap:0.6rem;padding:0.75rem 0.9rem;cursor:pointer;margin:0">
+          <input type="checkbox" id="e-misto-dinheiro-usar" onchange="toggleFormaMisto('e','dinheiro')" style="width:18px;height:18px;accent-color:var(--brown)">
+          <span style="font-size:0.88rem;color:var(--dark);font-weight:600">Dinheiro</span>
+        </label>
+        <div id="e-misto-dinheiro-corpo" style="display:none;padding:0 0.9rem 0.9rem;border-top:1px solid rgba(184,134,42,0.12)">
+          <div class="field-group" style="margin-top:0.7rem">
+            <label class="field-label">Valor pago em Dinheiro (R$)</label>
+            <input class="field-input" id="e-pago-dinheiro" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('e')">
+          </div>
+          <div class="field-group" id="e-misto-dinheiro-grp-desconto" style="display:none">
+            <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+              <input type="checkbox" id="e-misto-dinheiro-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
+              Aplicar desconto padrão no Dinheiro
+            </label>
+          </div>
         </div>
       </div>
-      <div class="field-group" id="e-misto-debito-grp-desconto" style="display:none">
-        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
-          <input type="checkbox" id="e-misto-debito-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
-          Aplicar desconto padrão no Débito
+
+      <div class="misto-card" id="e-misto-debito-grp-campo" style="border:1px solid rgba(184,134,42,0.25);border-radius:8px;margin-bottom:0.6rem;overflow:hidden;background:white">
+        <label style="display:flex;align-items:center;gap:0.6rem;padding:0.75rem 0.9rem;cursor:pointer;margin:0">
+          <input type="checkbox" id="e-misto-debito-usar" onchange="toggleFormaMisto('e','debito')" style="width:18px;height:18px;accent-color:var(--brown)">
+          <span style="font-size:0.88rem;color:var(--dark);font-weight:600">Débito</span>
         </label>
+        <div id="e-misto-debito-corpo" style="display:none;padding:0 0.9rem 0.9rem;border-top:1px solid rgba(184,134,42,0.12)">
+          <div class="field-group" style="margin-top:0.7rem">
+            <label class="field-label">Valor pago em Débito (R$)</label>
+            <input class="field-input" id="e-pago-debito" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarDescMistoVisibilidade('e')">
+          </div>
+          <div class="field-group" id="e-misto-debito-grp-desconto" style="display:none">
+            <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+              <input type="checkbox" id="e-misto-debito-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
+              Aplicar desconto padrão no Débito
+            </label>
+          </div>
+        </div>
       </div>
     </div>
+    <div id="e-misto-total-box" style="display:none;background:var(--warm-white);border:1px dashed var(--muted-light);border-radius:8px;padding:0.7rem 0.9rem;margin-bottom:0.8rem;font-size:0.82rem;color:var(--muted)"></div>
 
     <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(184,134,42,0.2);">
   <div style="font-family:'Calibri',serif; font-size: 1.1rem; color: var(--brown); margin-bottom: 1rem;">Dados da Ficha de Produção</div>
@@ -3428,6 +3484,60 @@ function preencherSelectParcelas(selectId, valorSelecionado) {
   if (valorSelecionado) el.value = valorSelecionado;
 }
 
+// Controla o card de cada forma do Misto: marcar mostra o corpo (valor + opções), desmarcar
+// esconde E limpa o valor (pra não sobrar um valor "fantasma" contribuindo pro total sem estar
+// visível). formaId aqui é 'pix'/'cartao'/'dinheiro'/'debito' — nota: 'cartao', não 'credito',
+// porque é o que os IDs dos campos já usam (c-pago-cartao, etc.) desde antes dessa mudança.
+function toggleFormaMisto(prefixo, formaId) {
+  const chk = document.getElementById(prefixo + '-misto-' + formaId + '-usar');
+  const corpo = document.getElementById(prefixo + '-misto-' + formaId + '-corpo');
+  if (corpo) corpo.style.display = chk.checked ? '' : 'none';
+  if (!chk.checked) {
+    if (chk.dataset.tinhaPagamentoExistente === 'true') {
+      const nomes = { pix: 'Pix', cartao: 'Crédito', dinheiro: 'Dinheiro', debito: 'Débito' };
+      mostrarAlerta({
+        emoji: '⚠️',
+        titulo: 'Pagamento será removido',
+        mensagem: `Já existe um pagamento em ${nomes[formaId]} registrado nesse contrato. Ao salvar, ele será removido. Se não for isso que você quer, marque "${nomes[formaId]}" de novo antes de salvar.`
+      });
+    }
+    const campoValor = document.getElementById(prefixo + '-pago-' + formaId);
+    if (campoValor) campoValor.value = '';
+    if (formaId === 'cartao') {
+      const chkDesc = document.getElementById(prefixo + '-misto-cartao-aplicar-desconto');
+      if (chkDesc) chkDesc.checked = false;
+      const campos = document.getElementById(prefixo + '-misto-cartao-desc-campos');
+      if (campos) campos.style.display = 'none';
+      const tipo = document.getElementById(prefixo + '-misto-cartao-desc-tipo');
+      if (tipo) tipo.value = 'percentual';
+      const valorDesc = document.getElementById(prefixo + '-misto-cartao-desc-valor');
+      if (valorDesc) valorDesc.value = '';
+      const grpDescCartao = document.getElementById(prefixo + '-misto-cartao-desc-grp');
+      if (grpDescCartao) grpDescCartao.style.display = 'none';
+    } else {
+      const chkDesc = document.getElementById(prefixo + '-misto-' + formaId + '-aplicar-desconto');
+      if (chkDesc) chkDesc.checked = false;
+      const grpDesc = document.getElementById(prefixo + '-misto-' + formaId + '-grp-desconto');
+      if (grpDesc) grpDesc.style.display = 'none';
+    }
+  }
+  atualizarDescMistoVisibilidade(prefixo);
+  atualizarTotalMisto(prefixo);
+}
+
+function atualizarTotalMisto(prefixo) {
+  const box = document.getElementById(prefixo + '-misto-total-box');
+  if (!box) return;
+  const nomes = { pix: 'Pix', cartao: 'Crédito', dinheiro: 'Dinheiro', debito: 'Débito' };
+  const emUso = ['pix', 'cartao', 'dinheiro', 'debito'].filter(f => document.getElementById(prefixo + '-misto-' + f + '-usar')?.checked);
+  if (emUso.length === 0) {
+    box.style.display = 'none';
+    return;
+  }
+  box.style.display = '';
+  box.innerHTML = 'Formas em uso: <strong>' + emUso.map(f => nomes[f]).join(', ') + '</strong>';
+}
+
 function atualizarDescMistoVisibilidade(prefixo) {
   const pares = [
     ['pago-pix', 'misto-pix-grp-desconto', 'misto-pix-aplicar-desconto'],
@@ -3604,8 +3714,17 @@ function onFormaPagChange(val) {
       const el = document.getElementById(id);
       if (el) el.style.display = 'none';
     });
+    // Reseta os checkboxes "usar esta forma" e esconde os corpos — sem isso, uma forma marcada
+    // num contrato anterior ficaria marcada (e o corpo aberto) num contrato novo.
+    ['pix','cartao','dinheiro','debito'].forEach(formaId => {
+      const chkUsar = document.getElementById('c-misto-' + formaId + '-usar');
+      if (chkUsar) chkUsar.checked = false;
+      const corpo = document.getElementById('c-misto-' + formaId + '-corpo');
+      if (corpo) corpo.style.display = 'none';
+    });
     atualizarDescMistoVisibilidade('c');
     aplicarVisibilidadeMistoAtiva('c', null);
+    atualizarTotalMisto('c');
   } else if (val === 'credito') {
     if (grpReserva) grpReserva.style.display = 'none';
     if (grpEntregaPrazo) grpEntregaPrazo.style.display = 'none';
@@ -6198,9 +6317,20 @@ function abrirEdicaoContrato(id) {
     document.getElementById('e-pago-cartao').value = valorRefCartao;
     document.getElementById('e-pago-dinheiro').value = pDin ? (pDin.bruto !== undefined ? pDin.bruto : pDin.valor) : '';
     document.getElementById('e-pago-debito').value = pDeb ? (pDeb.bruto !== undefined ? pDeb.bruto : pDeb.valor) : '';
+    // Marca e expande automaticamente o card de cada forma que já tem pagamento registrado
+    [['pix', pPix], ['cartao', pCart], ['dinheiro', pDin], ['debito', pDeb]].forEach(([formaId, pag]) => {
+      const chkUsar = document.getElementById('e-misto-' + formaId + '-usar');
+      const corpo = document.getElementById('e-misto-' + formaId + '-corpo');
+      if (chkUsar) {
+        chkUsar.checked = !!pag;
+        chkUsar.dataset.tinhaPagamentoExistente = pag ? 'true' : 'false';
+      }
+      if (corpo) corpo.style.display = pag ? '' : 'none';
+    });
     // Reflete se cada forma já tinha desconto aplicado, e mostra o grupo de desconto se houver valor
     atualizarDescMistoVisibilidade('e');
     aplicarVisibilidadeMistoAtiva('e', c);
+    atualizarTotalMisto('e');
     [['e-misto-pix-aplicar-desconto', pPix], ['e-misto-dinheiro-aplicar-desconto', pDin], ['e-misto-debito-aplicar-desconto', pDeb]].forEach(([chkId, pag]) => {
       if (!pag) return;
       const chk = document.getElementById(chkId);
@@ -6709,8 +6839,15 @@ function onFormaPagEditChange(val) {
     if (grpEntregaPrazo) grpEntregaPrazo.style.display = 'none';
     if (grpMisto) grpMisto.style.display = '';
     preencherSelectParcelas('e-pago-cartao-parc');
+    ['pix','cartao','dinheiro','debito'].forEach(formaId => {
+      const chkUsar = document.getElementById('e-misto-' + formaId + '-usar');
+      if (chkUsar) chkUsar.checked = false;
+      const corpo = document.getElementById('e-misto-' + formaId + '-corpo');
+      if (corpo) corpo.style.display = 'none';
+    });
     atualizarDescMistoVisibilidade('e');
     aplicarVisibilidadeMistoAtiva('e', null);
+    atualizarTotalMisto('e');
   } else {
     if (grpReserva) grpReserva.style.display = 'none';
     if (grpEntregaPrazo) grpEntregaPrazo.style.display = 'none';
@@ -6854,13 +6991,25 @@ async function saveEditContrato() {
     let listaMisto = pagamentosFinal;
 
     const camposMisto = [
-      { campoId: 'e-pago-pix', forma: 'Pix', chkId: 'e-misto-pix-aplicar-desconto' },
-      { campoId: 'e-pago-cartao', forma: 'Cartão', chkId: null },
-      { campoId: 'e-pago-dinheiro', forma: 'Dinheiro', chkId: 'e-misto-dinheiro-aplicar-desconto' },
-      { campoId: 'e-pago-debito', forma: 'Débito', chkId: 'e-misto-debito-aplicar-desconto' },
+      { campoId: 'e-pago-pix', forma: 'Pix', chkId: 'e-misto-pix-aplicar-desconto', usarId: 'e-misto-pix-usar' },
+      { campoId: 'e-pago-cartao', forma: 'Cartão', chkId: null, usarId: 'e-misto-cartao-usar' },
+      { campoId: 'e-pago-dinheiro', forma: 'Dinheiro', chkId: 'e-misto-dinheiro-aplicar-desconto', usarId: 'e-misto-dinheiro-usar' },
+      { campoId: 'e-pago-debito', forma: 'Débito', chkId: 'e-misto-debito-aplicar-desconto', usarId: 'e-misto-debito-usar' },
     ];
 
-    camposMisto.forEach(({ campoId, forma, chkId }) => {
+    camposMisto.forEach(({ campoId, forma, chkId, usarId }) => {
+      const chkUsar = document.getElementById(usarId);
+      // Desmarcou explicitamente o "usar esta forma": se já existe um pagamento dela, remove de
+      // verdade — sem isso, desmarcar só limpava o campo na tela, mas o pagamento continuava
+      // gravado no banco, e reabrir a edição mostrava tudo de volta como se nada tivesse mudado.
+      if (chkUsar && !chkUsar.checked) {
+        const idxRemover = listaMisto.findIndex(p => p.forma === forma && !p.origemPeca);
+        if (idxRemover >= 0) {
+          listaMisto = listaMisto.filter((p, i) => i !== idxRemover);
+          pagamentosMudaram = true;
+        }
+        return;
+      }
       const valorDigitado = round2(parseFloat(document.getElementById(campoId)?.value) || 0);
       if (valorDigitado <= 0) return; // campo vazio: não mexe (nem cria, nem apaga um pagamento existente)
 
