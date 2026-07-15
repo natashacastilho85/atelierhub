@@ -1913,10 +1913,10 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
 </div><!-- fim #drawer-edit -->
 
 <!-- DRAWER NOVO PAGAMENTO -->
-<div class="drawer-overlay" id="drawer-pag" onclick="closeDrawer('drawer-pag')">
+<div class="drawer-overlay" id="drawer-pag" onclick="fecharDrawerPag()">
   <div class="drawer" onclick="event.stopPropagation()">
     <div class="drawer-handle"></div>
-    <div class="drawer-title">Registrar pagamento</div>
+    <div class="drawer-title" id="pag-titulo">Registrar pagamento</div>
     <div id="pag-info" style="font-size:0.7rem;color:var(--muted);margin-bottom:1rem;padding:0.6rem 0.8rem;background:rgba(184,134,42,0.06);border-radius:4px;border-left:3px solid var(--gold)"></div>
     <div class="field-row">
       <div class="field-group"><label class="field-label">Data</label><input class="field-input" id="pag-data" type="date"></div>
@@ -1926,6 +1926,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       <div class="field-group">
         <label class="field-label">Forma</label>
         <select class="field-input" id="pag-forma" onchange="atualizarPagFormaUI();atualizarPreviewPag()"></select>
+        <div id="pag-forma-trava-aviso" style="display:none;font-size:0.62rem;color:var(--muted-light);margin-top:0.3rem">Para trocar a forma, exclua este pagamento e registre outro.</div>
       </div>
       <div class="field-group" id="pag-parc-grp" style="display:none">
         <label class="field-label">Parcelas</label>
@@ -1962,8 +1963,21 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     </div>
 
     <div id="pag-preview" style="font-size:0.7rem;color:var(--sage);margin-top:-0.4rem;margin-bottom:0.5rem;min-height:1.2em"></div>
-    <button class="btn-primary" onclick="salvarNovoPagamento()">Salvar pagamento</button>
-    <button class="btn-secondary" onclick="closeDrawer('drawer-pag')">Cancelar</button>
+    <button class="btn-primary" id="pag-btn-salvar" onclick="salvarNovoPagamento()">Salvar pagamento</button>
+    <button class="btn-primary" id="pag-btn-excluir" style="display:none;background:rgba(122,37,53,0.1);color:var(--bordeaux);border:1px solid rgba(122,37,53,0.3)" onclick="excluirPagamentoDoFormulario()">🗑️ Excluir pagamento</button>
+
+    <button class="btn-secondary" onclick="fecharDrawerPag()">Cancelar</button>
+  </div>
+</div>
+
+<!-- DRAWER LISTA DE PAGAMENTOS (pra editar/excluir) -->
+<div class="drawer-overlay" id="drawer-lista-pagamentos" onclick="fecharListaPagamentos()">
+  <div class="drawer" onclick="event.stopPropagation()" style="max-height:85vh">
+    <div class="drawer-handle"></div>
+    <div class="drawer-title">Editar pagamentos</div>
+    <div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.8rem">Toque em um pagamento pra editar ou excluir.</div>
+    <div id="lista-pagamentos-body"></div>
+    <button class="btn-secondary" style="margin-top:0.8rem" onclick="fecharListaPagamentos()">Fechar</button>
   </div>
 </div>
 
@@ -2616,6 +2630,48 @@ function totalPagoPorForma(c, forma) {
   return c.pagamentos.filter(p=>p.forma===forma).reduce((s,p) => s + (parseFloat(p.valor)||0), 0);
 }
 
+const _fmtDataBR = s => s ? s.split('-').reverse().join('/') : '—';
+
+// Monta o texto de forma+parcelas+tarifa/desconto de um pagamento (sem o valor em R$).
+// Única fonte da lógica de exibição de desconto/tarifa — usada no Histórico (somente leitura)
+// e na lista de Editar Pagamentos (tocável), pra nunca divergir entre as duas telas.
+function _descricaoPagamento(p) {
+  const liquido = parseFloat(p.valor) || 0;
+  const bruto = (p.bruto !== undefined && p.bruto !== null) ? parseFloat(p.bruto) : liquido;
+  const temTaxa = Math.abs(bruto - liquido) > 0.01;
+  const parc = p.parcelas ? ` ${p.parcelas}×` : '';
+  let descTxt = '';
+  if (p.forma === 'Cartão') {
+    const partesCartao = [];
+    if (p.descontoCartaoValor > 0) {
+      partesCartao.push(p.descontoCartaoTipo === 'valor' ? `desc. R$${p.descontoCartaoValor}` : `desc. ${p.descontoCartaoValor}%`);
+    }
+    if (temTaxa) {
+      const pctTaxa = bruto > 0 ? ((bruto - liquido) / bruto) * 100 : 0;
+      partesCartao.push(`tarifa absorvida${pctTaxa > 0 ? ' ('+pctTaxa.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%)' : ''}`);
+    }
+    if (partesCartao.length) descTxt = ' · ' + partesCartao.join(', ');
+  } else if (temTaxa) {
+    const pctDesc = bruto > 0 ? ((bruto - liquido) / bruto) * 100 : 0;
+    if (pctDesc > 0) descTxt = ` · ${pctDesc.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}% desc.`;
+  }
+  return `${formaDisplayLabel(p.forma)||'—'}${parc}${descTxt}`;
+}
+
+// Linha de um pagamento em 2 linhas: data em cima, descrição+valor embaixo.
+// tappable=true adiciona onclick (usado na lista de Editar Pagamentos); false é só leitura (Histórico).
+function pagamentoLinhaHtml(p, { tappable = false, onClick = '' } = {}) {
+  const liquido = parseFloat(p.valor) || 0;
+  const clique = tappable && onClick ? ` onclick="${onClick}" style="cursor:pointer"` : '';
+  return `<div class="detail-row" style="flex-direction:column;align-items:stretch;font-size:0.78rem"${clique}>
+    <span style="font-size:0.66rem;color:var(--muted-light);margin-bottom:0.2rem">${_fmtDataBR(p.data)}</span>
+    <span style="display:flex;justify-content:space-between;align-items:center">
+      <span class="dl" style="padding:0">${_descricaoPagamento(p)}</span>
+      <span class="dv">R$ ${liquido.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+    </span>
+  </div>`;
+}
+
 // Verifica se a noiva está devedora — Reserva (prazo antes do casamento) ou Entrega+Prazo (prazo após a entrega)
 function isDevedor(c) {
   if (c.status === 'Cancelado') return false;
@@ -3135,14 +3191,42 @@ window.addEventListener('popstate', (event) => {
       return;
     }
 
-    // Registrar pagamento → reabre o detalhe sem pushState (mesmo princípio da Ficha acima)
+    // Registrar/editar pagamento → reabre o detalhe OU a lista de pagamentos, sem pushState
+    // (mesmo princípio da Ficha acima). Depende de como o drawer-pag foi aberto.
     if (id === 'drawer-pag' && pagamentoContratoId) {
+      if (_pagAbertoDaLista) {
+        _drawerStack.push('drawer-lista-pagamentos');
+        const _cIdVoltarLista = pagamentoContratoId;
+        setTimeout(() => {
+          const c = contratos.find(x => x.id === _cIdVoltarLista);
+          if (c) {
+            renderListaPagamentosBody(c);
+            openDrawerVisual('drawer-lista-pagamentos');
+          }
+        }, 50);
+      } else {
+        _drawerStack.push('drawer-detail');
+        const _cIdVoltarDetalhe = pagamentoContratoId;
+        setTimeout(() => {
+          const c = contratos.find(x => x.id === _cIdVoltarDetalhe);
+          if (c) {
+            openDetail._renderOnly = true;
+            openDetail(_cIdVoltarDetalhe);
+            openDetail._renderOnly = false;
+          }
+        }, 50);
+      }
+      return;
+    }
+
+    // Lista de pagamentos → reabre o detalhe sem pushState (mesmo princípio da Ficha acima)
+    if (id === 'drawer-lista-pagamentos' && listaPagamentosContratoId) {
       _drawerStack.push('drawer-detail');
       setTimeout(() => {
-        const c = contratos.find(x => x.id === pagamentoContratoId);
+        const c = contratos.find(x => x.id === listaPagamentosContratoId);
         if (c) {
           openDetail._renderOnly = true;
-          openDetail(pagamentoContratoId);
+          openDetail(listaPagamentosContratoId);
           openDetail._renderOnly = false;
         }
       }, 50);
@@ -5961,77 +6045,9 @@ function openDetail(id) {
   
   let pagsHtml = '';
   if (pags.length) {
-    pagsHtml = pags.map((p, idx) => {
-      const liquido = parseFloat(p.valor) || 0;
-      const bruto = (p.bruto !== undefined && p.bruto !== null) ? parseFloat(p.bruto) : liquido;
-      const temTaxa = Math.abs(bruto - liquido) > 0.01;
-      const parc = p.parcelas ? ` ${p.parcelas}×` : '';
-      let descTxt = '';
-      if (p.forma === 'Cartão') {
-        const partesCartao = [];
-        if (p.descontoCartaoValor > 0) {
-          partesCartao.push(p.descontoCartaoTipo === 'valor' ? `desc. R$${p.descontoCartaoValor}` : `desc. ${p.descontoCartaoValor}%`);
-        }
-        if (temTaxa) {
-          const pctTaxa = bruto > 0 ? ((bruto - liquido) / bruto) * 100 : 0;
-          partesCartao.push(`tarifa absorvida${pctTaxa > 0 ? ' ('+pctTaxa.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%)' : ''}`);
-        }
-        if (partesCartao.length) descTxt = ' · ' + partesCartao.join(', ');
-      } else if (temTaxa) {
-        const pctDesc = bruto > 0 ? ((bruto - liquido) / bruto) * 100 : 0;
-        if (pctDesc > 0) descTxt = ` · ${pctDesc.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}% desc.`;
-      }
-      return `<div class="detail-row" style="font-size:0.78rem">
-        <span class="dl">${fmtData(p.data)} · ${formaDisplayLabel(p.forma)||'—'}${parc}${descTxt}</span>
-        <span class="dv" style="display:flex;align-items:center;gap:0.5rem">
-          <span style="text-align:right;line-height:1.25">
-            <span style="color:var(--dark)">R$ ${liquido.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
-          </span>
-          <button onclick="event.stopPropagation();excluirPagamento(${c.id}, ${idx})" style="background:none;border:none;color:var(--bordeaux);font-size:0.95rem;cursor:pointer;padding:0;line-height:1" title="Excluir">×</button>
-        </span>
-      </div>`;
-    }).join('');
+    pagsHtml = pags.map(p => pagamentoLinhaHtml(p)).join('');
   } else if (pago > 0) {
     pagsHtml = `<div class="detail-row" style="font-size:0.78rem"><span class="dl" style="color:var(--muted-light);font-style:italic">Pagamento legado (anterior ao registro detalhado)</span><span class="dv" style="color:var(--sage)">R$ ${pago.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>`;
-  }
-
-  // Breakdown misto
-  let mistoHtml = '';
-  if (c.formaPag === 'misto') {
-    const _resumoForma = (forma) => {
-      const pagsForma = pags.filter(p => p.forma === forma);
-      const liq = round2(pagsForma.reduce((s,p)=>s+(parseFloat(p.valor)||0), 0));
-      const bru = round2(pagsForma.reduce((s,p)=>s+(parseFloat(p.bruto ?? p.valor)||0), 0));
-      return { liquido: liq, bruto: bru, diff: round2(bru - liq) };
-    };
-    const rPix  = _resumoForma('Pix');
-    const rCart = _resumoForma('Cartão');
-    const rDin  = _resumoForma('Dinheiro');
-    const rDeb  = _resumoForma('Débito');
-    const totalOutros = pago - rPix.liquido - rCart.liquido - rDin.liquido - rDeb.liquido;
-
-    const _fmtPct = (n) => n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
-    const _labelDesconto = (base, r) => {
-      if (r.diff <= 0.01 || r.bruto <= 0) return base;
-      const pct = (r.diff / r.bruto) * 100;
-      return pct > 0 ? `${base} (${_fmtPct(pct)}% de desconto)` : base;
-    };
-    const _labelCartao = (r) => {
-      if (r.diff <= 0.01 || r.bruto <= 0) return 'Em Crédito';
-      const pct = (r.diff / r.bruto) * 100;
-      return `Em Crédito (tarifa absorvida${pct > 0 ? ', ' + _fmtPct(pct) + '%' : ''})`;
-    };
-
-    const linhasMisto = [
-      [_labelDesconto('Em Pix', rPix), rPix.liquido],
-      [_labelCartao(rCart), rCart.liquido],
-      [_labelDesconto('Em Dinheiro', rDin), rDin.liquido],
-      [_labelDesconto('Em Débito', rDeb), rDeb.liquido],
-      ['Outras formas', totalOutros]
-    ].filter(([,v]) => v > 0.001);
-    mistoHtml = `<div style="margin-top:0.5rem;padding:0.6rem 0.8rem;background:rgba(184,134,42,0.06);border-radius:4px;font-size:0.72rem">
-      ${linhasMisto.map(([label,v],i) => `<div style="display:flex;justify-content:space-between;${i<linhasMisto.length-1?'margin-bottom:0.2rem':''}"><span style="color:var(--muted)">${label}</span><span style="color:var(--dark)">R$ ${v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>`).join('')}
-    </div>`;
   }
 
   document.getElementById('detail-body').innerHTML = `
@@ -6128,9 +6144,11 @@ function openDetail(id) {
       <div class="detail-row"><span class="dl" style="color:var(--dark)">Saldo a receber</span><span class="dv" style="color:${saldo>0.01?(devedor?'var(--bordeaux)':'var(--brown)'):'var(--sage)'};${devedor?'font-weight:600':''}">${saldo>0.01?'R$ '+saldo.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'✓ Quitado'}</span></div>
       ${c.formaPag==='reserva'?`<div class="detail-row"><span class="dl" style="color:var(--muted-light);font-size:0.7rem">Prazo: ${(custosConfig.prazoReserva !== null && custosConfig.prazoReserva !== undefined) ? `quitado até ${custosConfig.prazoReserva} dia${custosConfig.prazoReserva===1?'':'s'} antes do casamento` : 'configure o prazo em Configurações'}</span><span class="dv"></span></div>`:''}
       ${c.formaPag==='entrega_prazo'?`<div class="detail-row"><span class="dl" style="color:var(--muted-light);font-size:0.7rem">Prazo: ${!c.entrega ? 'conta a partir da entrega da peça' : (custosConfig.prazoEntrega !== null && custosConfig.prazoEntrega !== undefined) ? `quitado até ${custosConfig.prazoEntrega} dia${custosConfig.prazoEntrega===1?'':'s'} após a entrega` : 'configure o prazo em Configurações'}</span><span class="dv"></span></div>`:''}
-      ${mistoHtml}
       ${pagsHtml ? `<div style="margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid rgba(184,134,42,0.12)"><div style="font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem">Histórico</div>${pagsHtml}</div>`:''}
-      <button class="btn-primary" style="margin-top:0.7rem;background:rgba(107,143,113,0.12);color:var(--sage);border:1px solid rgba(107,143,113,0.35)" onclick="openNovoPagamento(${c.id})">💲 Registrar pagamento</button>
+      <div style="display:flex;gap:0.5rem;margin-top:0.7rem">
+        <button class="btn-primary" style="margin-top:0;flex:1;line-height:1.3;white-space:normal;${pags.length ? 'background:rgba(184,134,42,0.1);color:var(--brown);border:1px solid rgba(184,134,42,0.3)' : 'background:rgba(184,134,42,0.05);color:var(--muted-light);border:1px solid rgba(184,134,42,0.15);cursor:default'}" ${pags.length ? `onclick="abrirListaPagamentos(${c.id})"` : 'disabled'}>✏️ Editar<br>Pagamentos</button>
+        <button class="btn-primary" style="margin-top:0;background:rgba(107,143,113,0.12);color:var(--sage);border:1px solid rgba(107,143,113,0.35);flex:1;line-height:1.3;white-space:normal" onclick="openNovoPagamento(${c.id})">💲 Registrar<br>Pagamento</button>
+      </div>
     </div>
     ${linkWaBtn?`<a href="${linkWaBtn}" style="display:block;width:100%;box-sizing:border-box;background:#1a7a40;border:none;border-radius:4px;padding:0.9rem;color:white;font-family:'Calibri',sans-serif;font-size:0.78rem;font-weight:500;letter-spacing:0.2em;text-transform:uppercase;cursor:pointer;margin-top:0.5rem;text-align:center;text-decoration:none">💬 Abrir WhatsApp Business</a>`:''}
     ${!c.chegada && c.status !== 'Cancelado' ? `<button class="btn-primary" style="background:rgba(74,127,168,0.12);color:#2d6090;border:1px solid rgba(74,127,168,0.35);margin-top:0.4rem" onclick="registrarChegadaBuque(${c.id})">🌸 Buquê chegou</button>` : ''}
@@ -7246,11 +7264,21 @@ async function excluirContratoDoDetalhe(id) {
 
 // ── REGISTRO DE PAGAMENTO ──
 let pagamentoContratoId = null;
+let pagamentoEditandoIdx = null;   // null = registrando novo pagamento; número = editando o pagamento nesse índice
+let listaPagamentosContratoId = null;
+let _pagAbertoDaLista = false;     // se true, o "voltar" do drawer-pag deve reabrir a lista, não o detalhe
 
 function openNovoPagamento(contratoId) {
   const c = contratos.find(x => x.id === contratoId);
   if (!c) return;
   pagamentoContratoId = contratoId;
+  pagamentoEditandoIdx = null;
+  _pagAbertoDaLista = false;
+  document.getElementById('pag-titulo').textContent = 'Registrar pagamento';
+  document.getElementById('pag-btn-salvar').textContent = 'Salvar pagamento';
+  document.getElementById('pag-btn-excluir').style.display = 'none';
+  document.getElementById('pag-forma').disabled = false;
+  document.getElementById('pag-forma-trava-aviso').style.display = 'none';
   const vap  = calcValorAPagar(c);
   const pago = totalPago(c);
   const saldo = round2(vap - pago);
@@ -7277,6 +7305,106 @@ function openNovoPagamento(contratoId) {
   atualizarPreviewPag();
   closeDrawer('drawer-detail');
   openDrawer('drawer-pag');
+}
+
+function abrirListaPagamentos(contratoId) {
+  const c = contratos.find(x => x.id === contratoId);
+  if (!c || !(c.pagamentos||[]).length) return;
+  listaPagamentosContratoId = contratoId;
+  renderListaPagamentosBody(c);
+  closeDrawer('drawer-detail');
+  openDrawer('drawer-lista-pagamentos');
+}
+
+function renderListaPagamentosBody(c) {
+  const body = document.getElementById('lista-pagamentos-body');
+  if (!body) return;
+  body.innerHTML = (c.pagamentos||[]).map((p, idx) =>
+    pagamentoLinhaHtml(p, { tappable: true, onClick: `abrirEditarPagamento(${c.id}, ${idx})` })
+  ).join('');
+}
+
+function fecharListaPagamentos() {
+  const idParaReabrir = listaPagamentosContratoId;
+  closeDrawer('drawer-lista-pagamentos');
+  if (idParaReabrir) setTimeout(() => openDetail(idParaReabrir), 50);
+}
+
+function abrirEditarPagamento(contratoId, idx) {
+  const c = contratos.find(x => x.id === contratoId);
+  if (!c) return;
+  const p = (c.pagamentos||[])[idx];
+  if (!p) return;
+  pagamentoContratoId = contratoId;
+  pagamentoEditandoIdx = idx;
+  _pagAbertoDaLista = true;
+
+  document.getElementById('pag-titulo').textContent = 'Editar pagamento';
+  document.getElementById('pag-btn-salvar').textContent = 'Salvar alterações';
+  document.getElementById('pag-btn-excluir').style.display = '';
+  document.getElementById('pag-info').innerHTML = `<strong>${c.nome}</strong><br><span style="color:var(--muted)">Editando pagamento de ${_fmtDataBR(p.data)}</span>`;
+
+  document.getElementById('pag-data').value = p.data || '';
+  document.getElementById('pag-valor').value = p.bruto ?? p.valor ?? '';
+  document.getElementById('pag-forma').innerHTML = getOpcoesFormaPagamentoHTML(p.forma);
+  document.getElementById('pag-forma').value = p.forma;
+  document.getElementById('pag-forma').disabled = true;
+  document.getElementById('pag-forma-trava-aviso').style.display = '';
+
+  atualizarPagFormaUI(); // aplica visibilidade e valores-padrão dos campos da forma
+
+  // Sobrescreve com os valores REAIS já salvos nesse pagamento (atualizarPagFormaUI só põe padrão)
+  if (p.forma === 'Cartão') {
+    const parcEl = document.getElementById('pag-parcelas');
+    if (parcEl && p.parcelas) parcEl.value = p.parcelas;
+    const temCupom = parseFloat(p.descontoCartaoValor) > 0;
+    const chkCartao = document.getElementById('pag-cartao-aplicar-desconto');
+    if (chkCartao) chkCartao.checked = temCupom;
+    if (temCupom) {
+      const tipoEl = document.getElementById('pag-cartao-desc-tipo');
+      const valEl = document.getElementById('pag-cartao-desc-valor');
+      if (tipoEl) tipoEl.value = p.descontoCartaoTipo || 'percentual';
+      if (valEl) valEl.value = p.descontoCartaoValor;
+    }
+    atualizarCartaoDescUI('pag-cartao');
+  } else {
+    const bruto = parseFloat(p.bruto ?? p.valor) || 0;
+    const liquido = parseFloat(p.valor) || 0;
+    const temDesconto = Math.abs(bruto - liquido) > 0.01;
+    const chkDesc = document.getElementById('pag-aplicar-desconto');
+    if (chkDesc) chkDesc.checked = temDesconto;
+  }
+  atualizarPreviewPag();
+
+  closeDrawer('drawer-lista-pagamentos');
+  openDrawer('drawer-pag');
+}
+
+function fecharDrawerPag() {
+  const cIdFechar = pagamentoContratoId;
+  const daLista = _pagAbertoDaLista;
+  closeDrawer('drawer-pag');
+  pagamentoContratoId = null;
+  pagamentoEditandoIdx = null;
+  _pagAbertoDaLista = false;
+  if (!cIdFechar) return;
+  if (daLista) {
+    listaPagamentosContratoId = cIdFechar;
+    const c = contratos.find(x => x.id === cIdFechar);
+    if (c) { renderListaPagamentosBody(c); setTimeout(() => openDrawer('drawer-lista-pagamentos'), 50); }
+  } else {
+    setTimeout(() => openDetail(cIdFechar), 50);
+  }
+}
+
+function excluirPagamentoDoFormulario() {
+  if (!pagamentoContratoId || pagamentoEditandoIdx === null) return;
+  const cId = pagamentoContratoId, idx = pagamentoEditandoIdx;
+  closeDrawer('drawer-pag');
+  pagamentoContratoId = null;
+  pagamentoEditandoIdx = null;
+  _pagAbertoDaLista = false;
+  excluirPagamento(cId, idx);
 }
 
 function atualizarCartaoDescUI(prefixo) {
@@ -7402,7 +7530,15 @@ async function salvarNovoPagamento() {
   const novoPag = { data, valor: liquido, bruto: brutoFinal, forma };
   if (parcelas) novoPag.parcelas = parcelas;
   if (descontoCartaoTipo) { novoPag.descontoCartaoTipo = descontoCartaoTipo; novoPag.descontoCartaoValor = descontoCartaoValor; }
-  const novosPags = [...(c.pagamentos || []), novoPag];
+
+  const estaEditando = pagamentoEditandoIdx !== null;
+  let novosPags;
+  if (estaEditando) {
+    novosPags = [...(c.pagamentos || [])];
+    novosPags[pagamentoEditandoIdx] = novoPag;
+  } else {
+    novosPags = [...(c.pagamentos || []), novoPag];
+  }
   // Pago legado (compat): soma dos valores líquidos
   const novoPago = novosPags.reduce((s,p)=>s+(parseFloat(p.valor)||0), 0);
 
@@ -7414,6 +7550,8 @@ async function salvarNovoPagamento() {
     Object.assign(c, mapContrato(r));
     closeDrawer('drawer-pag');
     pagamentoContratoId = null;
+    pagamentoEditandoIdx = null;
+    _pagAbertoDaLista = false;
     renderAll();
     openDetail(c.id);
   } catch(e) { _mostrarErroAcao('salvarNovoPagamento', e, { acaoLabel: 'salvar o pagamento' }); }
