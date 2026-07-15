@@ -1926,7 +1926,6 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       <div class="field-group">
         <label class="field-label">Forma</label>
         <select class="field-input" id="pag-forma" onchange="atualizarPagFormaUI();atualizarPreviewPag()"></select>
-        <div id="pag-forma-trava-aviso" style="display:none;font-size:0.62rem;color:var(--muted-light);margin-top:0.3rem">Para trocar a forma, exclua este pagamento e registre outro.</div>
       </div>
       <div class="field-group" id="pag-parc-grp" style="display:none">
         <label class="field-label">Parcelas</label>
@@ -7277,8 +7276,6 @@ function openNovoPagamento(contratoId) {
   document.getElementById('pag-titulo').textContent = 'Registrar pagamento';
   document.getElementById('pag-btn-salvar').textContent = 'Salvar pagamento';
   document.getElementById('pag-btn-excluir').style.display = 'none';
-  document.getElementById('pag-forma').disabled = false;
-  document.getElementById('pag-forma-trava-aviso').style.display = 'none';
   const vap  = calcValorAPagar(c);
   const pago = totalPago(c);
   const saldo = round2(vap - pago);
@@ -7348,8 +7345,6 @@ function abrirEditarPagamento(contratoId, idx) {
   document.getElementById('pag-valor').value = p.bruto ?? p.valor ?? '';
   document.getElementById('pag-forma').innerHTML = getOpcoesFormaPagamentoHTML(p.forma);
   document.getElementById('pag-forma').value = p.forma;
-  document.getElementById('pag-forma').disabled = true;
-  document.getElementById('pag-forma-trava-aviso').style.display = '';
 
   atualizarPagFormaUI(); // aplica visibilidade e valores-padrão dos campos da forma
 
@@ -7494,6 +7489,13 @@ function atualizarPreviewPag() {
       el.textContent = `→ entra no caixa: ${fmt(r.liquido)} (sem taxa${descTxt})`;
     }
   }
+
+  if (pagamentoContratoId) {
+    const c = contratos.find(x => x.id === pagamentoContratoId);
+    if (c && precisaVirarMistoPorForma(c, forma)) {
+      el.textContent += ' · o contrato vai virar Misto (essa forma não é a padrão dele)';
+    }
+  }
 }
 
 async function salvarNovoPagamento() {
@@ -7542,11 +7544,13 @@ async function salvarNovoPagamento() {
   // Pago legado (compat): soma dos valores líquidos
   const novoPago = novosPags.reduce((s,p)=>s+(parseFloat(p.valor)||0), 0);
 
+  const dadosParaSalvar = { pagamentos: novosPags, pago: round2(novoPago) };
+  if (precisaVirarMistoPorForma(c, forma)) {
+    dadosParaSalvar.forma_pag = 'misto';
+  }
+
   try {
-    const [r] = await sbUpdate('contratos', pagamentoContratoId, {
-      pagamentos: novosPags,
-      pago: round2(novoPago)
-    });
+    const [r] = await sbUpdate('contratos', pagamentoContratoId, dadosParaSalvar);
     Object.assign(c, mapContrato(r));
     closeDrawer('drawer-pag');
     pagamentoContratoId = null;
@@ -8094,6 +8098,17 @@ function calcLiquidoComDesconto(bruto, forma, aplicarDesconto) {
 // salvo), mas na tela mostramos "Crédito" — deixa Débito e Crédito com nomes paralelos.
 function formaDisplayLabel(forma) {
   return forma === 'Cartão' ? 'Crédito' : forma;
+}
+
+// Mapa: tipo de contrato "simples" (pix/credito/dinheiro/debito) -> forma de pagamento
+// individual esperada. Usado pra detectar quando um pagamento não bate mais com o tipo
+// declarado do contrato (ex: contrato "Pix" recebendo um pagamento em Cartão) — nesse caso
+// o contrato precisa virar Misto, senão o cálculo do valor a pagar aplica o desconto errado
+// (o mesmo raciocínio já usado pra peças novas em saveEditContrato, agora também aqui).
+const MAPA_FORMA_SIMPLES_ESPERADA = { pix: 'Pix', credito: 'Cartão', dinheiro: 'Dinheiro', debito: 'Débito' };
+function precisaVirarMistoPorForma(c, forma) {
+  const esperada = MAPA_FORMA_SIMPLES_ESPERADA[c.formaPag];
+  return !!esperada && forma !== esperada;
 }
 
 // Desconto/Acréscimo no valor total das peças: pode ser digitado em R$ ou em %. O valor final em
