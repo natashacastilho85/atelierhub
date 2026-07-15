@@ -120,7 +120,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     .bottom-nav { background: var(--header-bg); }
     .metric-card, .producao-card, .contract-card, .cal-month-card, .fin-totais,
     .fin-month-card, .gasto-month-card, .comp-card, .piece-card, .mat-global-card,
-    .prec-resumo-card, .prec-peca-card, .detail-section,
+    .prec-resumo-card, .prec-peca-card, .detail-section, .misto-card,
     div[style*="overflow-x:auto"][style*="border-radius:8px"][style*="background:white"] {
       background: var(--card-bg) !important;
     }
@@ -3121,6 +3121,34 @@ window.addEventListener('popstate', (event) => {
       return;
     }
 
+    // Edição de contrato → reabre o detalhe sem pushState (mesmo princípio da Ficha acima)
+    if (id === 'drawer-edit' && contratoEditandoId) {
+      _drawerStack.push('drawer-detail');
+      setTimeout(() => {
+        const c = contratos.find(x => x.id === contratoEditandoId);
+        if (c) {
+          openDetail._renderOnly = true;
+          openDetail(contratoEditandoId);
+          openDetail._renderOnly = false;
+        }
+      }, 50);
+      return;
+    }
+
+    // Registrar pagamento → reabre o detalhe sem pushState (mesmo princípio da Ficha acima)
+    if (id === 'drawer-pag' && pagamentoContratoId) {
+      _drawerStack.push('drawer-detail');
+      setTimeout(() => {
+        const c = contratos.find(x => x.id === pagamentoContratoId);
+        if (c) {
+          openDetail._renderOnly = true;
+          openDetail(pagamentoContratoId);
+          openDetail._renderOnly = false;
+        }
+      }, 50);
+      return;
+    }
+
     if (id === 'modal-sel-mat' && matModalPecaId) {
       const secao = document.getElementById('mat-' + matModalPecaId);
       const seta  = document.getElementById('seta-mat-' + matModalPecaId);
@@ -5945,13 +5973,13 @@ function openDetail(id) {
           partesCartao.push(p.descontoCartaoTipo === 'valor' ? `desc. R$${p.descontoCartaoValor}` : `desc. ${p.descontoCartaoValor}%`);
         }
         if (temTaxa) {
-          const pctTaxa = bruto > 0 ? Math.round(((bruto - liquido) / bruto) * 100) : 0;
-          partesCartao.push(`tarifa absorvida${pctTaxa > 0 ? ' ('+pctTaxa+'%)' : ''}`);
+          const pctTaxa = bruto > 0 ? ((bruto - liquido) / bruto) * 100 : 0;
+          partesCartao.push(`tarifa absorvida${pctTaxa > 0 ? ' ('+pctTaxa.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%)' : ''}`);
         }
         if (partesCartao.length) descTxt = ' · ' + partesCartao.join(', ');
       } else if (temTaxa) {
-        const pctDesc = bruto > 0 ? Math.round(((bruto - liquido) / bruto) * 100) : 0;
-        if (pctDesc > 0) descTxt = ` · ${pctDesc}% desc.`;
+        const pctDesc = bruto > 0 ? ((bruto - liquido) / bruto) * 100 : 0;
+        if (pctDesc > 0) descTxt = ` · ${pctDesc.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}% desc.`;
       }
       return `<div class="detail-row" style="font-size:0.78rem">
         <span class="dl">${fmtData(p.data)} · ${formaDisplayLabel(p.forma)||'—'}${parc}${descTxt}</span>
@@ -5982,15 +6010,16 @@ function openDetail(id) {
     const rDeb  = _resumoForma('Débito');
     const totalOutros = pago - rPix.liquido - rCart.liquido - rDin.liquido - rDeb.liquido;
 
+    const _fmtPct = (n) => n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
     const _labelDesconto = (base, r) => {
       if (r.diff <= 0.01 || r.bruto <= 0) return base;
-      const pct = Math.round((r.diff / r.bruto) * 100);
-      return pct > 0 ? `${base} (${pct}% de desconto)` : base;
+      const pct = (r.diff / r.bruto) * 100;
+      return pct > 0 ? `${base} (${_fmtPct(pct)}% de desconto)` : base;
     };
     const _labelCartao = (r) => {
       if (r.diff <= 0.01 || r.bruto <= 0) return 'Em Crédito';
-      const pct = Math.round((r.diff / r.bruto) * 100);
-      return `Em Crédito (tarifa absorvida${pct > 0 ? ', ' + pct + '%' : ''})`;
+      const pct = (r.diff / r.bruto) * 100;
+      return `Em Crédito (tarifa absorvida${pct > 0 ? ', ' + _fmtPct(pct) + '%' : ''})`;
     };
 
     const linhasMisto = [
