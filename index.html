@@ -1076,7 +1076,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
               <div id="fil-col-pagamento" style="display:none;margin-bottom:0.5rem">
                 <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.2rem">Forma de pagamento</div>
                 <select id="fil-forma" style="width:100%;padding:0.4rem 0.5rem;border:1px solid rgba(184,134,42,0.35);border-radius:8px;font-family:'Calibri',sans-serif;font-size:0.82rem;background:var(--cream);color:var(--dark)">
-                  <option value="">Qualquer</option><option value="pix">Pix</option><option value="debito">Débito</option><option value="dinheiro">Dinheiro</option><option value="credito">Crédito</option><option value="reserva">Reserva antecipada</option><option value="entrega_prazo">Entrada + saldo na entrega</option><option value="misto">Misto (Pix, Crédito, Dinheiro e/ou Débito)</option>
+                  <option value="">Qualquer</option><option value="pix">Pix</option><option value="debito">Débito</option><option value="dinheiro">Dinheiro</option><option value="credito">Crédito</option><option value="reserva">Reserva com entrada</option><option value="entrega_prazo">Reserva sem entrada</option><option value="misto">Misto (Pix, Crédito, Dinheiro e/ou Débito)</option>
                 </select>
               </div>
               <div id="fil-col-presente" style="display:none;margin-bottom:0.5rem">
@@ -1352,8 +1352,8 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         <option value="debito">Débito</option>
         <option value="dinheiro">Dinheiro</option>
         <option value="credito">Crédito</option>
-        <option value="reserva">Reserva antecipada</option>
-        <option value="entrega_prazo">Entrada + saldo na entrega</option>
+        <option value="reserva">Reserva com entrada</option>
+        <option value="entrega_prazo">Reserva sem entrada</option>
         <option value="misto">Misto (Pix, Crédito, Dinheiro e/ou Débito)</option>
       </select>
     </div>
@@ -1389,6 +1389,15 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         <input class="field-input" id="c-pago" type="number" placeholder="Mín. R$ 300,00" step="1" min="0">
         <div class="field-hint visible" style="font-size:0.65rem;color:var(--muted);margin-top:0.3rem">O restante fica em aberto. Você poderá registrar mais pagamentos depois, no detalhe do contrato.</div>
       </div>
+      <div class="field-group">
+        <label class="field-label">Prazo de quitação</label>
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer;margin-bottom:0.3rem">
+          <input type="radio" name="c-tipoquitacao-reserva" value="casamento" checked style="width:14px;height:14px;accent-color:var(--brown)"> Antes do casamento
+        </label>
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+          <input type="radio" name="c-tipoquitacao-reserva" value="entrega" style="width:14px;height:14px;accent-color:var(--brown)"> Após entrega
+        </label>
+      </div>
     </div>
     <div id="grp-pago-entregaprazo" style="display:none">
       <div class="field-row">
@@ -1411,6 +1420,15 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         <label class="field-label">Entrada já recebida (R$)</label>
         <input class="field-input" id="c-entregaprazo-pago" type="number" placeholder="0,00" step="1" min="0">
         <div class="field-hint visible" style="font-size:0.65rem;color:var(--muted);margin-top:0.3rem">O restante fica em aberto. Você poderá registrar mais pagamentos depois, no detalhe do contrato.</div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Prazo de quitação</label>
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer;margin-bottom:0.3rem">
+          <input type="radio" name="c-tipoquitacao-entregaprazo" value="casamento" style="width:14px;height:14px;accent-color:var(--brown)"> Antes do casamento
+        </label>
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
+          <input type="radio" name="c-tipoquitacao-entregaprazo" value="entrega" checked style="width:14px;height:14px;accent-color:var(--brown)"> Após entrega
+        </label>
       </div>
     </div>
     <div id="grp-pago-misto" style="display:none">
@@ -1819,7 +1837,16 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         <span style="font-size:0.66rem;color:var(--muted-light);margin-bottom:0.2rem">Forma de Pagamento</span>
         <select id="lp-forma-simples" onchange="_atualizarBotaoSalvarTipo()" style="border:none;background:transparent;font-size:0.85rem;color:var(--dark);font-family:'Calibri',sans-serif;padding:0;outline:none;width:100%"></select>
       </div>
-      <button class="btn-secondary" id="lp-btn-salvar-tipo" style="margin-top:0.6rem;display:none" onclick="salvarTipoContratoLista()">Salvar tipo de contrato</button>
+      <div class="detail-row" id="lp-grp-tipoquitacao" style="flex-direction:column;align-items:stretch;font-size:0.78rem">
+        <span style="font-size:0.66rem;color:var(--muted-light);margin-bottom:0.3rem">Prazo de quitação</span>
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;color:var(--dark);cursor:pointer;margin-bottom:0.2rem">
+          <input type="radio" name="lp-tipoquitacao" value="casamento" onchange="_atualizarBotaoSalvarTipo()" style="width:14px;height:14px;accent-color:var(--brown)"> Antes do casamento
+        </label>
+        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.85rem;color:var(--dark);cursor:pointer">
+          <input type="radio" name="lp-tipoquitacao" value="entrega" onchange="_atualizarBotaoSalvarTipo()" style="width:14px;height:14px;accent-color:var(--brown)"> Após entrega
+        </label>
+      </div>
+      <button class="btn-primary" id="lp-btn-salvar-tipo" style="margin-top:0.6rem;display:none;background:rgba(184,134,42,0.1);color:var(--brown);border:1px solid rgba(184,134,42,0.3)" onclick="salvarTipoContratoLista()">Salvar tipo de contrato</button>
     </div>
     <button class="btn-secondary" style="margin-top:0.8rem" onclick="fecharListaPagamentos()">Fechar</button>
   </div>
@@ -2429,6 +2456,7 @@ function mapContrato(r) {
     chegada: r.chegada || null, 
     entrega: r.entrega || null, 
     formaPag: r.forma_pag || 'pix',
+    tipoQuitacao: r.tipo_quitacao || null,
     valorBruto: parseFloat(r.valor_bruto) || 0, 
     pago: parseFloat(r.pago) || 0,
     desconto: parseFloat(r.desconto) || 0,
@@ -2516,26 +2544,31 @@ function pagamentoLinhaHtml(p, { tappable = false, onClick = '' } = {}) {
   </div>`;
 }
 
-// Verifica se a noiva está devedora — Reserva (prazo antes do casamento) ou Entrega+Prazo (prazo após a entrega)
+// Verifica se a noiva está devedora — Reserva com/sem entrada, olhando o prazo de quitação
+// escolhido em cada contrato (antes do casamento ou após a entrega), não mais fixo pelo tipo.
+// Contratos antigos sem essa escolha explícita usam o comportamento de sempre (com
+// entrada→casamento, sem entrada→entrega), pra não mudar nada retroativamente.
 function isDevedor(c) {
   if (c.status === 'Cancelado') return false;
+  if (c.formaPag !== 'reserva' && c.formaPag !== 'entrega_prazo') return false;
 
-  if (c.formaPag === 'reserva') {
+  const tipoQuitacao = c.tipoQuitacao || (c.formaPag === 'reserva' ? 'casamento' : 'entrega');
+  const saldo = calcValorAPagar(c) - totalPago(c);
+  if (saldo <= 0.01) return false;
+
+  if (tipoQuitacao === 'casamento') {
     const prazo = custosConfig.prazoReserva;
     if (prazo === null || prazo === undefined) return false; // ainda não configurado — sem enforcement
-    const saldo = calcValorAPagar(c) - totalPago(c);
-    if (saldo <= 0.01) return false;
+    if (!c.casamento) return false;
     const dataCas = new Date(c.casamento+'T12:00:00'); dataCas.setHours(0,0,0,0);
     const limite = new Date(dataCas); limite.setDate(limite.getDate() - prazo);
     return hoje >= limite;
   }
 
-  if (c.formaPag === 'entrega_prazo') {
+  if (tipoQuitacao === 'entrega') {
     if (!c.entrega) return false; // só conta a partir do momento em que a peça é marcada como entregue/pronta
     const prazo = custosConfig.prazoEntrega;
     if (prazo === null || prazo === undefined) return false; // ainda não configurado — sem enforcement
-    const saldo = calcValorAPagar(c) - totalPago(c);
-    if (saldo <= 0.01) return false;
     const dataEntrega = new Date(c.entrega+'T12:00:00'); dataEntrega.setHours(0,0,0,0);
     const limite = new Date(dataEntrega); limite.setDate(limite.getDate() + prazo);
     return hoje >= limite;
@@ -3150,6 +3183,24 @@ async function saveContrato() {
   const telIntlEl = document.getElementById('c-tel-intl');
   const telefoneInternacional = telIntlEl ? telIntlEl.checked : false;
   const formaPag = document.getElementById('forma-pag-select').value;
+
+  // Reserva com entrada exige entrada > 0 — é o que diferencia ela de Reserva sem entrada
+  if (formaPag === 'reserva') {
+    const pagoEntradaCheck = parseFloat(document.getElementById('c-pago').value) || 0;
+    if (pagoEntradaCheck <= 0) {
+      mostrarAlerta({ emoji: '⚠️', titulo: 'Entrada obrigatória', mensagem: 'Reserva com entrada exige um valor de entrada maior que zero. Se não vai receber entrada, use "Reserva sem entrada".' });
+      return;
+    }
+  }
+
+  // Prazo de quitação (só relevante pra Reserva com/sem entrada) — lê o rádio do bloco visível
+  let tipoQuitacao = null;
+  if (formaPag === 'reserva') {
+    tipoQuitacao = document.querySelector('input[name="c-tipoquitacao-reserva"]:checked')?.value || 'casamento';
+  } else if (formaPag === 'entrega_prazo') {
+    tipoQuitacao = document.querySelector('input[name="c-tipoquitacao-entregaprazo"]:checked')?.value || 'entrega';
+  }
+
   const descontoTipoDigitado = document.getElementById('c-desconto-tipo')?.value || 'valor';
   const descontoValorDigitado = document.getElementById('c-desconto').value;
   const acrescimoTipoDigitado = document.getElementById('c-acrescimo-tipo')?.value || 'valor';
@@ -3200,7 +3251,8 @@ async function saveContrato() {
       telefone_internacional: telefoneInternacional,
       forma_pag: formaPag, valor_bruto: valorFinal, desconto, acrescimo,
       desconto_meta: descontoMeta, acrescimo_meta: acrescimoMeta, pecas: pecasSel,
-      pagamentos: pagamentosIni, ficha_producao: ficha, presente: presenteVal
+      pagamentos: pagamentosIni, ficha_producao: ficha, presente: presenteVal,
+      tipo_quitacao: tipoQuitacao
     });
     const novoMapeado = mapContrato(novoContrato);
     contratos.push(novoMapeado);
@@ -3335,17 +3387,16 @@ function calcValorAPagar(c) {
   const desc = parseFloat(c.desconto)  || 0;
   const base = round2((parseFloat(c.valorBruto) || 0) + acr - desc);
   const temPag = Array.isArray(c.pagamentos) && c.pagamentos.length > 0;
-  if (c.formaPag === 'pix' && temPag)     return round2(base * (1 - getDescontoPix()));
-  if (c.formaPag === 'dinheiro' && temPag) return round2(base * (1 - getDescontoDinheiro()));
-  if (c.formaPag === 'debito' && temPag)  return round2(base * (1 - getDescontoDebito()));
-  if (c.formaPag === 'misto' && temPag) {
-    // Cliente não deve a diferença de um desconto que o ateliê decidiu dar numa forma específica —
-    // ela só deve o que efetivamente se comprometeu a pagar em cada forma registrada.
-    return round2(base - descontoMistoConcedido(c));
-  }
   // Cartão nunca reduz o valor a pagar: a tarifa (absorvida ou não) é custo/negociação do ateliê
   // com a maquininha — a cliente é cobrada o valor cheio no cartão dela de qualquer forma.
-  return base;
+  if (c.formaPag === 'credito' || !temPag) return base;
+  // Pix/Dinheiro/Débito/Misto/Reserva/Entrega+Prazo: usa o desconto REAL concedido em cada
+  // pagamento já registrado (bruto - líquido de cada um), nunca a taxa configurada hoje em
+  // Configurações. Isso evita dois erros: (1) se a taxa mudar depois de já existirem pagamentos
+  // antigos, o saldo deles não muda sozinho; (2) se "aplicar desconto" foi desmarcado numa parcela
+  // específica, essa parcela não ganha desconto que não foi de fato dado. Cliente não deve a
+  // diferença de um desconto que o ateliê decidiu dar — só deve o que efetivamente concedeu.
+  return round2(base - descontoMistoConcedido(c));
 }
 
 // ── MODAIS CUSTOMIZADOS (substituem confirm/alert nativos) ──
@@ -5885,10 +5936,10 @@ function openDetail(id) {
   const saldo = round2(valorAPagar - pagoBruto);
   const pct = valorAPagar > 0 ? Math.round(pagoBruto/valorAPagar*100) : 0;
   const fmtData = s => s ? s.split('-').reverse().join('/') : '—';
-  const _pixPctDetalhe = Math.round(getDescontoPix() * 100);
-  const _dinheiroPctDetalhe = Math.round(getDescontoDinheiro() * 100);
-  const _debitoPctDetalhe = Math.round(getDescontoDebito() * 100);
-  const formaTxt = { pix: _pixPctDetalhe > 0 ? `Pix (${_pixPctDetalhe}% desc. noiva)` : 'Pix', debito: _debitoPctDetalhe > 0 ? `Débito (${_debitoPctDetalhe}% desc. noiva)` : 'Débito', dinheiro: _dinheiroPctDetalhe > 0 ? `Dinheiro (${_dinheiroPctDetalhe}% desc. noiva)` : 'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto (Pix, Crédito, Dinheiro e/ou Débito)' };
+  const _pixPctDetalhe = _fmtDescontoLabel(getDescontoPix()).trim().replace(/[()]/g,'');
+  const _dinheiroPctDetalhe = _fmtDescontoLabel(getDescontoDinheiro()).trim().replace(/[()]/g,'');
+  const _debitoPctDetalhe = _fmtDescontoLabel(getDescontoDebito()).trim().replace(/[()]/g,'');
+  const formaTxt = { ...TIPO_CONTRATO_LABEL, pix: _pixPctDetalhe ? `Pix (${_pixPctDetalhe} desc. noiva)` : 'Pix', debito: _debitoPctDetalhe ? `Débito (${_debitoPctDetalhe} desc. noiva)` : 'Débito', dinheiro: _dinheiroPctDetalhe ? `Dinheiro (${_dinheiroPctDetalhe} desc. noiva)` : 'Dinheiro' };
   const telLimpo = (c.telefone||'').replace(/\D/g,'');
   const telFormatado = c.telefoneInternacional ? (c.telefone || '') : formatarTelefone(c.telefone || '');
   const linkWaBtn = telLimpo ? `javascript:abrirWhatsBusiness('${telLimpo}', null, ${c.telefoneInternacional ? 'true' : 'false'})` : '';
@@ -5953,37 +6004,18 @@ function openDetail(id) {
           linhas += `<div class="detail-row"><span class="dl" style="color:var(--muted)">Desconto</span><span class="dv" style="color:var(--bordeaux)">− ${fmtR(desc)}</span></div>`;
         }
         // 2. Taxa (sobre base já ajustada — só exibe se houver pagamento registrado)
-        if (temPag && c.formaPag === 'pix') {
-          const _txPixDet = getDescontoPix();
-          const taxaVal = round2(base * _txPixDet);
-          if (taxaVal > 0) {
-            linhas += `<div class="detail-row"><span class="dl" style="color:var(--muted)">Pix (${Math.round(_txPixDet*100)}%)</span><span class="dv" style="color:var(--bordeaux)">− ${fmtR(taxaVal)}</span></div>`;
-          }
-        } else if (temPag && c.formaPag === 'dinheiro') {
-          const _txDinheiroDet = getDescontoDinheiro();
-          const taxaValDinheiro = round2(base * _txDinheiroDet);
-          if (taxaValDinheiro > 0) {
-            linhas += `<div class="detail-row"><span class="dl" style="color:var(--muted)">Dinheiro (${Math.round(_txDinheiroDet*100)}%)</span><span class="dv" style="color:var(--bordeaux)">− ${fmtR(taxaValDinheiro)}</span></div>`;
-          }
-        } else if (temPag && c.formaPag === 'debito') {
-          const _txDebitoDet = getDescontoDebito();
-          const taxaValDebito = round2(base * _txDebitoDet);
-          if (taxaValDebito > 0) {
-            linhas += `<div class="detail-row"><span class="dl" style="color:var(--muted)">Débito (${Math.round(_txDebitoDet*100)}%)</span><span class="dv" style="color:var(--bordeaux)">− ${fmtR(taxaValDebito)}</span></div>`;
-          }
-        } else if (temPag && c.formaPag === 'credito') {
+        if (temPag && c.formaPag === 'credito') {
           const _pCreditoDet = c.pagamentos.find(p => !p.origemPeca) || c.pagamentos[0];
           const nD = (_pCreditoDet && _pCreditoDet.parcelas) || 1;
           const taxaD = getTaxaParcela(nD);
           if (isParcelaAbsorvida(nD) && taxaD > 0) {
             const taxaVal = round2(base * taxaD);
-            const pct = Math.round(taxaD * 10000) / 100;
-            linhas += `<div class="detail-row"><span class="dl" style="color:var(--muted)">Crédito ${nD}× (${pct}%)</span><span class="dv" style="color:var(--bordeaux)">− ${fmtR(taxaVal)}</span></div>`;
+            linhas += `<div class="detail-row"><span class="dl" style="color:var(--muted)">Crédito ${nD}× (${(taxaD*100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}%)</span><span class="dv" style="color:var(--bordeaux)">− ${fmtR(taxaVal)}</span></div>`;
           }
-        } else if (temPag && c.formaPag === 'misto') {
-          const descMisto = descontoMistoConcedido(c);
-          if (descMisto > 0.01) {
-            linhas += `<div class="detail-row"><span class="dl" style="color:var(--muted)">Desconto (Pix/Dinheiro/Débito)</span><span class="dv" style="color:var(--bordeaux)">− ${fmtR(descMisto)}</span></div>`;
+        } else if (temPag) {
+          const descConcedido = descontoMistoConcedido(c);
+          if (descConcedido > 0.01) {
+            linhas += `<div class="detail-row"><span class="dl" style="color:var(--muted)">Desconto (Pix/Dinheiro/Débito)</span><span class="dv" style="color:var(--bordeaux)">− ${fmtR(descConcedido)}</span></div>`;
           }
         }
         linhas += `<div class="detail-row" style="border-top:1px solid rgba(184,134,42,0.15);padding-top:0.4rem;margin-top:0.2rem">
@@ -5998,8 +6030,13 @@ function openDetail(id) {
       <div class="payment-progress" style="margin-bottom:0.6rem"><div class="payment-bar" style="width:${pct}%"></div></div>
       <div class="detail-row"><span class="dl">Total recebido</span><span class="dv" style="color:var(--sage);font-family:'Calibri',serif;font-size:1rem">R$ ${pagoNoCaixa.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
       <div class="detail-row"><span class="dl" style="color:var(--dark)">Saldo a receber</span><span class="dv" style="color:${saldo>0.01?(devedor?'var(--bordeaux)':'var(--brown)'):'var(--sage)'};${devedor?'font-weight:600':''}">${saldo>0.01?'R$ '+saldo.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'✓ Quitado'}</span></div>
-      ${c.formaPag==='reserva'?`<div class="detail-row"><span class="dl" style="color:var(--muted-light);font-size:0.7rem">Prazo: ${(custosConfig.prazoReserva !== null && custosConfig.prazoReserva !== undefined) ? `quitado até ${custosConfig.prazoReserva} dia${custosConfig.prazoReserva===1?'':'s'} antes do casamento` : 'configure o prazo em Configurações'}</span><span class="dv"></span></div>`:''}
-      ${c.formaPag==='entrega_prazo'?`<div class="detail-row"><span class="dl" style="color:var(--muted-light);font-size:0.7rem">Prazo: ${!c.entrega ? 'conta a partir da entrega da peça' : (custosConfig.prazoEntrega !== null && custosConfig.prazoEntrega !== undefined) ? `quitado até ${custosConfig.prazoEntrega} dia${custosConfig.prazoEntrega===1?'':'s'} após a entrega` : 'configure o prazo em Configurações'}</span><span class="dv"></span></div>`:''}
+      ${(c.formaPag==='reserva'||c.formaPag==='entrega_prazo')?(() => {
+        const tq = c.tipoQuitacao || (c.formaPag==='reserva' ? 'casamento' : 'entrega');
+        const txt = tq === 'casamento'
+          ? ((custosConfig.prazoReserva !== null && custosConfig.prazoReserva !== undefined) ? `quitado até ${custosConfig.prazoReserva} dia${custosConfig.prazoReserva===1?'':'s'} antes do casamento` : 'configure o prazo em Configurações')
+          : (!c.entrega ? 'conta a partir da entrega da peça' : (custosConfig.prazoEntrega !== null && custosConfig.prazoEntrega !== undefined) ? `quitado até ${custosConfig.prazoEntrega} dia${custosConfig.prazoEntrega===1?'':'s'} após a entrega` : 'configure o prazo em Configurações');
+        return `<div class="detail-row"><span class="dl" style="color:var(--muted-light);font-size:0.7rem">Prazo: ${txt}</span><span class="dv"></span></div>`;
+      })():''}
       ${pagsHtml ? `<div style="margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid rgba(184,134,42,0.12)"><div style="font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem">Histórico</div>${pagsHtml}</div>`:''}
       <div style="display:flex;gap:0.5rem;margin-top:0.7rem">
         <button class="btn-primary" style="margin-top:0;flex:1;line-height:1.3;white-space:normal;${pags.length ? 'background:rgba(184,134,42,0.1);color:var(--brown);border:1px solid rgba(184,134,42,0.3)' : 'background:rgba(184,134,42,0.05);color:var(--muted-light);border:1px solid rgba(184,134,42,0.15);cursor:default'}" ${pags.length ? `onclick="abrirListaPagamentos(${c.id})"` : 'disabled'}>✏️ Editar<br>Pagamentos</button>
@@ -6868,7 +6905,7 @@ function openNovoPagamento(contratoId) {
   const pago = totalPago(c);
   const saldo = round2(vap - pago);
   const fmtV = v => v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const _formaLabelPag = { pix:'Pix', debito:'Débito', dinheiro:'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto (Pix, Crédito, Dinheiro e/ou Débito)' };
+  const _formaLabelPag = TIPO_CONTRATO_LABEL;
   document.getElementById('pag-info').innerHTML = `<strong>${c.nome}</strong><br>Total: R$ ${fmtV(vap)} · Pago: R$ ${fmtV(pago)} · <strong style="color:var(--brown)">Saldo: R$ ${fmtV(saldo)}</strong><br><span style="color:var(--muted)">Forma: ${_formaLabelPag[c.formaPag]||c.formaPag}</span>`;
   const h = new Date();
   const hStr = `${h.getFullYear()}-${String(h.getMonth()+1).padStart(2,'0')}-${String(h.getDate()).padStart(2,'0')}`;
@@ -6933,6 +6970,13 @@ function renderListaPagamentosBody(c) {
   }
   const grpForma = document.getElementById('lp-grp-forma-simples');
   if (grpForma) grpForma.style.display = ehReservaOuEntrega ? 'none' : '';
+  const grpTipoQuitacao = document.getElementById('lp-grp-tipoquitacao');
+  if (grpTipoQuitacao) grpTipoQuitacao.style.display = ehReservaOuEntrega ? '' : 'none';
+  if (ehReservaOuEntrega) {
+    const tqAtual = c.tipoQuitacao || (fpAtual === 'reserva' ? 'casamento' : 'entrega');
+    const radioAtual = document.querySelector(`input[name="lp-tipoquitacao"][value="${tqAtual}"]`);
+    if (radioAtual) radioAtual.checked = true;
+  }
   _atualizarBotaoSalvarTipo();
 }
 
@@ -6940,6 +6984,14 @@ function onLpTipoContratoChange() {
   const tipo = document.getElementById('lp-tipo-contrato').value;
   const grpForma = document.getElementById('lp-grp-forma-simples');
   if (grpForma) grpForma.style.display = tipo === 'simples' ? '' : 'none';
+  const ehReservaOuEntrega = (tipo === 'reserva' || tipo === 'entrega_prazo');
+  const grpTipoQuitacao = document.getElementById('lp-grp-tipoquitacao');
+  if (grpTipoQuitacao) grpTipoQuitacao.style.display = ehReservaOuEntrega ? '' : 'none';
+  if (ehReservaOuEntrega && !document.querySelector('input[name="lp-tipoquitacao"]:checked')) {
+    const padrao = tipo === 'reserva' ? 'casamento' : 'entrega';
+    const radioPadrao = document.querySelector(`input[name="lp-tipoquitacao"][value="${padrao}"]`);
+    if (radioPadrao) radioPadrao.checked = true;
+  }
   _atualizarBotaoSalvarTipo();
 }
 
@@ -6951,7 +7003,13 @@ function _atualizarBotaoSalvarTipo() {
   if (!c || !btn) return;
   const tipo = document.getElementById('lp-tipo-contrato').value;
   const novaFormaPag = tipo === 'simples' ? document.getElementById('lp-forma-simples').value : tipo;
-  btn.style.display = (novaFormaPag !== c.formaPag) ? '' : 'none';
+  let mudou = novaFormaPag !== c.formaPag;
+  if (!mudou && (tipo === 'reserva' || tipo === 'entrega_prazo')) {
+    const novoTQ = document.querySelector('input[name="lp-tipoquitacao"]:checked')?.value || null;
+    const tqAtual = c.tipoQuitacao || (c.formaPag === 'reserva' ? 'casamento' : 'entrega');
+    if (novoTQ && novoTQ !== tqAtual) mudou = true;
+  }
+  btn.style.display = mudou ? '' : 'none';
 }
 
 // Verifica se a nova forma/tipo escolhido bate com os pagamentos já registrados. Retorna a
@@ -6972,12 +7030,17 @@ async function salvarTipoContratoLista() {
   if (!c) return;
   const tipo = document.getElementById('lp-tipo-contrato').value;
   const novaFormaPag = tipo === 'simples' ? document.getElementById('lp-forma-simples').value : tipo;
-  if (novaFormaPag === c.formaPag) return;
+  let novoTipoQuitacao = null;
+  if (novaFormaPag === 'reserva' || novaFormaPag === 'entrega_prazo') {
+    novoTipoQuitacao = document.querySelector('input[name="lp-tipoquitacao"]:checked')?.value || (novaFormaPag === 'reserva' ? 'casamento' : 'entrega');
+  }
+  const tqAtual = c.tipoQuitacao || (c.formaPag === 'reserva' ? 'casamento' : (c.formaPag === 'entrega_prazo' ? 'entrega' : null));
+  if (novaFormaPag === c.formaPag && novoTipoQuitacao === tqAtual) return; // nada mudou
 
   const conflito = _detectarConflitoTipoForma(c, novaFormaPag);
   const salvar = async () => {
     try {
-      const [r] = await sbUpdate('contratos', c.id, { forma_pag: novaFormaPag });
+      const [r] = await sbUpdate('contratos', c.id, { forma_pag: novaFormaPag, tipo_quitacao: novoTipoQuitacao });
       Object.assign(c, mapContrato(r));
       renderAll();
       renderListaPagamentosBody(c);
@@ -7146,7 +7209,7 @@ function atualizarPreviewPag() {
     } else {
       const taxaAtual = forma === 'Pix' ? getDescontoPix() : forma === 'Dinheiro' ? getDescontoDinheiro() : getDescontoDebito();
       if (taxaAtual > 0) {
-        el.textContent = `→ entra no caixa: ${fmt(liquido)} (após desc. ${Math.round(taxaAtual * 100)}% ${forma})`;
+        el.textContent = `→ entra no caixa: ${fmt(liquido)} (após desc. ${(taxaAtual*100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}% ${forma})`;
       } else {
         el.textContent = `→ entra no caixa: ${fmt(liquido)} (sem desconto configurado)`;
       }
@@ -7467,8 +7530,8 @@ const CUSTOS_DEFAULT = {
     { id: 'debito',   label: 'Débito',               ativa: true,  tipo: 'desconto', taxa: 0,   desconto: false, absorvido: false, obs: 'Desconto dado à cliente' },
     { id: 'dinheiro', label: 'Dinheiro',             ativa: true,  tipo: 'desconto', taxa: 0,   desconto: false, absorvido: false, obs: 'Desconto dado à cliente' },
     { id: 'credito',  label: 'Crédito',              ativa: true,  tipo: 'credito',  taxa: 0,   desconto: false, absorvido: false, obs: '' },
-    { id: 'reserva',  label: 'Reserva antecipada',   ativa: true,  tipo: 'entrada',  taxa: 0,   desconto: false, absorvido: false, obs: 'Entrada mínima, restante depois' },
-    { id: 'entrega_prazo', label: 'Entrada + saldo na entrega', ativa: true, tipo: 'entrada', taxa: 0, desconto: false, absorvido: false, obs: 'Entrada livre, saldo cobrado após a entrega' },
+    { id: 'reserva',  label: 'Reserva com entrada',   ativa: true,  tipo: 'entrada',  taxa: 0,   desconto: false, absorvido: false, obs: 'Entrada mínima, restante depois' },
+    { id: 'entrega_prazo', label: 'Reserva sem entrada', ativa: true, tipo: 'entrada', taxa: 0, desconto: false, absorvido: false, obs: 'Entrada livre, saldo cobrado após a entrega' },
     { id: 'misto',    label: 'Misto (Pix, Crédito, Dinheiro e/ou Débito)', ativa: true,  tipo: 'misto',    taxa: 0,   desconto: false, absorvido: false, obs: '' },
   ],
   parcelas: [
@@ -7556,7 +7619,7 @@ async function carregarCustosSupabase() {
       // Garante que formasPag tem a entrada "entrega_prazo" (migração de configs antigas)
       if (!custosConfig.formasPag.find(f => f.id === 'entrega_prazo')) {
         const idxMisto2 = custosConfig.formasPag.findIndex(f => f.id === 'misto');
-        const entradaEntregaPrazo = { id: 'entrega_prazo', label: 'Entrada + saldo na entrega', ativa: true, tipo: 'entrada', taxa: 0, desconto: false, absorvido: false, obs: 'Entrada livre, saldo cobrado após a entrega' };
+        const entradaEntregaPrazo = { id: 'entrega_prazo', label: 'Reserva sem entrada', ativa: true, tipo: 'entrada', taxa: 0, desconto: false, absorvido: false, obs: 'Entrada livre, saldo cobrado após a entrega' };
         if (idxMisto2 >= 0) custosConfig.formasPag.splice(idxMisto2, 0, entradaEntregaPrazo);
         else custosConfig.formasPag.push(entradaEntregaPrazo);
       }
@@ -7708,10 +7771,10 @@ function getOpcoesTipoContratoHTML(valorAtual) {
   const entregaAtiva = (config.find(f => f.id === 'entrega_prazo')?.ativa) ?? true;
   let html = `<option value="simples" ${valorAtual === 'simples' ? 'selected' : ''}>Pagamento total imediato</option>`;
   if (reservaAtiva || valorAtual === 'reserva') {
-    html += `<option value="reserva" ${valorAtual === 'reserva' ? 'selected' : ''}>Reserva antecipada</option>`;
+    html += `<option value="reserva" ${valorAtual === 'reserva' ? 'selected' : ''}>Reserva com entrada</option>`;
   }
   if (entregaAtiva || valorAtual === 'entrega_prazo') {
-    html += `<option value="entrega_prazo" ${valorAtual === 'entrega_prazo' ? 'selected' : ''}>Entrada + Saldo na entrega</option>`;
+    html += `<option value="entrega_prazo" ${valorAtual === 'entrega_prazo' ? 'selected' : ''}>Reserva sem entrada</option>`;
   }
   return html;
 }
@@ -7795,6 +7858,9 @@ function calcLiquidoComDesconto(bruto, forma, aplicarDesconto) {
 function _fmtDescontoLabel(taxa) {
   return taxa > 0 ? ` (${(taxa * 100).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}%)` : '';
 }
+
+// Rótulos únicos dos tipos/formas — fonte única, evita ficar 3 objetos iguais desalinhando entre si
+const TIPO_CONTRATO_LABEL = { pix:'Pix', debito:'Débito', dinheiro:'Dinheiro', credito:'Crédito', reserva:'Reserva com entrada', entrega_prazo:'Reserva sem entrada', misto:'Misto (Pix, Crédito, Dinheiro e/ou Débito)' };
 
 function formaDisplayLabel(forma) {
   return forma === 'Cartão' ? 'Crédito' : forma;
@@ -7932,14 +7998,17 @@ function renderFormasPag() {
   const el = document.getElementById('c-formas-pag-list');
   if (!el) return;
   const formas = custosConfig.formasPag || [];
-  let html = '';
-  formas.forEach(function(f, i) {
+  const tiposContrato = formas.filter(f => f.id === 'reserva' || f.id === 'entrega_prazo');
+  const formasPagamento = formas.filter(f => f.id !== 'reserva' && f.id !== 'entrega_prazo');
+
+  function renderCard(f) {
+    const i = formas.indexOf(f);
     // crédito: só checkbox, sem campo de taxa (as taxas ficam nas parcelas)
     const temTaxa = (f.tipo === 'taxa' || f.tipo === 'juros' || f.tipo === 'desconto');
     const labelTaxa = f.tipo === 'desconto' ? 'Desconto (%)' : f.tipo === 'juros' ? 'Juros (%)' : 'Taxa (%)';
     const borderAlpha = f.ativa ? '0.25' : '0.1';
     const bg = f.ativa ? 'var(--card-bg)' : 'rgba(184,134,42,0.03)';
-    const mbInner = (f.ativa && (temTaxa || f.id === 'reserva' || f.id === 'entrega_prazo')) ? '0.5rem' : '0';
+    const mbInner = (f.ativa && temTaxa) ? '0.5rem' : '0';
     const corNome = f.ativa ? 'var(--dark)' : 'var(--muted-light)';
     const fwNome = f.ativa ? '500' : '400';
     const obsHtml = f.obs ? '<span style="font-size:0.62rem;color:var(--muted);font-style:italic">' + f.obs + '</span>' : '';
@@ -7973,61 +8042,7 @@ function renderFormasPag() {
         '</div>';
     }
 
-    let reservaHtml = '';
-    if (f.ativa && f.id === 'reserva') {
-      const prazoVal = (custosConfig.prazoReserva !== null && custosConfig.prazoReserva !== undefined) ? custosConfig.prazoReserva : '';
-      const notifVal = (custosConfig.notifDiasAntesReserva !== null && custosConfig.notifDiasAntesReserva !== undefined) ? custosConfig.notifDiasAntesReserva : '';
-      const prazoVazio = prazoVal === '';
-      const notifVazio = notifVal === '';
-      const borderObrig = 'border-color:var(--bordeaux)';
-      const avisoHtml = (prazoVazio || notifVazio) ? '<div style="font-size:0.65rem;color:var(--bordeaux)">⚠️ Preencha os dois campos abaixo para poder salvar</div>' : '';
-      reservaHtml = '<div style="padding-left:1.4rem;margin-top:0.3rem;display:flex;flex-direction:column;gap:0.5rem">' +
-        avisoHtml +
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem">' +
-          '<label style="font-size:0.68rem;color:var(--muted)">Prazo de quitação (dias antes do casamento)</label>' +
-          '<input class="field-input" type="number" step="1" min="0"' +
-          ' value="' + prazoVal + '" placeholder="Ex: 15"' +
-          ' oninput="atualizarPrazoReserva(this.value)"' +
-          ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right;' + (prazoVazio ? borderObrig : '') + '">' +
-        '</div>' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem">' +
-          '<label style="font-size:0.68rem;color:var(--muted)">Avisar quantos dias antes desse prazo</label>' +
-          '<input class="field-input" type="number" step="1" min="0"' +
-          ' value="' + notifVal + '" placeholder="Ex: 5"' +
-          ' oninput="atualizarNotifDiasReserva(this.value)"' +
-          ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right;' + (notifVazio ? borderObrig : '') + '">' +
-        '</div>' +
-      '</div>';
-    }
-
-    let entregaPrazoHtml = '';
-    if (f.ativa && f.id === 'entrega_prazo') {
-      const prazoValE = (custosConfig.prazoEntrega !== null && custosConfig.prazoEntrega !== undefined) ? custosConfig.prazoEntrega : '';
-      const avisoValE = (custosConfig.diasAvisoEntrega !== null && custosConfig.diasAvisoEntrega !== undefined) ? custosConfig.diasAvisoEntrega : '';
-      const prazoVazioE = prazoValE === '';
-      const avisoVazioE = avisoValE === '';
-      const borderObrigE = 'border-color:var(--bordeaux)';
-      const avisoHtmlE = (prazoVazioE || avisoVazioE) ? '<div style="font-size:0.65rem;color:var(--bordeaux)">⚠️ Preencha os dois campos abaixo para poder salvar</div>' : '';
-      entregaPrazoHtml = '<div style="padding-left:1.4rem;margin-top:0.3rem;display:flex;flex-direction:column;gap:0.5rem">' +
-        avisoHtmlE +
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem">' +
-          '<label style="font-size:0.68rem;color:var(--muted)">Prazo de quitação (dias após a entrega)</label>' +
-          '<input class="field-input" type="number" step="1" min="0"' +
-          ' value="' + prazoValE + '" placeholder="Ex: 10"' +
-          ' oninput="atualizarPrazoEntrega(this.value)"' +
-          ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right;' + (prazoVazioE ? borderObrigE : '') + '">' +
-        '</div>' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem">' +
-          '<label style="font-size:0.68rem;color:var(--muted)">Avisar quantos dias após a entrega</label>' +
-          '<input class="field-input" type="number" step="1" min="0"' +
-          ' value="' + avisoValE + '" placeholder="Ex: 3"' +
-          ' oninput="atualizarDiasAvisoEntrega(this.value)"' +
-          ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right;' + (avisoVazioE ? borderObrigE : '') + '">' +
-        '</div>' +
-      '</div>';
-    }
-
-    html += '<div style="border:1px solid rgba(184,134,42,' + borderAlpha + ');border-radius:8px;padding:0.7rem 0.9rem;margin-bottom:0.5rem;background:' + bg + '">' +
+    return '<div style="border:1px solid rgba(184,134,42,' + borderAlpha + ');border-radius:8px;padding:0.7rem 0.9rem;margin-bottom:0.5rem;background:' + bg + '">' +
       '<div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:' + mbInner + '">' +
         '<label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;flex:1">' +
           '<input type="checkbox" ' + (f.ativa ? 'checked' : '') + ' onchange="toggleFormaPag(' + i + ',this.checked)"' +
@@ -8036,9 +8051,74 @@ function renderFormasPag() {
         '</label>' +
         obsHtml +
       '</div>' +
-      taxaHtml + reservaHtml + entregaPrazoHtml +
+      taxaHtml +
     '</div>';
-  });
+  }
+
+  const algumTipoAtivo = tiposContrato.some(f => f.ativa);
+  let prazoBlocksHtml = '';
+  if (algumTipoAtivo) {
+    const prazoVal = (custosConfig.prazoReserva !== null && custosConfig.prazoReserva !== undefined) ? custosConfig.prazoReserva : '';
+    const notifVal = (custosConfig.notifDiasAntesReserva !== null && custosConfig.notifDiasAntesReserva !== undefined) ? custosConfig.notifDiasAntesReserva : '';
+    const prazoVazio = prazoVal === '';
+    const notifVazio = notifVal === '';
+    const borderObrig = 'border-color:var(--bordeaux)';
+    const avisoHtml = (prazoVazio || notifVazio) ? '<div style="font-size:0.65rem;color:var(--bordeaux)">⚠️ Preencha os dois campos abaixo para poder salvar</div>' : '';
+
+    const prazoValE = (custosConfig.prazoEntrega !== null && custosConfig.prazoEntrega !== undefined) ? custosConfig.prazoEntrega : '';
+    const avisoValE = (custosConfig.diasAvisoEntrega !== null && custosConfig.diasAvisoEntrega !== undefined) ? custosConfig.diasAvisoEntrega : '';
+    const prazoVazioE = prazoValE === '';
+    const avisoVazioE = avisoValE === '';
+    const borderObrigE = 'border-color:var(--bordeaux)';
+    const avisoHtmlE = (prazoVazioE || avisoVazioE) ? '<div style="font-size:0.65rem;color:var(--bordeaux)">⚠️ Preencha os dois campos abaixo para poder salvar</div>' : '';
+
+    prazoBlocksHtml =
+      '<div style="font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin:0.8rem 0 0.4rem">Modelos de prazo de quitação — cada contrato escolhe um</div>' +
+      '<div style="border:1px solid rgba(184,134,42,0.2);border-radius:8px;padding:0.7rem 0.9rem;margin-bottom:0.5rem">' +
+        '<div style="font-size:0.85rem;color:var(--dark);font-weight:500;margin-bottom:0.5rem">Antes do casamento</div>' +
+        avisoHtml +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem;margin-top:0.3rem">' +
+          '<label style="font-size:0.68rem;color:var(--muted)">Prazo de quitação (dias antes do casamento)</label>' +
+          '<input class="field-input" type="number" step="1" min="0"' +
+          ' value="' + prazoVal + '" placeholder="Ex: 15"' +
+          ' oninput="atualizarPrazoReserva(this.value)"' +
+          ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right;' + (prazoVazio ? borderObrig : '') + '">' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem;margin-top:0.4rem">' +
+          '<label style="font-size:0.68rem;color:var(--muted)">Avisar quantos dias antes desse prazo</label>' +
+          '<input class="field-input" type="number" step="1" min="0"' +
+          ' value="' + notifVal + '" placeholder="Ex: 5"' +
+          ' oninput="atualizarNotifDiasReserva(this.value)"' +
+          ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right;' + (notifVazio ? borderObrig : '') + '">' +
+        '</div>' +
+      '</div>' +
+      '<div style="border:1px solid rgba(184,134,42,0.2);border-radius:8px;padding:0.7rem 0.9rem;margin-bottom:0.5rem">' +
+        '<div style="font-size:0.85rem;color:var(--dark);font-weight:500;margin-bottom:0.5rem">Após entrega</div>' +
+        avisoHtmlE +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem;margin-top:0.3rem">' +
+          '<label style="font-size:0.68rem;color:var(--muted)">Prazo de quitação (dias após a entrega)</label>' +
+          '<input class="field-input" type="number" step="1" min="0"' +
+          ' value="' + prazoValE + '" placeholder="Ex: 10"' +
+          ' oninput="atualizarPrazoEntrega(this.value)"' +
+          ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right;' + (prazoVazioE ? borderObrigE : '') + '">' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem;margin-top:0.4rem">' +
+          '<label style="font-size:0.68rem;color:var(--muted)">Avisar quantos dias após a entrega</label>' +
+          '<input class="field-input" type="number" step="1" min="0"' +
+          ' value="' + avisoValE + '" placeholder="Ex: 3"' +
+          ' oninput="atualizarDiasAvisoEntrega(this.value)"' +
+          ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right;' + (avisoVazioE ? borderObrigE : '') + '">' +
+        '</div>' +
+      '</div>';
+  }
+
+  const html =
+    '<div style="font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem">Tipos de Contrato</div>' +
+    tiposContrato.map(renderCard).join('') +
+    prazoBlocksHtml +
+    '<div style="font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin:1rem 0 0.5rem">Formas de Pagamento</div>' +
+    formasPagamento.map(renderCard).join('');
+
   el.innerHTML = html;
   atualizarVisibilidadeParcelasCredito();
 }
@@ -8113,24 +8193,21 @@ async function _recalcularDesidratacaoExistentes(novoPrazo) {
 
 async function salvarCustos() {
   try {
-    // Validação: se Reserva antecipada estiver ativa, prazo e antecedência de aviso são obrigatórios
+    // Validação: se Reserva com entrada OU Reserva sem entrada estiver ativa, os dois modelos de
+    // prazo precisam estar configurados — qualquer um dos dois tipos pode escolher qualquer modelo.
     const reservaForma = (custosConfig.formasPag || []).find(f => f.id === 'reserva');
-    if (reservaForma && reservaForma.ativa) {
+    const entregaPrazoForma = (custosConfig.formasPag || []).find(f => f.id === 'entrega_prazo');
+    if ((reservaForma && reservaForma.ativa) || (entregaPrazoForma && entregaPrazoForma.ativa)) {
       const prazoOk = custosConfig.prazoReserva !== null && custosConfig.prazoReserva !== undefined;
       const notifOk = custosConfig.notifDiasAntesReserva !== null && custosConfig.notifDiasAntesReserva !== undefined;
       if (!prazoOk || !notifOk) {
-        mostrarAlerta({ emoji: '⚠️', titulo: 'Configuração obrigatória', mensagem: 'Para usar Reserva antecipada, informe o prazo de quitação e quantos dias antes avisar (na seção Formas de pagamento aceitas).' });
+        mostrarAlerta({ emoji: '⚠️', titulo: 'Configuração obrigatória', mensagem: 'Informe o prazo de quitação "antes do casamento" e quantos dias antes avisar (na seção Tipos de Contrato).' });
         return;
       }
-    }
-
-    // Validação: se Entrada + saldo na entrega estiver ativa, prazo e dias de aviso são obrigatórios
-    const entregaPrazoForma = (custosConfig.formasPag || []).find(f => f.id === 'entrega_prazo');
-    if (entregaPrazoForma && entregaPrazoForma.ativa) {
       const prazoOkE = custosConfig.prazoEntrega !== null && custosConfig.prazoEntrega !== undefined;
       const avisoOkE = custosConfig.diasAvisoEntrega !== null && custosConfig.diasAvisoEntrega !== undefined;
       if (!prazoOkE || !avisoOkE) {
-        mostrarAlerta({ emoji: '⚠️', titulo: 'Configuração obrigatória', mensagem: 'Para usar Entrada + saldo na entrega, informe o prazo de quitação e quantos dias após a entrega avisar (na seção Formas de pagamento aceitas).' });
+        mostrarAlerta({ emoji: '⚠️', titulo: 'Configuração obrigatória', mensagem: 'Informe o prazo de quitação "após entrega" e quantos dias depois avisar (na seção Tipos de Contrato).' });
         return;
       }
     }
@@ -8254,7 +8331,7 @@ function exportarDadosPDF() {
   const rowsC = contratos.slice().sort((a,b)=>(b.contrato||'').localeCompare(a.contrato||'')).map(c => {
     const saldo = round2(calcValorAPagar(c) - totalPago(c));
     const situacao = saldo <= 0.01 ? 'Quitada ✓' : totalPago(c) > 0 ? 'Entrada paga' : 'Sem pagamento';
-    const formaLabel = { pix:'Pix', debito:'Débito', dinheiro:'Dinheiro', credito:'Crédito', reserva:'Reserva antecipada', entrega_prazo:'Entrada + saldo na entrega', misto:'Misto (Pix, Crédito, Dinheiro e/ou Débito)' };
+    const formaLabel = TIPO_CONTRATO_LABEL;
     return `<tr>
       <td>${esc(c.nome)}</td>
       <td>${fmtD(c.contrato)}</td>
@@ -10366,7 +10443,7 @@ function infoReservaAntecipada() {
   const txtPrazo = (prazo !== null && prazo !== undefined)
     ? `até ${prazo} dia${prazo===1?'':'s'} antes do casamento`
     : 'até o prazo que você configurar em Configurações → Formas de pagamento';
-  _mostrarInfoModal('Reserva antecipada', [
+  _mostrarInfoModal('Reserva com entrada', [
     'Modalidade com pagamento dividido em <b>entrada + saldo</b>.',
     `<br><br>A cliente paga um valor mínimo de entrada para reservar a data, e quita o restante da forma que preferir — ${txtPrazo}.`,
     '<br><br>A forma de pagamento (Pix, Crédito, Dinheiro ou Débito) é escolhida em cada pagamento. Por padrão, Reserva não aplica desconto — mas se Pix, Dinheiro ou Débito estiverem selecionados, você pode marcar "Aplicar desconto" quando quiser abrir uma exceção.'
@@ -10378,7 +10455,7 @@ function infoEntregaPrazo() {
   const txtPrazo = (prazo !== null && prazo !== undefined)
     ? `até ${prazo} dia${prazo===1?'':'s'} depois da entrega da peça`
     : 'até o prazo que você configurar em Configurações → Formas de pagamento';
-  _mostrarInfoModal('Entrada + saldo na entrega', [
+  _mostrarInfoModal('Reserva sem entrada', [
     'Modalidade com pagamento dividido em <b>entrada + saldo</b>, mas o prazo de quitação não depende da data do casamento.',
     `<br><br>A cliente paga uma entrada ao fechar o contrato, e quita o restante ${txtPrazo} — ou seja, o prazo só começa a contar quando você marcar a peça como entregue no contrato.`,
     '<br><br>A forma de pagamento (Pix, Crédito, Dinheiro ou Débito) é escolhida em cada pagamento. Por padrão não aplica desconto — mas se Pix, Dinheiro ou Débito estiverem selecionados, você pode marcar "Aplicar desconto" quando quiser abrir uma exceção.'
@@ -11357,16 +11434,17 @@ async function renderCentroNotif() {
       const badge = n.tipo === 'manual'
         ? `<span style="font-size:0.6rem;padding:0.15rem 0.45rem;border-radius:20px;background:rgba(107,143,113,0.15);color:var(--sage);border:1px solid rgba(107,143,113,0.3)">${n.disparada ? '✓ enviada' : '⏰ agendada'}</span>`
         : `<span style="font-size:0.6rem;padding:0.15rem 0.45rem;border-radius:20px;background:rgba(184,134,42,0.1);color:var(--brown);border:1px solid rgba(184,134,42,0.2)">automática</span>`;
-      const _isWA = n.cId && n.chave && (n.chave.startsWith('reserva20-') || n.chave.startsWith('casamento-'));
+      const _isLembreteSaldo = c => c && (c.startsWith('reserva-') || c.startsWith('entregaprazo-'));
+      const _isWA = n.cId && n.chave && (_isLembreteSaldo(n.chave) || n.chave.startsWith('casamento-'));
       const _onclick = _isWA
-        ? (n.chave.startsWith('reserva20-') ? `_abrirWAReserva(${n.cId})` : `_abrirWACasamento(${n.cId})`)
+        ? (_isLembreteSaldo(n.chave) ? `_abrirWAReserva(${n.cId})` : `_abrirWACasamento(${n.cId})`)
         : (n.cId ? `closeDrawer('drawer-notif');setTimeout(()=>openDetail(${n.cId}),200)` : '');
       return `<div style="display:flex;align-items:flex-start;gap:0.6rem;padding:0.75rem 0;border-bottom:1px solid rgba(184,134,42,0.08)">
         <div style="flex:1;cursor:${n.cId ? 'pointer' : 'default'}" onclick="${_onclick}">
           <div style="display:flex;align-items:center;gap:0.4rem;margin-bottom:0.2rem">${badge}<span style="font-size:0.65rem;color:var(--muted)">${dataFmt}${horaFmt}</span></div>
           ${n.tipo === 'auto' && n.titulo ? `<div style="font-size:0.8rem;color:var(--brown);font-family:'Calibri',serif;margin-bottom:0.1rem">${n.titulo}</div>` : ''}
-          <div style="font-size:0.88rem;color:var(--dark);line-height:1.4">${n.texto}${n.cId && !n.chave?.startsWith('reserva20-') && !n.chave?.startsWith('casamento-') ? ' <span style="font-size:0.7rem;color:var(--gold)">→ ver contrato</span>' : ''}</div>
-          ${n.tipo === 'auto' && n.chave && (n.chave.startsWith('reserva20-') || n.chave.startsWith('casamento-')) && n.cId
+          <div style="font-size:0.88rem;color:var(--dark);line-height:1.4">${n.texto}${n.cId && !_isLembreteSaldo(n.chave) && !n.chave?.startsWith('casamento-') ? ' <span style="font-size:0.7rem;color:var(--gold)">→ ver contrato</span>' : ''}</div>
+          ${n.tipo === 'auto' && n.chave && (_isLembreteSaldo(n.chave) || n.chave.startsWith('casamento-')) && n.cId
             ? `<div style="font-size:0.72rem;color:var(--muted);margin-top:0.3rem">📱 Toque para abrir no WhatsApp Business</div>`
             : ''}
         </div>
@@ -11382,7 +11460,8 @@ async function renderCentroNotif() {
 function _labelChave(chave) {
   if (!chave) return chave;
   if (chave.startsWith('7d-')) return '💍 Casamento em 7 dias';
-  if (chave.startsWith('reserva20-')) return '💰 Lembrete reserva 20 dias';
+  if (chave.startsWith('reserva-')) return '💰 Lembrete de saldo';
+  if (chave.startsWith('entregaprazo-')) return '💰 Lembrete de saldo';
   if (chave.startsWith('envio1du-')) return '📦 Confirmação de envio do buquê';
   if (chave.startsWith('buque3du-')) return '🌸 Buquê chegou? (3 dias úteis)';
   if (chave.startsWith('buque5du-')) return '🌸 Buquê chegou? (5 dias úteis)';
