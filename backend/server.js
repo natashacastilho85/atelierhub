@@ -59,6 +59,22 @@ function totalPago(c) {
   return parseFloat(c?.pago) || 0;
 }
 
+// Precisa bater exatamente com a mesma função no app (index.html): soma o desconto REAL
+// concedido em cada pagamento Pix/Dinheiro/Débito já registrado (bruto - líquido), nunca a
+// taxa configurada hoje. Sem isso, o saldo usado pro lembrete de cobrança ficava incorreto
+// sempre que havia desconto concedido — o mesmo bug que já tínhamos corrigido no app, mas que
+// vivia aqui, sem correção, de forma independente.
+function descontoMistoConcedido(c) {
+  if (!Array.isArray(c?.pagamentos)) return 0;
+  return c.pagamentos
+    .filter(p => p.forma === 'Pix' || p.forma === 'Dinheiro' || p.forma === 'Débito')
+    .reduce((s, p) => {
+      const bruto = parseFloat(p.bruto ?? p.valor) || 0;
+      const liquido = parseFloat(p.valor) || 0;
+      return s + Math.max(0, bruto - liquido);
+    }, 0);
+}
+
 // ── Envia push para todos os dispositivos do usuário ──
 async function enviarPush(userId, titulo, corpo, contratoId) {
   try {
@@ -116,7 +132,7 @@ async function verificarNotificacoes() {
 
   const { data: contratos, error } = await supabase
     .from('contratos')
-    .select('id, casamento, status, forma_pag, pagamentos, pago, valor_bruto, acrescimo, desconto, chegada, entrega, nome, user_id')
+    .select('id, casamento, status, forma_pag, tipo_quitacao, pagamentos, pago, valor_bruto, acrescimo, desconto, chegada, entrega, nome, user_id')
     .neq('status', 'Cancelado');
 
   if (error) { console.error('[notif] Erro ao buscar contratos:', error); return; }
@@ -124,49 +140,33 @@ async function verificarNotificacoes() {
 
   console.log(`[notif] ${contratos.length} contrato(s)`);
 
-  // Busca em lote a configuração de Reserva Antecipada (prazo de quitação + antecedência do aviso)
-  // de cada usuária que tem ao menos um contrato em 'reserva'. Usuária sem configuração feita
-  // ainda: nenhum lembrete de reserva é disparado para ela (sem enforcement até ela configurar).
-  const uidsReserva = [...new Set(contratos.filter(c => c.forma_pag === 'reserva' && c.user_id).map(c => c.user_id))];
-  const reservaConfigPorUid = new Map();
-  if (uidsReserva.length) {
+  // Busca em lote os dois modelos de prazo de quitação (antes do casamento / após entrega) de
+  // cada usuária que tem ao menos um contrato Reserva com entrada OU Reserva sem entrada — os
+  // dois modelos agora valem pra qualquer um dos dois tipos, dependendo da escolha de cada
+  // contrato (tipo_quitacao), não mais fixo pelo tipo. Usuária sem configuração feita ainda:
+  // nenhum lembrete desse modelo é disparado para ela (sem enforcement até ela configurar).
+  const uidsReservaFamily = [...new Set(contratos.filter(c => (c.forma_pag === 'reserva' || c.forma_pag === 'entrega_prazo') && c.user_id).map(c => c.user_id))];
+  const configCasamentoPorUid = new Map();
+  const configEntregaPorUid = new Map();
+  if (uidsReservaFamily.length) {
     const { data: configs, error: errCfg } = await supabase
       .from('configuracoes')
       .select('user_id, valor')
       .eq('chave', 'villare-custos')
-      .in('user_id', uidsReserva);
+      .in('user_id', uidsReservaFamily);
     if (errCfg) {
-      console.error('[notif] Erro ao buscar config de reserva:', errCfg.message);
+      console.error('[notif] Erro ao buscar config de prazo de quitação:', errCfg.message);
     } else if (configs) {
       for (const row of configs) {
         const v = row.valor || {};
         const prazo = v.prazoReserva;
         const notifDias = v.notifDiasAntesReserva;
         if (prazo !== null && prazo !== undefined && notifDias !== null && notifDias !== undefined) {
-          reservaConfigPorUid.set(row.user_id, { prazo, notifDias });
+          configCasamentoPorUid.set(row.user_id, { prazo, notifDias });
         }
-      }
-    }
-  }
-
-  // Busca em lote a configuração de "Entrada + saldo na entrega" (dias após a entrega para avisar)
-  // de cada usuária que tem ao menos um contrato em 'entrega_prazo'. Sem configuração: sem aviso.
-  const uidsEntregaPrazo = [...new Set(contratos.filter(c => c.forma_pag === 'entrega_prazo' && c.user_id).map(c => c.user_id))];
-  const entregaPrazoConfigPorUid = new Map();
-  if (uidsEntregaPrazo.length) {
-    const { data: configsE, error: errCfgE } = await supabase
-      .from('configuracoes')
-      .select('user_id, valor')
-      .eq('chave', 'villare-custos')
-      .in('user_id', uidsEntregaPrazo);
-    if (errCfgE) {
-      console.error('[notif] Erro ao buscar config de entrega_prazo:', errCfgE.message);
-    } else if (configsE) {
-      for (const row of configsE) {
-        const v = row.valor || {};
         const diasAviso = v.diasAvisoEntrega;
         if (diasAviso !== null && diasAviso !== undefined) {
-          entregaPrazoConfigPorUid.set(row.user_id, { diasAviso });
+          configEntregaPorUid.set(row.user_id, { diasAviso });
         }
       }
     }
@@ -182,37 +182,41 @@ async function verificarNotificacoes() {
     if (addDays(cas, -7) === today)
       await disparar(uid, `7d-${id}`, '💍 Casamento em 7 dias', `${c.nome} — o grande dia está chegando!`, id);
 
-    // 2. 💰 Lembrete reserva — prazo e antecedência configurados pela usuária (Configurações → Formas de pagamento)
-    if (c.forma_pag === 'reserva') {
-      const cfg = reservaConfigPorUid.get(uid);
-      if (cfg) {
-        const diasAntes = cfg.prazo + cfg.notifDias;
-        if (addDays(cas, -diasAntes) === today) {
-          const baseC = (parseFloat(c.valor_bruto) || 0) + (parseFloat(c.acrescimo) || 0) - (parseFloat(c.desconto) || 0);
-          const saldo = baseC - totalPago(c);
-          if (saldo > 0.01)
-            await disparar(uid, `reserva-${id}`, '💰 Lembrete reserva',
-              `${c.nome} — saldo de R$${saldo.toFixed(2).replace('.', ',')} em aberto`, id);
-        }
-      }
-      // Sem configuração feita ainda: nenhum lembrete é disparado para essa usuária.
-    }
+    // 2. 💰 Lembrete de saldo — Reserva com entrada OU Reserva sem entrada, usando o prazo de
+    // quitação escolhido em CADA contrato (tipo_quitacao), não mais fixo pelo tipo. Contratos
+    // antigos sem essa escolha explícita usam o comportamento de sempre (com entrada→casamento,
+    // sem entrada→entrega), pra não mudar nada retroativamente. Nome da notificação (chave)
+    // preservado do jeito que já era, pra não duplicar aviso em contrato que já recebeu o
+    // lembrete antes dessa mudança.
+    if (c.forma_pag === 'reserva' || c.forma_pag === 'entrega_prazo') {
+      const tipoQuitacao = c.tipo_quitacao || (c.forma_pag === 'reserva' ? 'casamento' : 'entrega');
 
-    // 2b. 💰 Lembrete Entrada + saldo na entrega — dispara X dias após a peça ser marcada como entregue,
-    // contagem direta a partir de c.entrega (independente do prazo de quitação, que é só visual no app).
-    if (c.forma_pag === 'entrega_prazo' && c.entrega) {
-      const cfgE = entregaPrazoConfigPorUid.get(uid);
-      if (cfgE) {
-        const dataEntrega = c.entrega.split('T')[0];
-        if (addDays(dataEntrega, cfgE.diasAviso) === today) {
-          const baseC2 = (parseFloat(c.valor_bruto) || 0) + (parseFloat(c.acrescimo) || 0) - (parseFloat(c.desconto) || 0);
-          const saldo = baseC2 - totalPago(c);
-          if (saldo > 0.01)
-            await disparar(uid, `entregaprazo-${id}`, '💰 Lembrete de saldo',
-              `${c.nome} — saldo de R$${saldo.toFixed(2).replace('.', ',')} em aberto`, id);
+      if (tipoQuitacao === 'casamento') {
+        const cfg = configCasamentoPorUid.get(uid);
+        if (cfg) {
+          const diasAntes = cfg.prazo + cfg.notifDias;
+          if (addDays(cas, -diasAntes) === today) {
+            const baseC = (parseFloat(c.valor_bruto) || 0) + (parseFloat(c.acrescimo) || 0) - (parseFloat(c.desconto) || 0);
+            const saldo = baseC - descontoMistoConcedido(c) - totalPago(c);
+            if (saldo > 0.01)
+              await disparar(uid, `reserva-${id}`, '💰 Lembrete de saldo',
+                `${c.nome} — saldo de R$${saldo.toFixed(2).replace('.', ',')} em aberto`, id);
+          }
+        }
+      } else if (tipoQuitacao === 'entrega' && c.entrega) {
+        const cfgE = configEntregaPorUid.get(uid);
+        if (cfgE) {
+          const dataEntrega = c.entrega.split('T')[0];
+          if (addDays(dataEntrega, cfgE.diasAviso) === today) {
+            const baseC2 = (parseFloat(c.valor_bruto) || 0) + (parseFloat(c.acrescimo) || 0) - (parseFloat(c.desconto) || 0);
+            const saldo = baseC2 - descontoMistoConcedido(c) - totalPago(c);
+            if (saldo > 0.01)
+              await disparar(uid, `entregaprazo-${id}`, '💰 Lembrete de saldo',
+                `${c.nome} — saldo de R$${saldo.toFixed(2).replace('.', ',')} em aberto`, id);
+          }
         }
       }
-      // Sem configuração feita ainda: nenhum lembrete é disparado para essa usuária.
+      // Sem configuração feita ainda pro modelo escolhido: nenhum lembrete é disparado.
     }
 
     // 3. 📦 Confirmação de envio — 1 dia útil após casamento
