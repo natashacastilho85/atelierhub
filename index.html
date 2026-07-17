@@ -1807,8 +1807,20 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
   <div class="drawer" onclick="event.stopPropagation()" style="max-height:85vh">
     <div class="drawer-handle"></div>
     <div class="drawer-title">Editar pagamentos</div>
+    <div id="lp-saldo-info" style="font-size:0.7rem;color:var(--muted);margin-bottom:0.8rem;padding:0.6rem 0.8rem;background:rgba(184,134,42,0.06);border-radius:4px;border-left:3px solid var(--gold)"></div>
     <div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.8rem">Toque em um pagamento pra editar ou excluir.</div>
     <div id="lista-pagamentos-body"></div>
+    <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(184,134,42,0.15)">
+      <div class="field-group">
+        <label class="field-label">Tipo de Contrato</label>
+        <select class="field-input" id="lp-tipo-contrato" onchange="onLpTipoContratoChange()"></select>
+      </div>
+      <div class="field-group" id="lp-grp-forma-simples">
+        <label class="field-label">Forma de Pagamento</label>
+        <select class="field-input" id="lp-forma-simples"></select>
+      </div>
+      <button class="btn-secondary" style="margin-top:0" onclick="salvarTipoContratoLista()">Salvar tipo de contrato</button>
+    </div>
     <button class="btn-secondary" style="margin-top:0.8rem" onclick="fecharListaPagamentos()">Fechar</button>
   </div>
 </div>
@@ -2850,6 +2862,7 @@ function goTabById(tab) {
   const navItem = document.querySelector(`.nav-item[onclick*="'${tab}'"]`);
   goTab(tab, navItem);
   _activeTab = tab;
+  if (tab !== 'contratos') _limparBuscaContrato();
 }
 
 function openFab() {
@@ -5859,6 +5872,7 @@ function renderComparativos() {
 function openDetail(id) {
   const c = contratos.find(x=>x.id===id);
   if (!c) return;
+  _limparBuscaContrato();
   // pagoBruto = o que a noiva pagou (para calcular saldo dela)
   // pagoNoCaixa = o que entrou no caixa líquido (para exibir no financeiro)
   const pagoBruto = totalPago(c);
@@ -6889,10 +6903,83 @@ function abrirListaPagamentos(contratoId) {
 
 function renderListaPagamentosBody(c) {
   const body = document.getElementById('lista-pagamentos-body');
-  if (!body) return;
-  body.innerHTML = (c.pagamentos||[]).map((p, idx) =>
-    pagamentoLinhaHtml(p, { tappable: true, onClick: `abrirEditarPagamento(${c.id}, ${idx})` })
-  ).join('');
+  if (body) {
+    body.innerHTML = (c.pagamentos||[]).map((p, idx) =>
+      pagamentoLinhaHtml(p, { tappable: true, onClick: `abrirEditarPagamento(${c.id}, ${idx})` })
+    ).join('');
+  }
+
+  const saldoInfo = document.getElementById('lp-saldo-info');
+  if (saldoInfo) {
+    const vap = calcValorAPagar(c);
+    const pago = totalPago(c);
+    const saldo = round2(vap - pago);
+    const fmtV = v => v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+    saldoInfo.innerHTML = `Total: R$ ${fmtV(vap)} · Pago: R$ ${fmtV(pago)} · <strong style="color:${saldo > 0.01 ? 'var(--brown)' : 'var(--sage)'}">${saldo > 0.01 ? 'Saldo: R$ ' + fmtV(saldo) : '✓ Quitado'}</strong>`;
+  }
+
+  const fpAtual = c.formaPag || 'pix';
+  const ehReservaOuEntrega = (fpAtual === 'reserva' || fpAtual === 'entrega_prazo');
+  const tipoSel = document.getElementById('lp-tipo-contrato');
+  if (tipoSel) {
+    tipoSel.innerHTML = getOpcoesTipoContratoHTML(fpAtual);
+    tipoSel.value = ehReservaOuEntrega ? fpAtual : 'simples';
+  }
+  const formaSimplesAtual = ehReservaOuEntrega ? null : fpAtual;
+  const formaSel = document.getElementById('lp-forma-simples');
+  if (formaSel) {
+    formaSel.innerHTML = getOpcoesFormaSimplesHTML(formaSimplesAtual || getPrimeiraFormaAtivaMinuscula());
+    formaSel.value = formaSimplesAtual || getPrimeiraFormaAtivaMinuscula();
+  }
+  const grpForma = document.getElementById('lp-grp-forma-simples');
+  if (grpForma) grpForma.style.display = ehReservaOuEntrega ? 'none' : '';
+}
+
+function onLpTipoContratoChange() {
+  const tipo = document.getElementById('lp-tipo-contrato').value;
+  const grpForma = document.getElementById('lp-grp-forma-simples');
+  if (grpForma) grpForma.style.display = tipo === 'simples' ? '' : 'none';
+}
+
+// Verifica se a nova forma/tipo escolhido bate com os pagamentos já registrados. Retorna a
+// mensagem de aviso se houver conflito, ou null se está tudo certo (mesmo princípio já usado em
+// salvarNovoPagamento — mas aqui a decisão é sempre da pessoa, nunca convertida sozinha).
+function _detectarConflitoTipoForma(c, novaFormaPag) {
+  if (novaFormaPag === 'misto' || novaFormaPag === 'reserva' || novaFormaPag === 'entrega_prazo') return null;
+  const formaEsperada = MAPA_FORMA_SIMPLES_ESPERADA[novaFormaPag];
+  if (!formaEsperada) return null;
+  const pagsConflitantes = (c.pagamentos || []).filter(p => p.forma !== formaEsperada);
+  if (!pagsConflitantes.length) return null;
+  const formasEncontradas = [...new Set(pagsConflitantes.map(p => formaDisplayLabel(p.forma)))];
+  return `Este contrato tem pagamento em ${formasEncontradas.join(', ')}, mas você está definindo ${formaDisplayLabel(formaEsperada)}. O saldo pode ficar incorreto. Deseja continuar mesmo assim?`;
+}
+
+async function salvarTipoContratoLista() {
+  const c = contratos.find(x => x.id === listaPagamentosContratoId);
+  if (!c) return;
+  const tipo = document.getElementById('lp-tipo-contrato').value;
+  const novaFormaPag = tipo === 'simples' ? document.getElementById('lp-forma-simples').value : tipo;
+  if (novaFormaPag === c.formaPag) return;
+
+  const conflito = _detectarConflitoTipoForma(c, novaFormaPag);
+  const salvar = async () => {
+    try {
+      const [r] = await sbUpdate('contratos', c.id, { forma_pag: novaFormaPag });
+      Object.assign(c, mapContrato(r));
+      renderAll();
+      renderListaPagamentosBody(c);
+    } catch(e) { _mostrarErroAcao('salvarTipoContratoLista', e, { acaoLabel: 'salvar o tipo de contrato' }); }
+  };
+  if (conflito) {
+    mostrarConfirm({
+      titulo: 'Pagamento em forma diferente',
+      mensagem: conflito,
+      txtConfirmar: 'Salvar mesmo assim',
+      onConfirmar: salvar
+    });
+  } else {
+    await salvar();
+  }
 }
 
 function fecharListaPagamentos() {
@@ -11140,6 +11227,16 @@ function filtrarContratos() {
   Array.from(cards).forEach(card => {
     card.style.display = card.textContent.toLowerCase().includes(termo) ? "" : "none";
   });
+}
+
+// Limpa a busca da aba Contratos — chamada ao entrar em qualquer contrato e ao sair da aba,
+// pra nunca deixar um filtro esquecido escondendo cards da próxima vez que a pessoa voltar.
+function _limparBuscaContrato() {
+  const input = document.getElementById('busca-contrato');
+  if (input && input.value) {
+    input.value = '';
+    filtrarContratos();
+  }
 }
 
 if ('serviceWorker' in navigator) {
