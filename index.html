@@ -1810,16 +1810,16 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     <div id="lp-saldo-info" style="font-size:0.7rem;color:var(--muted);margin-bottom:0.8rem;padding:0.6rem 0.8rem;background:rgba(184,134,42,0.06);border-radius:4px;border-left:3px solid var(--gold)"></div>
     <div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.8rem">Toque em um pagamento pra editar ou excluir.</div>
     <div id="lista-pagamentos-body"></div>
-    <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(184,134,42,0.15)">
-      <div class="field-group">
-        <label class="field-label">Tipo de Contrato</label>
-        <select class="field-input" id="lp-tipo-contrato" onchange="onLpTipoContratoChange()"></select>
+    <div style="margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid rgba(184,134,42,0.15)">
+      <div class="detail-row" style="flex-direction:column;align-items:stretch;font-size:0.78rem">
+        <span style="font-size:0.66rem;color:var(--muted-light);margin-bottom:0.2rem">Tipo de Contrato</span>
+        <select id="lp-tipo-contrato" onchange="onLpTipoContratoChange()" style="border:none;background:transparent;font-size:0.85rem;color:var(--dark);font-family:'Calibri',sans-serif;padding:0;outline:none;width:100%"></select>
       </div>
-      <div class="field-group" id="lp-grp-forma-simples">
-        <label class="field-label">Forma de Pagamento</label>
-        <select class="field-input" id="lp-forma-simples"></select>
+      <div class="detail-row" id="lp-grp-forma-simples" style="flex-direction:column;align-items:stretch;font-size:0.78rem">
+        <span style="font-size:0.66rem;color:var(--muted-light);margin-bottom:0.2rem">Forma de Pagamento</span>
+        <select id="lp-forma-simples" onchange="_atualizarBotaoSalvarTipo()" style="border:none;background:transparent;font-size:0.85rem;color:var(--dark);font-family:'Calibri',sans-serif;padding:0;outline:none;width:100%"></select>
       </div>
-      <button class="btn-secondary" style="margin-top:0" onclick="salvarTipoContratoLista()">Salvar tipo de contrato</button>
+      <button class="btn-secondary" id="lp-btn-salvar-tipo" style="margin-top:0.6rem;display:none" onclick="salvarTipoContratoLista()">Salvar tipo de contrato</button>
     </div>
     <button class="btn-secondary" style="margin-top:0.8rem" onclick="fecharListaPagamentos()">Fechar</button>
   </div>
@@ -6933,12 +6933,25 @@ function renderListaPagamentosBody(c) {
   }
   const grpForma = document.getElementById('lp-grp-forma-simples');
   if (grpForma) grpForma.style.display = ehReservaOuEntrega ? 'none' : '';
+  _atualizarBotaoSalvarTipo();
 }
 
 function onLpTipoContratoChange() {
   const tipo = document.getElementById('lp-tipo-contrato').value;
   const grpForma = document.getElementById('lp-grp-forma-simples');
   if (grpForma) grpForma.style.display = tipo === 'simples' ? '' : 'none';
+  _atualizarBotaoSalvarTipo();
+}
+
+// Mostra o botão "Salvar tipo de contrato" só quando a seleção atual difere do que já está salvo —
+// isso é o próprio retorno visual de que salvou: o botão desaparece depois de um save bem-sucedido.
+function _atualizarBotaoSalvarTipo() {
+  const c = contratos.find(x => x.id === listaPagamentosContratoId);
+  const btn = document.getElementById('lp-btn-salvar-tipo');
+  if (!c || !btn) return;
+  const tipo = document.getElementById('lp-tipo-contrato').value;
+  const novaFormaPag = tipo === 'simples' ? document.getElementById('lp-forma-simples').value : tipo;
+  btn.style.display = (novaFormaPag !== c.formaPag) ? '' : 'none';
 }
 
 // Verifica se a nova forma/tipo escolhido bate com os pagamentos já registrados. Retorna a
@@ -7056,11 +7069,12 @@ function fecharDrawerPag() {
 function excluirPagamentoDoFormulario() {
   if (!pagamentoContratoId || pagamentoEditandoIdx === null) return;
   const cId = pagamentoContratoId, idx = pagamentoEditandoIdx;
+  const veioDaLista = _pagAbertoDaLista;
   closeDrawer('drawer-pag');
   pagamentoContratoId = null;
   pagamentoEditandoIdx = null;
   _pagAbertoDaLista = false;
-  excluirPagamento(cId, idx);
+  excluirPagamento(cId, idx, { voltarParaLista: veioDaLista });
 }
 
 function atualizarCartaoDescUI(prefixo) {
@@ -7218,16 +7232,23 @@ async function salvarNovoPagamento() {
   try {
     const [r] = await sbUpdate('contratos', pagamentoContratoId, dadosParaSalvar);
     Object.assign(c, mapContrato(r));
+    const veioDaLista = _pagAbertoDaLista;
     closeDrawer('drawer-pag');
     pagamentoContratoId = null;
     pagamentoEditandoIdx = null;
     _pagAbertoDaLista = false;
     renderAll();
-    openDetail(c.id);
+    if (veioDaLista) {
+      listaPagamentosContratoId = c.id;
+      renderListaPagamentosBody(c);
+      openDrawer('drawer-lista-pagamentos');
+    } else {
+      openDetail(c.id);
+    }
   } catch(e) { _mostrarErroAcao('salvarNovoPagamento', e, { acaoLabel: 'salvar o pagamento' }); }
 }
 
-async function excluirPagamento(contratoId, idx) {
+async function excluirPagamento(contratoId, idx, { voltarParaLista = false } = {}) {
   const c = contratos.find(x => x.id === contratoId);
   if (!c) return;
   const p = (c.pagamentos || [])[idx];
@@ -7249,7 +7270,13 @@ async function excluirPagamento(contratoId, idx) {
         });
         Object.assign(c, mapContrato(r));
         renderAll();
-        openDetail(c.id);
+        if (voltarParaLista) {
+          listaPagamentosContratoId = c.id;
+          renderListaPagamentosBody(c);
+          openDrawer('drawer-lista-pagamentos');
+        } else {
+          openDetail(c.id);
+        }
       } catch(e) { _mostrarErroAcao('excluirPagamento', e, { acaoLabel: 'excluir o pagamento' }); }
     }
   });
