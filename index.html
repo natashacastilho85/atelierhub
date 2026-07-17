@@ -952,6 +952,16 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         <div class="filter-chip" data-status="Cancelado">Cancelado</div>
         <div class="filter-chip" data-status="devedor">Devedor</div>
       </div>
+      <div class="filter-row" id="filter-row-tipo">
+        <div class="filter-chip active" data-tipo="todos">Todos os tipos</div>
+        <div class="filter-chip" data-tipo="pix">Pix</div>
+        <div class="filter-chip" data-tipo="dinheiro">Dinheiro</div>
+        <div class="filter-chip" data-tipo="debito">Débito</div>
+        <div class="filter-chip" data-tipo="credito">Crédito</div>
+        <div class="filter-chip" data-tipo="misto">Misto</div>
+        <div class="filter-chip" data-tipo="reserva">Reserva com entrada</div>
+        <div class="filter-chip" data-tipo="entrega_prazo">Reserva sem entrada</div>
+      </div>
       <div id="contratos-list"></div>
     </div>
 
@@ -1400,27 +1410,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       </div>
     </div>
     <div id="grp-pago-entregaprazo" style="display:none">
-      <div class="field-row">
-        <div class="field-group">
-          <label class="field-label">Forma da entrada</label>
-          <select class="field-input" id="c-entregaprazo-forma" onchange="onEntregaPrazoFormaChange('c')"></select>
-        </div>
-        <div class="field-group" id="c-entregaprazo-grp-parc" style="display:none">
-          <label class="field-label">Parcelas</label>
-          <select class="field-input" id="c-entregaprazo-parc"></select>
-        </div>
-      </div>
-      <div class="field-group" id="c-entregaprazo-grp-desconto" style="display:none">
-        <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
-          <input type="checkbox" id="c-entregaprazo-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
-          Aplicar desconto padrão<span id="c-entregaprazo-desc-pct"></span>
-        </label>
-      </div>
-      <div class="field-group">
-        <label class="field-label">Entrada já recebida (R$)</label>
-        <input class="field-input" id="c-entregaprazo-pago" type="number" placeholder="0,00" step="1" min="0">
-        <div class="field-hint visible" style="font-size:0.65rem;color:var(--muted);margin-top:0.3rem">O restante fica em aberto. Você poderá registrar mais pagamentos depois, no detalhe do contrato.</div>
-      </div>
+      <div class="field-hint visible" style="font-size:0.65rem;color:var(--muted);margin-bottom:0.8rem">Sem entrada — o contrato nasce com o valor total em aberto. Você registra os pagamentos depois, no detalhe do contrato.</div>
       <div class="field-group">
         <label class="field-label">Prazo de quitação</label>
         <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer;margin-bottom:0.3rem">
@@ -3307,20 +3297,9 @@ function gerarPagamentosIniciais(forma, valor, dataContrato, desconto) {
     if (parcEntrada) pag.parcelas = parcEntrada;
     return [pag];
   } else if (forma === 'entrega_prazo') {
-    const pagoEntradaE = round2(parseFloat(document.getElementById('c-entregaprazo-pago').value) || 0);
-    const formaEntradaE = document.getElementById('c-entregaprazo-forma')?.value || 'Pix';
-    const parcEntradaE = formaEntradaE === 'Cartão'
-      ? (parseInt(document.getElementById('c-entregaprazo-parc')?.value) || 1)
-      : null;
-    let liquidoEntradaE = pagoEntradaE;
-    if (formaEntradaE === 'Pix' || formaEntradaE === 'Dinheiro' || formaEntradaE === 'Débito') {
-      const chkEntDesc = document.getElementById('c-entregaprazo-aplicar-desconto');
-      const aplicarDescEntrega = !!(chkEntDesc && chkEntDesc.checked); // padrão desmarcado — Entrega+Prazo nunca descontou até agora
-      liquidoEntradaE = calcLiquidoComDesconto(pagoEntradaE, formaEntradaE, aplicarDescEntrega);
-    }
-    const pagE = { data, valor: liquidoEntradaE, bruto: pagoEntradaE, forma: formaEntradaE, status: 'Realizado' };
-    if (parcEntradaE) pagE.parcelas = parcEntradaE;
-    return [pagE];
+    // Reserva sem entrada: nasce sem nenhum pagamento — 100% do valor fica em aberto. A forma do
+    // primeiro pagamento só é decidida quando ela for de fato registrada, depois, no contrato.
+    return [];
   } else if (forma === 'misto') {
     const pPix = parseFloat(document.getElementById('c-pago-pix').value) || 0;
     const pCartao = parseFloat(document.getElementById('c-pago-cartao').value) || 0;
@@ -3833,12 +3812,22 @@ function renderProximos() {
 }
 
 // ── CONTRATOS ──
+let _filtroTipoAtivo = 'todos';
 function setupFiltros() {
   document.querySelectorAll('#filter-row .filter-chip').forEach(chip=>{
     chip.addEventListener('click',()=>{
       document.querySelectorAll('#filter-row .filter-chip').forEach(c=>c.classList.remove('active'));
       chip.classList.add('active');
       renderContratos(chip.dataset.status);
+    });
+  });
+  document.querySelectorAll('#filter-row-tipo .filter-chip').forEach(chip=>{
+    chip.addEventListener('click',()=>{
+      document.querySelectorAll('#filter-row-tipo .filter-chip').forEach(c=>c.classList.remove('active'));
+      chip.classList.add('active');
+      _filtroTipoAtivo = chip.dataset.tipo;
+      const statusAtivo = document.querySelector('#filter-row .filter-chip.active')?.dataset.status || 'todos';
+      renderContratos(statusAtivo);
     });
   });
 }
@@ -3854,6 +3843,10 @@ function renderContratos(statusFiltro) {
   } else {
     // CORREÇÃO: Agora ele filtra pelo status EFETIVO (o que aparece na tela)
     filtrados = contratos.filter(c => statusEfetivo(c) === statusFiltro);
+  }
+
+  if (_filtroTipoAtivo && _filtroTipoAtivo !== 'todos') {
+    filtrados = filtrados.filter(c => c.formaPag === _filtroTipoAtivo);
   }
   
   if (!filtrados.length) { 
@@ -3934,14 +3927,18 @@ function contratoCardHTML(c) {
 
   const cardStyle = devedor ? 'background:rgba(122,37,53,0.08);border:1px solid rgba(122,37,53,0.4);' : '';
   const devedorBadge = devedor ? `<span style="font-size:0.55rem;letter-spacing:0.08em;padding:0.22rem 0.55rem;border-radius:20px;font-weight:600;white-space:nowrap;background:var(--bordeaux);color:white;text-transform:uppercase">⚠ Devedor</span>` : '';
+  const tipoContratoBadge = `<span style="font-size:0.55rem;letter-spacing:0.05em;padding:0.22rem 0.55rem;border-radius:20px;font-weight:500;white-space:nowrap;background:rgba(184,134,42,0.1);color:var(--brown);text-transform:uppercase;flex-shrink:0">${TIPO_CONTRATO_LABEL[c.formaPag] || c.formaPag}</span>`;
 
   return `<div class="contract-card" style="${cardStyle}" onclick="openDetail(${c.id})">
     
-    <!-- 1ª LINHA: ETIQUETAS (Status, Devedor, Prazo) -->
-    <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap; margin-bottom:0.6rem;">
-      <div class="status-badge s-${status}">${status}</div>
-      ${devedorBadge}
-      ${diasBadge}
+    <!-- 1ª LINHA: ETIQUETAS (Status, Devedor, Prazo à esquerda / Tipo de Contrato à direita) -->
+    <div style="display:flex; gap:0.4rem; align-items:center; justify-content:space-between; margin-bottom:0.6rem;">
+      <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
+        <div class="status-badge s-${status}">${status}</div>
+        ${devedorBadge}
+        ${diasBadge}
+      </div>
+      ${tipoContratoBadge}
     </div>
     
     <!-- 2ª LINHA: NOME DA NOIVA DESTACADO -->
@@ -7003,13 +7000,16 @@ function _atualizarBotaoSalvarTipo() {
   if (!c || !btn) return;
   const tipo = document.getElementById('lp-tipo-contrato').value;
   const novaFormaPag = tipo === 'simples' ? document.getElementById('lp-forma-simples').value : tipo;
-  let mudou = novaFormaPag !== c.formaPag;
-  if (!mudou && (tipo === 'reserva' || tipo === 'entrega_prazo')) {
+  const tipoMudou = novaFormaPag !== c.formaPag;
+  let prazoMudou = false;
+  if (tipo === 'reserva' || tipo === 'entrega_prazo') {
     const novoTQ = document.querySelector('input[name="lp-tipoquitacao"]:checked')?.value || null;
-    const tqAtual = c.tipoQuitacao || (c.formaPag === 'reserva' ? 'casamento' : 'entrega');
-    if (novoTQ && novoTQ !== tqAtual) mudou = true;
+    const tqAtual = c.tipoQuitacao || (c.formaPag === 'reserva' ? 'casamento' : (c.formaPag === 'entrega_prazo' ? 'entrega' : null));
+    if (novoTQ && novoTQ !== tqAtual) prazoMudou = true;
   }
-  btn.style.display = mudou ? '' : 'none';
+  if (!tipoMudou && !prazoMudou) { btn.style.display = 'none'; return; }
+  btn.style.display = '';
+  btn.textContent = tipoMudou ? 'Salvar tipo de contrato' : 'Salvar prazo de quitação';
 }
 
 // Verifica se a nova forma/tipo escolhido bate com os pagamentos já registrados. Retorna a
@@ -7030,6 +7030,14 @@ async function salvarTipoContratoLista() {
   if (!c) return;
   const tipo = document.getElementById('lp-tipo-contrato').value;
   const novaFormaPag = tipo === 'simples' ? document.getElementById('lp-forma-simples').value : tipo;
+
+  // Reserva com entrada exige que já exista pelo menos um pagamento registrado — senão a etiqueta
+  // "com entrada" não faz sentido (o contrato ainda não recebeu entrada nenhuma).
+  if (novaFormaPag === 'reserva' && novaFormaPag !== c.formaPag && totalPago(c) <= 0.01) {
+    mostrarAlerta({ emoji: '⚠️', titulo: 'Entrada obrigatória', mensagem: 'Reserva com entrada exige que já exista um pagamento registrado. Registre o pagamento primeiro em "Editar Pagamentos", ou use Reserva sem entrada.' });
+    return;
+  }
+
   let novoTipoQuitacao = null;
   if (novaFormaPag === 'reserva' || novaFormaPag === 'entrega_prazo') {
     novoTipoQuitacao = document.querySelector('input[name="lp-tipoquitacao"]:checked')?.value || (novaFormaPag === 'reserva' ? 'casamento' : 'entrega');
@@ -7628,6 +7636,18 @@ async function carregarCustosSupabase() {
       if (idxMistoLabel >= 0 && custosConfig.formasPag[idxMistoLabel].label !== 'Misto (Pix, Crédito, Dinheiro e/ou Débito)') {
         custosConfig.formasPag[idxMistoLabel].label = 'Misto (Pix, Crédito, Dinheiro e/ou Débito)';
       }
+      // Reserva com/sem entrada: atualiza rótulo antigo salvo, e força sempre ativa — não são mais
+      // desligáveis em Configurações, sempre aparecem em Novo Contrato / Editar Pagamentos.
+      const idxReservaLabel = custosConfig.formasPag.findIndex(f => f.id === 'reserva');
+      if (idxReservaLabel >= 0) {
+        custosConfig.formasPag[idxReservaLabel].label = 'Reserva com entrada';
+        custosConfig.formasPag[idxReservaLabel].ativa = true;
+      }
+      const idxEntregaLabel = custosConfig.formasPag.findIndex(f => f.id === 'entrega_prazo');
+      if (idxEntregaLabel >= 0) {
+        custosConfig.formasPag[idxEntregaLabel].label = 'Reserva sem entrada';
+        custosConfig.formasPag[idxEntregaLabel].ativa = true;
+      }
 
       // Garante que parcelas tem todas as 12 faixas (mescla com o que está salvo)
       const parcelasDefault = CUSTOS_DEFAULT.parcelas;
@@ -7998,7 +8018,6 @@ function renderFormasPag() {
   const el = document.getElementById('c-formas-pag-list');
   if (!el) return;
   const formas = custosConfig.formasPag || [];
-  const tiposContrato = formas.filter(f => f.id === 'reserva' || f.id === 'entrega_prazo');
   const formasPagamento = formas.filter(f => f.id !== 'reserva' && f.id !== 'entrega_prazo');
 
   function renderCard(f) {
@@ -8055,68 +8074,54 @@ function renderFormasPag() {
     '</div>';
   }
 
-  const algumTipoAtivo = tiposContrato.some(f => f.ativa);
-  let prazoBlocksHtml = '';
-  if (algumTipoAtivo) {
-    const prazoVal = (custosConfig.prazoReserva !== null && custosConfig.prazoReserva !== undefined) ? custosConfig.prazoReserva : '';
-    const notifVal = (custosConfig.notifDiasAntesReserva !== null && custosConfig.notifDiasAntesReserva !== undefined) ? custosConfig.notifDiasAntesReserva : '';
-    const prazoVazio = prazoVal === '';
-    const notifVazio = notifVal === '';
-    const borderObrig = 'border-color:var(--bordeaux)';
-    const avisoHtml = (prazoVazio || notifVazio) ? '<div style="font-size:0.65rem;color:var(--bordeaux)">⚠️ Preencha os dois campos abaixo para poder salvar</div>' : '';
+  // Modelos de prazo de quitação: sempre visíveis (não são mais amarrados a nenhum tipo estar
+  // "ativo" — os 3 tipos de contrato sempre aparecem em Novo Contrato / Editar Pagamentos agora).
+  // Deixar em branco é uma opção válida: só significa que nenhum lembrete desse modelo é disparado.
+  const prazoVal = (custosConfig.prazoReserva !== null && custosConfig.prazoReserva !== undefined) ? custosConfig.prazoReserva : '';
+  const notifVal = (custosConfig.notifDiasAntesReserva !== null && custosConfig.notifDiasAntesReserva !== undefined) ? custosConfig.notifDiasAntesReserva : '';
+  const prazoValE = (custosConfig.prazoEntrega !== null && custosConfig.prazoEntrega !== undefined) ? custosConfig.prazoEntrega : '';
+  const avisoValE = (custosConfig.diasAvisoEntrega !== null && custosConfig.diasAvisoEntrega !== undefined) ? custosConfig.diasAvisoEntrega : '';
 
-    const prazoValE = (custosConfig.prazoEntrega !== null && custosConfig.prazoEntrega !== undefined) ? custosConfig.prazoEntrega : '';
-    const avisoValE = (custosConfig.diasAvisoEntrega !== null && custosConfig.diasAvisoEntrega !== undefined) ? custosConfig.diasAvisoEntrega : '';
-    const prazoVazioE = prazoValE === '';
-    const avisoVazioE = avisoValE === '';
-    const borderObrigE = 'border-color:var(--bordeaux)';
-    const avisoHtmlE = (prazoVazioE || avisoVazioE) ? '<div style="font-size:0.65rem;color:var(--bordeaux)">⚠️ Preencha os dois campos abaixo para poder salvar</div>' : '';
-
-    prazoBlocksHtml =
-      '<div style="font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin:0.8rem 0 0.4rem">Modelos de prazo de quitação — cada contrato escolhe um</div>' +
-      '<div style="border:1px solid rgba(184,134,42,0.2);border-radius:8px;padding:0.7rem 0.9rem;margin-bottom:0.5rem">' +
-        '<div style="font-size:0.85rem;color:var(--dark);font-weight:500;margin-bottom:0.5rem">Antes do casamento</div>' +
-        avisoHtml +
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem;margin-top:0.3rem">' +
-          '<label style="font-size:0.68rem;color:var(--muted)">Prazo de quitação (dias antes do casamento)</label>' +
-          '<input class="field-input" type="number" step="1" min="0"' +
-          ' value="' + prazoVal + '" placeholder="Ex: 15"' +
-          ' oninput="atualizarPrazoReserva(this.value)"' +
-          ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right;' + (prazoVazio ? borderObrig : '') + '">' +
-        '</div>' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem;margin-top:0.4rem">' +
-          '<label style="font-size:0.68rem;color:var(--muted)">Avisar quantos dias antes desse prazo</label>' +
-          '<input class="field-input" type="number" step="1" min="0"' +
-          ' value="' + notifVal + '" placeholder="Ex: 5"' +
-          ' oninput="atualizarNotifDiasReserva(this.value)"' +
-          ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right;' + (notifVazio ? borderObrig : '') + '">' +
-        '</div>' +
+  const prazoBlocksHtml =
+    '<div style="font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:0.5rem">Modelos de prazo de quitação — cada contrato escolhe um</div>' +
+    '<div style="border:1px solid rgba(184,134,42,0.2);border-radius:8px;padding:0.7rem 0.9rem;margin-bottom:0.5rem">' +
+      '<div style="font-size:0.85rem;color:var(--dark);font-weight:500;margin-bottom:0.5rem">Antes do casamento</div>' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem">' +
+        '<label style="font-size:0.68rem;color:var(--muted)">Prazo de quitação (dias antes do casamento)</label>' +
+        '<input class="field-input" type="number" step="1" min="0"' +
+        ' value="' + prazoVal + '" placeholder="Ex: 15"' +
+        ' oninput="atualizarPrazoReserva(this.value)"' +
+        ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right">' +
       '</div>' +
-      '<div style="border:1px solid rgba(184,134,42,0.2);border-radius:8px;padding:0.7rem 0.9rem;margin-bottom:0.5rem">' +
-        '<div style="font-size:0.85rem;color:var(--dark);font-weight:500;margin-bottom:0.5rem">Após entrega</div>' +
-        avisoHtmlE +
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem;margin-top:0.3rem">' +
-          '<label style="font-size:0.68rem;color:var(--muted)">Prazo de quitação (dias após a entrega)</label>' +
-          '<input class="field-input" type="number" step="1" min="0"' +
-          ' value="' + prazoValE + '" placeholder="Ex: 10"' +
-          ' oninput="atualizarPrazoEntrega(this.value)"' +
-          ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right;' + (prazoVazioE ? borderObrigE : '') + '">' +
-        '</div>' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem;margin-top:0.4rem">' +
-          '<label style="font-size:0.68rem;color:var(--muted)">Avisar quantos dias após a entrega</label>' +
-          '<input class="field-input" type="number" step="1" min="0"' +
-          ' value="' + avisoValE + '" placeholder="Ex: 3"' +
-          ' oninput="atualizarDiasAvisoEntrega(this.value)"' +
-          ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right;' + (avisoVazioE ? borderObrigE : '') + '">' +
-        '</div>' +
-      '</div>';
-  }
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem;margin-top:0.4rem">' +
+        '<label style="font-size:0.68rem;color:var(--muted)">Avisar quantos dias antes desse prazo</label>' +
+        '<input class="field-input" type="number" step="1" min="0"' +
+        ' value="' + notifVal + '" placeholder="Ex: 5"' +
+        ' oninput="atualizarNotifDiasReserva(this.value)"' +
+        ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right">' +
+      '</div>' +
+    '</div>' +
+    '<div style="border:1px solid rgba(184,134,42,0.2);border-radius:8px;padding:0.7rem 0.9rem;margin-bottom:0.5rem">' +
+      '<div style="font-size:0.85rem;color:var(--dark);font-weight:500;margin-bottom:0.5rem">Após entrega</div>' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem">' +
+        '<label style="font-size:0.68rem;color:var(--muted)">Prazo de quitação (dias após a entrega)</label>' +
+        '<input class="field-input" type="number" step="1" min="0"' +
+        ' value="' + prazoValE + '" placeholder="Ex: 10"' +
+        ' oninput="atualizarPrazoEntrega(this.value)"' +
+        ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right">' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem;margin-top:0.4rem">' +
+        '<label style="font-size:0.68rem;color:var(--muted)">Avisar quantos dias após a entrega</label>' +
+        '<input class="field-input" type="number" step="1" min="0"' +
+        ' value="' + avisoValE + '" placeholder="Ex: 3"' +
+        ' oninput="atualizarDiasAvisoEntrega(this.value)"' +
+        ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right">' +
+      '</div>' +
+    '</div>';
 
   const html =
-    '<div style="font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem">Tipos de Contrato</div>' +
-    tiposContrato.map(renderCard).join('') +
     prazoBlocksHtml +
-    '<div style="font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin:1rem 0 0.5rem">Formas de Pagamento</div>' +
+    '<div style="font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:1rem 0 0.5rem">Formas de Pagamento</div>' +
     formasPagamento.map(renderCard).join('');
 
   el.innerHTML = html;
@@ -8193,25 +8198,6 @@ async function _recalcularDesidratacaoExistentes(novoPrazo) {
 
 async function salvarCustos() {
   try {
-    // Validação: se Reserva com entrada OU Reserva sem entrada estiver ativa, os dois modelos de
-    // prazo precisam estar configurados — qualquer um dos dois tipos pode escolher qualquer modelo.
-    const reservaForma = (custosConfig.formasPag || []).find(f => f.id === 'reserva');
-    const entregaPrazoForma = (custosConfig.formasPag || []).find(f => f.id === 'entrega_prazo');
-    if ((reservaForma && reservaForma.ativa) || (entregaPrazoForma && entregaPrazoForma.ativa)) {
-      const prazoOk = custosConfig.prazoReserva !== null && custosConfig.prazoReserva !== undefined;
-      const notifOk = custosConfig.notifDiasAntesReserva !== null && custosConfig.notifDiasAntesReserva !== undefined;
-      if (!prazoOk || !notifOk) {
-        mostrarAlerta({ emoji: '⚠️', titulo: 'Configuração obrigatória', mensagem: 'Informe o prazo de quitação "antes do casamento" e quantos dias antes avisar (na seção Tipos de Contrato).' });
-        return;
-      }
-      const prazoOkE = custosConfig.prazoEntrega !== null && custosConfig.prazoEntrega !== undefined;
-      const avisoOkE = custosConfig.diasAvisoEntrega !== null && custosConfig.diasAvisoEntrega !== undefined;
-      if (!prazoOkE || !avisoOkE) {
-        mostrarAlerta({ emoji: '⚠️', titulo: 'Configuração obrigatória', mensagem: 'Informe o prazo de quitação "após entrega" e quantos dias depois avisar (na seção Tipos de Contrato).' });
-        return;
-      }
-    }
-
     // Salva nome do usuário se foi alterado
     const elNome = document.getElementById('c-user-nome');
     if (elNome) {
