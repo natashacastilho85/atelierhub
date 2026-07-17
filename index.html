@@ -1381,7 +1381,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       <div class="field-group" id="c-reserva-grp-desconto" style="display:none">
         <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
           <input type="checkbox" id="c-reserva-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
-          Aplicar desconto padrão
+          Aplicar desconto padrão<span id="c-reserva-desc-pct"></span>
         </label>
       </div>
       <div class="field-group">
@@ -1404,7 +1404,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       <div class="field-group" id="c-entregaprazo-grp-desconto" style="display:none">
         <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
           <input type="checkbox" id="c-entregaprazo-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
-          Aplicar desconto padrão
+          Aplicar desconto padrão<span id="c-entregaprazo-desc-pct"></span>
         </label>
       </div>
       <div class="field-group">
@@ -1790,7 +1790,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     <div class="field-group" id="pag-desc-grp" style="display:none">
       <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
         <input type="checkbox" id="pag-aplicar-desconto" checked onchange="atualizarPreviewPag()" style="width:14px;height:14px;accent-color:var(--brown)">
-        Aplicar desconto padrão
+        Aplicar desconto padrão<span id="pag-desc-pct"></span>
       </label>
     </div>
 
@@ -3525,7 +3525,7 @@ function atualizarDescMistoVisibilidade(prefixo) {
       const spanPct = document.getElementById(prefixo + '-misto-' + formaId + '-pct');
       if (spanPct) {
         const taxa = formaId === 'pix' ? getDescontoPix() : formaId === 'dinheiro' ? getDescontoDinheiro() : getDescontoDebito();
-        spanPct.textContent = taxa > 0 ? ` (${Math.round(taxa * 100)}%)` : '';
+        spanPct.textContent = _fmtDescontoLabel(taxa);
       }
     }
   });
@@ -3550,6 +3550,11 @@ function onReservaFormaChange(prefixo) {
     if (elegivel) {
       const chk = document.getElementById(prefixo + '-reserva-aplicar-desconto');
       if (chk) chk.checked = false; // padrão desmarcado — Reserva nunca descontou até agora
+      const spanPct = document.getElementById(prefixo + '-reserva-desc-pct');
+      if (spanPct) {
+        const taxa = forma === 'Pix' ? getDescontoPix() : forma === 'Dinheiro' ? getDescontoDinheiro() : getDescontoDebito();
+        spanPct.textContent = _fmtDescontoLabel(taxa);
+      }
     }
   }
 }
@@ -3573,6 +3578,11 @@ function onEntregaPrazoFormaChange(prefixo) {
     if (elegivel) {
       const chk = document.getElementById(prefixo + '-entregaprazo-aplicar-desconto');
       if (chk) chk.checked = false; // padrão desmarcado — Entrega+Prazo nunca descontou até agora
+      const spanPct = document.getElementById(prefixo + '-entregaprazo-desc-pct');
+      if (spanPct) {
+        const taxa = forma === 'Pix' ? getDescontoPix() : forma === 'Dinheiro' ? getDescontoDinheiro() : getDescontoDebito();
+        spanPct.textContent = _fmtDescontoLabel(taxa);
+      }
     }
   }
 }
@@ -3707,7 +3717,7 @@ function onFormaPagChange(val) {
       const spanPct = document.getElementById('c-desconto-inicial-pct');
       if (spanPct) {
         const taxa = val === 'pix' ? getDescontoPix() : val === 'dinheiro' ? getDescontoDinheiro() : val === 'debito' ? getDescontoDebito() : 0;
-        spanPct.textContent = taxa > 0 ? ` (${Math.round(taxa * 100)}%)` : '';
+        spanPct.textContent = _fmtDescontoLabel(taxa);
       }
     }
   }
@@ -6462,7 +6472,7 @@ function _renderModalPagamentoPeca() {
         <div id="mpp-grp-desconto" style="display:none;margin-bottom:1rem">
           <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
             <input type="checkbox" id="mpp-aplicar-desconto" checked style="width:14px;height:14px;accent-color:var(--brown)">
-            Aplicar desconto padrão
+            Aplicar desconto padrão<span id="mpp-desc-pct"></span>
           </label>
         </div>
         <div style="margin-bottom:1rem">
@@ -6513,6 +6523,11 @@ function _selecionarFormaPagamentoPeca(forma) {
     grpDesc.style.display = (forma === 'Pix' || forma === 'Dinheiro' || forma === 'Débito') ? '' : 'none';
     const chk = document.getElementById('mpp-aplicar-desconto');
     if (chk) chk.checked = true;
+    const spanPct = document.getElementById('mpp-desc-pct');
+    if (spanPct) {
+      const taxa = forma === 'Pix' ? getDescontoPix() : forma === 'Dinheiro' ? getDescontoDinheiro() : forma === 'Débito' ? getDescontoDebito() : 0;
+      spanPct.textContent = _fmtDescontoLabel(taxa);
+    }
   }
 }
 
@@ -7004,6 +7019,11 @@ function atualizarPagFormaUI() {
       const semDescontoPadrao = c && (c.formaPag === 'reserva' || c.formaPag === 'entrega_prazo' || c.formaPag === 'misto');
       const chk = document.getElementById('pag-aplicar-desconto');
       if (chk) chk.checked = !semDescontoPadrao;
+      const spanPct = document.getElementById('pag-desc-pct');
+      if (spanPct) {
+        const taxa = forma === 'Pix' ? getDescontoPix() : forma === 'Dinheiro' ? getDescontoDinheiro() : getDescontoDebito();
+        spanPct.textContent = _fmtDescontoLabel(taxa);
+      }
     }
   }
 }
@@ -7655,6 +7675,13 @@ function calcLiquidoComDesconto(bruto, forma, aplicarDesconto) {
 // aplica DEPOIS, sobre esse valor já reduzido — refletindo o que de fato sobra pro ateliê.
 // Traduz o rótulo de exibição: o dado gravado continua "Cartão" (compatibilidade com tudo já
 // salvo), mas na tela mostramos "Crédito" — deixa Débito e Crédito com nomes paralelos.
+// Formata o percentual de desconto padrão pra exibir ao lado do checkbox "Aplicar desconto padrão"
+// (ex: " (7,00%)"). Sempre 2 casas decimais, sem esconder zero — mesma convenção usada no resto do
+// app pra dinheiro/tarifa. Retorna string vazia se não há desconto configurado pra essa forma.
+function _fmtDescontoLabel(taxa) {
+  return taxa > 0 ? ` (${(taxa * 100).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2})}%)` : '';
+}
+
 function formaDisplayLabel(forma) {
   return forma === 'Cartão' ? 'Crédito' : forma;
 }
