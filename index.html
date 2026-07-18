@@ -954,6 +954,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         <div class="filter-chip" data-status="Enviado">Enviado</div>
         <div class="filter-chip" data-status="Cancelado">Cancelado</div>
         <div class="filter-chip" data-status="devedor">Devedor</div>
+        <div class="filter-chip" data-status="saldo_aberto">Saldo em Aberto</div>
       </div>
       <div style="font-size:0.62rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:0.3rem">Tipo de Contrato e Forma de Pagamento</div>
       <div class="filter-row" id="filter-row-tipo">
@@ -3842,6 +3843,9 @@ function renderContratos(statusFiltro) {
     filtrados = contratos;
   } else if (statusFiltro === 'devedor') {
     filtrados = contratos.filter(c => isDevedor(c));
+  } else if (statusFiltro === 'saldo_aberto') {
+    // Mesma condição do selo no card: tem saldo, mas não é Devedor — evita duplicar sentido com o filtro de Devedor
+    filtrados = contratos.filter(c => !isDevedor(c) && round2(calcValorAPagar(c) - totalPago(c)) > 0.01);
   } else {
     // CORREÇÃO: Agora ele filtra pelo status EFETIVO (o que aparece na tela)
     filtrados = contratos.filter(c => statusEfetivo(c) === statusFiltro);
