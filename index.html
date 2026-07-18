@@ -3926,12 +3926,13 @@ function contratoCardHTML(c) {
 
   const cardStyle = devedor ? 'background:rgba(122,37,53,0.08);border:1px solid rgba(122,37,53,0.4);' : '';
   const devedorBadge = devedor ? `<span style="font-size:0.55rem;letter-spacing:0.08em;padding:0.22rem 0.55rem;border-radius:20px;font-weight:600;white-space:nowrap;background:var(--bordeaux);color:white;text-transform:uppercase">⚠ Devedor</span>` : '';
-  const tipoContratoBadge = `<span style="font-size:0.55rem;letter-spacing:0.05em;padding:0.22rem 0.55rem;border-radius:20px;font-weight:500;white-space:nowrap;background:rgba(184,134,42,0.1);color:var(--brown);text-transform:uppercase;flex-shrink:0">${TIPO_CONTRATO_LABEL[c.formaPag] || c.formaPag}</span>`;
+  const _labelBadgeTipo = c.formaPag === 'misto' ? 'Misto' : (TIPO_CONTRATO_LABEL[c.formaPag] || c.formaPag);
+  const tipoContratoBadge = `<span style="font-size:0.55rem;letter-spacing:0.05em;padding:0.22rem 0.55rem;border-radius:20px;font-weight:500;white-space:nowrap;background:rgba(184,134,42,0.1);color:var(--brown);text-transform:uppercase;flex-shrink:0">${_labelBadgeTipo}</span>`;
 
   return `<div class="contract-card" style="${cardStyle}" onclick="openDetail(${c.id})">
     
     <!-- 1ª LINHA: ETIQUETAS (Status, Devedor, Prazo à esquerda / Tipo de Contrato à direita) -->
-    <div style="display:flex; gap:0.4rem; align-items:center; justify-content:space-between; margin-bottom:0.6rem;">
+    <div style="display:flex; gap:0.4rem; align-items:flex-start; justify-content:space-between; margin-bottom:0.6rem;">
       <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
         <div class="status-badge s-${status}">${status}</div>
         ${devedorBadge}
@@ -6930,7 +6931,7 @@ function openNovoPagamento(contratoId) {
 function abrirListaPagamentosOuAvisar(contratoId) {
   const c = contratos.find(x => x.id === contratoId);
   if (!c || !(c.pagamentos||[]).length) {
-    mostrarAlerta({ emoji: 'ℹ️', titulo: 'Nenhum pagamento ainda', mensagem: 'Esse contrato ainda não tem nenhum pagamento registrado. Use "Registrar Pagamento" primeiro — depois dá pra editar por aqui.' });
+    mostrarAlerta({ emoji: 'ℹ️', titulo: 'Nenhum pagamento ainda', mensagem: 'Esse contrato ainda não tem nenhum pagamento registrado. Use "Registrar Pagamento" primeiro; a edição fica disponível assim que houver ao menos um pagamento.' });
     return;
   }
   abrirListaPagamentos(contratoId);
@@ -8093,7 +8094,7 @@ function renderFormasPag() {
   const avisoValE = (custosConfig.diasAvisoEntrega !== null && custosConfig.diasAvisoEntrega !== undefined) ? custosConfig.diasAvisoEntrega : '';
 
   const prazoBlocksHtml =
-    '<div style="font-size:0.8rem;color:var(--brown);font-weight:600;margin-bottom:0.5rem;margin-top:0.4rem;padding-top:0.6rem;border-top:1px solid rgba(184,134,42,0.15)">Modelos de prazo de quitação <span style="font-size:0.68rem;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:normal">— cada contrato escolhe um</span></div>' +
+    '<div style="font-size:0.8rem;color:var(--brown);font-weight:600;margin-bottom:0.5rem;margin-top:0.4rem;padding-top:0.6rem;border-top:1px solid rgba(184,134,42,0.15);display:flex;align-items:center;gap:0.35rem">Modelos de prazo de quitação <button onclick="infoModelosPrazo()" style="background:none;border:none;padding:0;cursor:pointer;font-size:0.8rem;color:var(--muted-light)">ⓘ</button> <span style="font-size:0.68rem;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:normal">— cada contrato escolhe um</span></div>' +
     '<div style="border:1px solid rgba(184,134,42,0.2);border-radius:8px;padding:0.7rem 0.9rem;margin-bottom:0.5rem">' +
       '<div style="font-size:0.85rem;color:var(--dark);font-weight:500;margin-bottom:0.5rem">Antes do casamento</div>' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem">' +
@@ -10475,6 +10476,15 @@ function infoFormasAtivas() {
   ].join(''));
 }
 
+function infoModelosPrazo() {
+  _mostrarInfoModal('Modelos de prazo de quitação', [
+    'Cada contrato do tipo <b>Reserva com entrada</b> ou <b>Reserva sem entrada</b> escolhe, individualmente, qual desses dois modelos usar — a escolha não é fixa pelo tipo.',
+    '<br><br><b>Antes do casamento:</b> o saldo precisa estar quitado até X dias antes do casamento. Você é avisada Y dias antes desse prazo.',
+    '<br><br><b>Após entrega:</b> o prazo só começa a contar quando a peça é marcada como entregue no contrato — não depende da data do casamento.',
+    '<br><br>Deixar os campos em branco é uma opção válida: só significa que nenhum lembrete desse modelo é disparado.'
+  ].join(''));
+}
+
 function _mostrarInfoModal(titulo, html) {
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(42,26,14,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1.5rem';
@@ -11334,10 +11344,26 @@ function filtrarContratos() {
 // pra nunca deixar um filtro esquecido escondendo cards da próxima vez que a pessoa voltar.
 function _limparBuscaContrato() {
   const input = document.getElementById('busca-contrato');
-  if (input && input.value) {
-    input.value = '';
-    filtrarContratos();
+  const precisaLimparBusca = input && input.value;
+  if (precisaLimparBusca) input.value = '';
+
+  const chipStatusAtivo = document.querySelector('#filter-row .filter-chip.active');
+  const precisaResetarStatus = chipStatusAtivo && chipStatusAtivo.dataset.status !== 'todos';
+  const chipTipoAtivo = document.querySelector('#filter-row-tipo .filter-chip.active');
+  const precisaResetarTipo = _filtroTipoAtivo && _filtroTipoAtivo !== 'todos';
+
+  if (!precisaLimparBusca && !precisaResetarStatus && !precisaResetarTipo) return;
+
+  if (precisaResetarStatus) {
+    document.querySelectorAll('#filter-row .filter-chip').forEach(c => c.classList.remove('active'));
+    document.querySelector('#filter-row .filter-chip[data-status="todos"]')?.classList.add('active');
   }
+  if (precisaResetarTipo) {
+    document.querySelectorAll('#filter-row-tipo .filter-chip').forEach(c => c.classList.remove('active'));
+    document.querySelector('#filter-row-tipo .filter-chip[data-tipo="todos"]')?.classList.add('active');
+    _filtroTipoAtivo = 'todos';
+  }
+  if (document.getElementById('contratos-list')) renderContratos('todos');
 }
 
 if ('serviceWorker' in navigator) {
