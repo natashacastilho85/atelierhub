@@ -84,6 +84,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     --muted-light: #c4a98e;
     --bordeaux: #7a2535;
     --bordeaux-soft: #c14a5e;
+    --orange: #c9601a;
     --sage: #6b8f71;
     --card-bg: #ffffff;
     --header-bg: #ffffff;
@@ -105,6 +106,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       --muted-light: #6b5e52;
       --bordeaux: #d96a7e;
       --bordeaux-soft: #e8859a;
+      --orange: #e8874a;
       --sage: #8fb595;
       --card-bg: #2a2118;
       --header-bg: #221a13;
@@ -2876,6 +2878,7 @@ function goTab(tab, el) {
 function userGoTab(tab, el) {
   _activeTab = tab;
   goTab(tab, el);
+  if (tab !== 'contratos') _limparBuscaContrato();
   if (_drawerStack.length === 0) {
     history.pushState({ villare: 'tab', tab }, '');
   }
@@ -3924,8 +3927,12 @@ function contratoCardHTML(c) {
     corBarraInline = `;background:${cor}`;
   }
 
-  const cardStyle = devedor ? 'background:rgba(122,37,53,0.08);border:1px solid rgba(122,37,53,0.4);' : '';
+  const saldoAberto = !devedor && saldo > 0.01;
+  const cardStyle = devedor ? 'background:rgba(122,37,53,0.08);border:1px solid rgba(122,37,53,0.4);' : (saldoAberto ? 'background:rgba(201,96,26,0.08);border:1px solid rgba(201,96,26,0.4);' : '');
   const devedorBadge = devedor ? `<span style="font-size:0.55rem;letter-spacing:0.08em;padding:0.22rem 0.55rem;border-radius:20px;font-weight:600;white-space:nowrap;background:var(--bordeaux);color:white;text-transform:uppercase">⚠ Devedor</span>` : '';
+  // Sinal neutro pra "ainda tem saldo, mas sem urgência" — não repete junto com Devedor, que já
+  // comunica isso com mais peso quando passa do prazo configurado.
+  const saldoAbertoBadge = saldoAberto ? `<span style="font-size:0.55rem;letter-spacing:0.08em;padding:0.22rem 0.55rem;border-radius:20px;font-weight:600;white-space:nowrap;background:var(--orange);color:white;text-transform:uppercase">Saldo em Aberto</span>` : '';
   const _labelBadgeTipo = c.formaPag === 'misto' ? 'Misto' : (TIPO_CONTRATO_LABEL[c.formaPag] || c.formaPag);
   const tipoContratoBadge = `<span style="font-size:0.55rem;letter-spacing:0.05em;padding:0.22rem 0.55rem;border-radius:20px;font-weight:500;white-space:nowrap;background:rgba(184,134,42,0.1);color:var(--brown);text-transform:uppercase;flex-shrink:0">${_labelBadgeTipo}</span>`;
 
@@ -3936,6 +3943,7 @@ function contratoCardHTML(c) {
       <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
         <div class="status-badge s-${status}">${status}</div>
         ${devedorBadge}
+        ${saldoAbertoBadge}
         ${diasBadge}
       </div>
       ${tipoContratoBadge}
@@ -8100,14 +8108,14 @@ function renderFormasPag() {
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem">' +
         '<label style="font-size:0.68rem;color:var(--muted)">Prazo de quitação (dias antes do casamento)</label>' +
         '<input class="field-input" type="number" step="1" min="0"' +
-        ' value="' + prazoVal + '" placeholder="Ex: 15"' +
+        ' value="' + prazoVal + '"' +
         ' oninput="atualizarPrazoReserva(this.value)"' +
         ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right">' +
       '</div>' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem;margin-top:0.4rem">' +
         '<label style="font-size:0.68rem;color:var(--muted)">Avisar quantos dias antes desse prazo</label>' +
         '<input class="field-input" type="number" step="1" min="0"' +
-        ' value="' + notifVal + '" placeholder="Ex: 5"' +
+        ' value="' + notifVal + '"' +
         ' oninput="atualizarNotifDiasReserva(this.value)"' +
         ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right">' +
       '</div>' +
@@ -8117,14 +8125,14 @@ function renderFormasPag() {
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem">' +
         '<label style="font-size:0.68rem;color:var(--muted)">Prazo de quitação (dias após a entrega)</label>' +
         '<input class="field-input" type="number" step="1" min="0"' +
-        ' value="' + prazoValE + '" placeholder="Ex: 10"' +
+        ' value="' + prazoValE + '"' +
         ' oninput="atualizarPrazoEntrega(this.value)"' +
         ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right">' +
       '</div>' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:0.4rem;margin-top:0.4rem">' +
         '<label style="font-size:0.68rem;color:var(--muted)">Avisar quantos dias após a entrega</label>' +
         '<input class="field-input" type="number" step="1" min="0"' +
-        ' value="' + avisoValE + '" placeholder="Ex: 3"' +
+        ' value="' + avisoValE + '"' +
         ' oninput="atualizarDiasAvisoEntrega(this.value)"' +
         ' style="width:35px;flex-shrink:0;padding:0.35rem 0.4rem;font-size:0.82rem;text-align:right">' +
       '</div>' +
