@@ -942,6 +942,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
                onkeyup="filtrarContratos()">
       </div>
 
+      <div style="font-size:0.62rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:0.3rem">Status do Contrato</div>
       <div class="filter-row" id="filter-row">
         <div class="filter-chip active" data-status="todos">Todos</div>
         <div class="filter-chip" data-status="Reserva">Reserva</div>
@@ -952,6 +953,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         <div class="filter-chip" data-status="Cancelado">Cancelado</div>
         <div class="filter-chip" data-status="devedor">Devedor</div>
       </div>
+      <div style="font-size:0.62rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:0.3rem">Tipo de Contrato e Forma de Pagamento</div>
       <div class="filter-row" id="filter-row-tipo">
         <div class="filter-chip active" data-tipo="todos">Todos os tipos</div>
         <div class="filter-chip" data-tipo="pix">Pix</div>
@@ -2155,8 +2157,6 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       <div style="font-size:0.68rem;color:var(--muted);margin-top:0.3rem">O app calcula automaticamente a data de conclusão a partir da data de início informada.</div>
     </div>
 
-    <div style="font-size:0.8rem;color:var(--brown);font-weight:600;margin-bottom:0.4rem;margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid rgba(184,134,42,0.15);display:flex;align-items:center;gap:0.35rem">Formas de pagamento aceitas <button onclick="infoFormasAtivas()" style="background:none;border:none;padding:0;cursor:pointer;font-size:0.8rem;color:var(--muted-light)">ⓘ</button></div>
-    <div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.7rem;line-height:1.4">Ative as formas que você aceita e configure as taxas.</div>
     <div id="c-formas-pag-list"></div>
 
     <div id="c-parcelas-secao" style="display:none">
@@ -2908,7 +2908,6 @@ function openFab() {
   document.getElementById('c-forma-simples').innerHTML = getOpcoesFormaSimplesHTML(primeiraFormaAtiva);
   document.getElementById('c-forma-simples').value = primeiraFormaAtiva;
   document.getElementById('c-reserva-forma').innerHTML = getOpcoesFormaPagamentoHTML(null);
-  document.getElementById('c-entregaprazo-forma').innerHTML = getOpcoesFormaPagamentoHTML(null);
   document.getElementById('forma-pag-select').value = primeiraFormaAtiva;
   const grpFormaSimplesReset = document.getElementById('c-grp-forma-simples');
   if (grpFormaSimplesReset) grpFormaSimplesReset.style.display = '';
@@ -8121,7 +8120,8 @@ function renderFormasPag() {
 
   const html =
     prazoBlocksHtml +
-    '<div style="font-size:0.68rem;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:1rem 0 0.5rem">Formas de Pagamento</div>' +
+    '<div style="font-size:0.8rem;color:var(--brown);font-weight:600;margin-bottom:0.4rem;margin-top:1rem;padding-top:0.6rem;border-top:1px solid rgba(184,134,42,0.15);display:flex;align-items:center;gap:0.35rem">Formas de pagamento aceitas <button onclick="infoFormasAtivas()" style="background:none;border:none;padding:0;cursor:pointer;font-size:0.8rem;color:var(--muted-light)">ⓘ</button></div>' +
+    '<div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.7rem;line-height:1.4">Ative as formas que você aceita e configure as taxas.</div>' +
     formasPagamento.map(renderCard).join('');
 
   el.innerHTML = html;
