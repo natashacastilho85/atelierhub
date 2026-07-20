@@ -245,6 +245,10 @@ async function verificarNotificacoes() {
 
     // 3. 📦 Confirmação de envio — 1 dia útil após casamento, só se ainda não tiver chegada
     // marcada (se já chegou, obviamente já foi enviado — perguntar de novo não faz sentido)
+    // DEBUG TEMPORÁRIO — remover depois de descobrir a causa do disparo repetido
+    if (id === 22) {
+      console.log(`[DEBUG-22] chegada=${JSON.stringify(c.chegada)} typeof=${typeof c.chegada} cas=${cas} addBusinessDays=${addBusinessDays(cas,1)} today=${today}`);
+    }
     if (!c.chegada && addBusinessDays(cas, 1) === today)
       await disparar(uid, `envio1du-${id}`, '📦 Confirmação de envio', `${c.nome} — confirme o envio do buquê`, id);
 
