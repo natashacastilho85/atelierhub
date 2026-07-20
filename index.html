@@ -11247,10 +11247,26 @@ async function _executarSubscricaoPush() {
   if (perm !== 'granted') return { ok: false, motivo: 'negado' };
 
   let sub = await reg.pushManager.getSubscription();
+  const chaveAtual = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+
+  // Uma inscrição existente pode ter sido criada com uma chave VAPID antiga (se a chave já foi
+  // trocada em algum momento) — nesse caso ela nunca vai autenticar direito no servidor atual,
+  // mesmo parecendo válida aqui no navegador. Confirma que bate com a chave de hoje antes de reaproveitar.
+  if (sub) {
+    const chaveExistente = sub.options && sub.options.applicationServerKey
+      ? new Uint8Array(sub.options.applicationServerKey) : null;
+    const bateChave = chaveExistente && chaveExistente.length === chaveAtual.length
+      && chaveExistente.every((b, i) => b === chaveAtual[i]);
+    if (!bateChave) {
+      try { await sub.unsubscribe(); } catch (e) { /* segue mesmo se falhar */ }
+      sub = null;
+    }
+  }
+
   if (!sub) {
     sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      applicationServerKey: chaveAtual
     });
   }
 
@@ -11369,11 +11385,15 @@ function _limparBuscaContrato() {
   if (precisaResetarStatus) {
     document.querySelectorAll('#filter-row .filter-chip').forEach(c => c.classList.remove('active'));
     document.querySelector('#filter-row .filter-chip[data-status="todos"]')?.classList.add('active');
+    const elFR = document.getElementById('filter-row');
+    if (elFR && typeof elFR.scrollTo === 'function') elFR.scrollTo({ left: 0 });
   }
   if (precisaResetarTipo) {
     document.querySelectorAll('#filter-row-tipo .filter-chip').forEach(c => c.classList.remove('active'));
     document.querySelector('#filter-row-tipo .filter-chip[data-tipo="todos"]')?.classList.add('active');
     _filtroTipoAtivo = 'todos';
+    const elFRT = document.getElementById('filter-row-tipo');
+    if (elFRT && typeof elFRT.scrollTo === 'function') elFRT.scrollTo({ left: 0 });
   }
   if (document.getElementById('contratos-list')) renderContratos('todos');
 }
