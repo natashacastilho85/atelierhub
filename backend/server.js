@@ -19,10 +19,11 @@ webpush.setVapidDetails(
 );
 
 // ── Helpers de data ──
+// Independente do fuso horário configurado no servidor (Render normalmente roda em UTC, mas
+// isso nunca deveria ser uma suposição implícita — Intl com timeZone explícito funciona igual
+// não importa como o servidor está configurado).
 function getBrazilToday() {
-  const now = new Date();
-  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-  return new Date(utc - 3 * 60 * 60000).toISOString().split('T')[0];
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
 }
 
 function addDays(dateStr, days) {
@@ -76,25 +77,37 @@ function descontoMistoConcedido(c) {
 }
 
 // ── Envia push para todos os dispositivos do usuário ──
-async function enviarPush(userId, titulo, corpo, contratoId) {
+async function enviarPush(userId, titulo, corpo, contratoId, chave) {
   try {
     const { data: subs } = await supabase
       .from('push_subscriptions')
       .select('subscription, endpoint')
       .eq('user_id', userId);
 
-    if (!subs || !subs.length) return;
+    // Sem nenhuma inscrição: não há pra quem mandar, mas isso não é uma falha que uma nova
+    // tentativa resolveria sozinha — só volta a funcionar quando a pessoa ativar de novo.
+    if (!subs || !subs.length) return true;
+
+    // Proteção contra dado duplicado na tabela (mesmo endpoint salvo várias vezes) — manda uma
+    // única vez por endpoint de verdade, independente de quantas linhas existam pra ele.
+    const subsUnicas = [...new Map(subs.map(s => [s.endpoint, s])).values()];
+    if (subsUnicas.length < subs.length) {
+      console.warn(`[push] ${subs.length - subsUnicas.length} linha(s) duplicada(s) ignorada(s) pra ${userId}`);
+    }
 
     const payload = JSON.stringify({
       title: titulo,
       body:  corpo,
       ...(contratoId ? { contratoId } : {}),
+      ...(chave ? { tag: chave } : {}),
     });
 
-    for (const row of subs) {
+    let algumSucesso = false;
+    for (const row of subsUnicas) {
       try {
         await webpush.sendNotification(row.subscription, payload);
         console.log(`[push] Enviado para endpoint: ${row.endpoint.slice(0, 60)}...`);
+        algumSucesso = true;
       } catch (err) {
         console.error(`[push] Falha ao enviar: status=${err.statusCode} body=${err.body}`);
         if (err.statusCode === 410 || err.statusCode === 404) {
@@ -104,24 +117,35 @@ async function enviarPush(userId, titulo, corpo, contratoId) {
         }
       }
     }
+    return algumSucesso;
   } catch (err) {
     console.error(`[push] Erro para ${userId}:`, err.message);
+    return false;
   }
 }
 
-// ── Dispara notificação: loga no push_log e envia push ──
+// ── Dispara notificação: loga no push_log e envia push. Se o envio falhar completamente (todas
+// as inscrições falharam), desfaz o registro no push_log pra permitir nova tentativa na próxima
+// verificação, em vez de considerar a notificação "já enviada" quando ela nunca chegou de fato. ──
 async function disparar(userId, chave, titulo, corpo, contratoId) {
+  const hoje = getBrazilToday();
   const { error } = await supabase.from('push_log').insert({
     user_id: userId,
     chave,
-    data: getBrazilToday(),
+    data: hoje,
   });
   if (error) {
-    if (error.code === '23505') return; // já disparada
+    if (error.code === '23505') return; // já disparada com sucesso hoje (ou outra execução processando agora)
     console.error(`[notif] Erro ao logar ${chave}:`, error.message);
     return;
   }
-  await enviarPush(userId, titulo, corpo, contratoId);
+  const sucesso = await enviarPush(userId, titulo, corpo, contratoId, chave);
+  if (!sucesso) {
+    await supabase.from('push_log').delete()
+      .eq('user_id', userId).eq('chave', chave).eq('data', hoje);
+    console.error(`[notif] ❌ ${chave} — envio falhou pra todas as inscrições, será tentado de novo na próxima verificação`);
+    return;
+  }
   console.log(`[notif] ✅ ${chave}`);
 }
 
@@ -262,7 +286,7 @@ async function verificarNotifManuais() {
     if (!pendentes || !pendentes.length) return;
 
     for (const n of pendentes) {
-      await enviarPush(n.user_id, '🔔 Atelier Hub', n.texto);
+      await enviarPush(n.user_id, '🔔 Atelier Hub', n.texto, null, `manual-${n.id}`);
       await supabase.from('notif_manuais')
         .update({ disparada: true })
         .eq('id', n.id);
@@ -276,8 +300,13 @@ async function verificarNotifManuais() {
 // ── Cron: notificações manuais a cada 1 minuto ──
 cron.schedule('* * * * *', verificarNotifManuais, { timezone: 'UTC' });
 
-// ── Cron: notificações automáticas todo dia às 8h de Brasília (= 11h UTC) ──
-cron.schedule('0 11 * * *', verificarNotificacoes, { timezone: 'UTC' });
+// ── Cron: notificações automáticas 4x ao dia, dentro do horário comercial de Brasília
+// (8h, 11h, 14h, 17h = 11h, 14h, 17h, 20h UTC) — não mais só 1x às 8h. Se uma verificação
+// falhar completamente por algum motivo (ex.: instabilidade momentânea), a próxima tentativa,
+// poucas horas depois, ainda cobre o mesmo dia, sem mandar nada de madrugada. Notificações que
+// já dispararam com sucesso nunca se repetem, graças à trava única em push_log — só quem falhou
+// de verdade é tentado de novo.
+cron.schedule('0 11,14,17,20 * * *', verificarNotificacoes, { timezone: 'UTC' });
 
 // ── Health check ──
 app.get('/', (req, res) => res.send('AtelierHub Backend · OK'));
