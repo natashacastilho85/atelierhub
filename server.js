@@ -150,7 +150,25 @@ async function disparar(userId, chave, titulo, corpo, contratoId) {
 }
 
 // ── Verificação diária das 8 notificações automáticas ──
+// Trava simples: impede que duas execuções rodem ao mesmo tempo (ex.: um clique manual em
+// /run-notif coincidindo com o agendamento automático, ou uma requisição retentada sozinha pelo
+// navegador enquanto a anterior ainda respondia) — a segunda chamada é ignorada, não empilhada.
+let _verificandoNotificacoes = false;
+
 async function verificarNotificacoes() {
+  if (_verificandoNotificacoes) {
+    console.warn('[notif] Já existe uma verificação em andamento — chamada duplicada ignorada.');
+    return;
+  }
+  _verificandoNotificacoes = true;
+  try {
+    await _verificarNotificacoesInterno();
+  } finally {
+    _verificandoNotificacoes = false;
+  }
+}
+
+async function _verificarNotificacoesInterno() {
   const today = getBrazilToday();
   console.log(`[notif] Rodando para ${today}`);
 
