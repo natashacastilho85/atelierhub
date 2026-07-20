@@ -263,10 +263,6 @@ async function _verificarNotificacoesInterno() {
 
     // 3. 📦 Confirmação de envio — 1 dia útil após casamento, só se ainda não tiver chegada
     // marcada (se já chegou, obviamente já foi enviado — perguntar de novo não faz sentido)
-    // DEBUG TEMPORÁRIO — remover depois de descobrir a causa do disparo repetido
-    if (id === 22) {
-      console.log(`[DEBUG-22] chegada=${JSON.stringify(c.chegada)} typeof=${typeof c.chegada} cas=${cas} addBusinessDays=${addBusinessDays(cas,1)} today=${today}`);
-    }
     if (!c.chegada && addBusinessDays(cas, 1) === today)
       await disparar(uid, `envio1du-${id}`, '📦 Confirmação de envio', `${c.nome} — confirme o envio do buquê`, id);
 
@@ -332,11 +328,7 @@ cron.schedule('* * * * *', verificarNotifManuais, { timezone: 'UTC' });
 cron.schedule('0 11,14,17,20 * * *', verificarNotificacoes, { timezone: 'UTC' });
 
 // ── Health check ──
-// Marca de versão bem visível — só pra confirmar rapidamente, sem ambiguidade, se o deploy mais
-// recente está de fato no ar. Sem precisar interpretar log nenhum: se essa string não aparecer,
-// o arquivo rodando não é este.
-const VERSAO_SERVIDOR = 'v2026-07-20-debug-envio1du';
-app.get('/', (req, res) => res.send(`AtelierHub Backend · OK · ${VERSAO_SERVIDOR}`));
+app.get('/', (req, res) => res.send('AtelierHub Backend · OK'));
 
 // ── Endpoint para disparar manualmente (teste) ──
 app.get('/run-notif', async (req, res) => {
