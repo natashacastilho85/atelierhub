@@ -150,7 +150,25 @@ async function disparar(userId, chave, titulo, corpo, contratoId) {
 }
 
 // ── Verificação diária das 8 notificações automáticas ──
+// Trava simples: impede que duas execuções rodem ao mesmo tempo (ex.: um clique manual em
+// /run-notif coincidindo com o agendamento automático, ou uma requisição retentada sozinha pelo
+// navegador enquanto a anterior ainda respondia) — a segunda chamada é ignorada, não empilhada.
+let _verificandoNotificacoes = false;
+
 async function verificarNotificacoes() {
+  if (_verificandoNotificacoes) {
+    console.warn('[notif] Já existe uma verificação em andamento — chamada duplicada ignorada.');
+    return;
+  }
+  _verificandoNotificacoes = true;
+  try {
+    await _verificarNotificacoesInterno();
+  } finally {
+    _verificandoNotificacoes = false;
+  }
+}
+
+async function _verificarNotificacoesInterno() {
   const today = getBrazilToday();
   console.log(`[notif] Rodando para ${today}`);
 
@@ -243,8 +261,13 @@ async function verificarNotificacoes() {
       // Sem configuração feita ainda pro modelo escolhido: nenhum lembrete é disparado.
     }
 
-    // 3. 📦 Confirmação de envio — 1 dia útil após casamento
-    if (addBusinessDays(cas, 1) === today)
+    // 3. 📦 Confirmação de envio — 1 dia útil após casamento, só se ainda não tiver chegada
+    // marcada (se já chegou, obviamente já foi enviado — perguntar de novo não faz sentido)
+    // DEBUG TEMPORÁRIO — remover depois de descobrir a causa do disparo repetido
+    if (id === 22) {
+      console.log(`[DEBUG-22] chegada=${JSON.stringify(c.chegada)} typeof=${typeof c.chegada} cas=${cas} addBusinessDays=${addBusinessDays(cas,1)} today=${today}`);
+    }
+    if (!c.chegada && addBusinessDays(cas, 1) === today)
       await disparar(uid, `envio1du-${id}`, '📦 Confirmação de envio', `${c.nome} — confirme o envio do buquê`, id);
 
     // 4, 5, 6. 🌸 Buquê chegou? — só se não tiver data de chegada
@@ -309,7 +332,11 @@ cron.schedule('* * * * *', verificarNotifManuais, { timezone: 'UTC' });
 cron.schedule('0 11,14,17,20 * * *', verificarNotificacoes, { timezone: 'UTC' });
 
 // ── Health check ──
-app.get('/', (req, res) => res.send('AtelierHub Backend · OK'));
+// Marca de versão bem visível — só pra confirmar rapidamente, sem ambiguidade, se o deploy mais
+// recente está de fato no ar. Sem precisar interpretar log nenhum: se essa string não aparecer,
+// o arquivo rodando não é este.
+const VERSAO_SERVIDOR = 'v2026-07-20-debug-envio1du';
+app.get('/', (req, res) => res.send(`AtelierHub Backend · OK · ${VERSAO_SERVIDOR}`));
 
 // ── Endpoint para disparar manualmente (teste) ──
 app.get('/run-notif', async (req, res) => {
