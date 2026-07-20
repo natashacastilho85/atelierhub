@@ -332,7 +332,11 @@ cron.schedule('* * * * *', verificarNotifManuais, { timezone: 'UTC' });
 cron.schedule('0 11,14,17,20 * * *', verificarNotificacoes, { timezone: 'UTC' });
 
 // ── Health check ──
-app.get('/', (req, res) => res.send('AtelierHub Backend · OK'));
+// Marca de versão bem visível — só pra confirmar rapidamente, sem ambiguidade, se o deploy mais
+// recente está de fato no ar. Sem precisar interpretar log nenhum: se essa string não aparecer,
+// o arquivo rodando não é este.
+const VERSAO_SERVIDOR = 'v2026-07-20-debug-envio1du';
+app.get('/', (req, res) => res.send(`AtelierHub Backend · OK · ${VERSAO_SERVIDOR}`));
 
 // ── Endpoint para disparar manualmente (teste) ──
 app.get('/run-notif', async (req, res) => {
