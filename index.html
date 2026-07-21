@@ -1766,7 +1766,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     <div id="pag-info" style="font-size:0.7rem;color:var(--muted);margin-bottom:1rem;padding:0.6rem 0.8rem;background:rgba(184,134,42,0.06);border-radius:4px;border-left:3px solid var(--gold)"></div>
     <div class="field-row">
       <div class="field-group"><label class="field-label">Data</label><input class="field-input" id="pag-data" type="date"></div>
-      <div class="field-group"><label class="field-label">Valor pago pela noiva (R$)</label><input class="field-input" id="pag-valor" type="number" placeholder="0,00" step="0.01" min="0" oninput="atualizarPreviewPag()"></div>
+      <div class="field-group"><label class="field-label">Valor pago pela noiva (R$)</label><input class="field-input" id="pag-valor" type="text" inputmode="decimal" placeholder="0,00" onfocus="this.select()" oninput="atualizarPreviewPag()"></div>
     </div>
     <div class="field-row">
       <div class="field-group">
@@ -3362,6 +3362,23 @@ function descontoMistoConcedido(c) {
       const liquido = parseFloat(p.valor) || 0;
       return s + Math.max(0, bruto - liquido);
     }, 0));
+}
+
+// Calcula o % de desconto REALMENTE concedido nos pagamentos de uma forma específica (Pix/
+// Dinheiro/Débito) dentro de um contrato — usa bruto vs líquido de cada pagamento já registrado
+// nessa forma (mesmo princípio de descontoMistoConcedido acima), nunca a taxa configurada hoje em
+// Configurações. Se houver mais de um pagamento nessa forma, o % retornado é o efetivo agregado
+// (soma dos brutos vs soma dos líquidos). Retorna 0 se não há pagamento dessa forma ou se não
+// houve desconto de fato — usado pra rotular o card do contrato sem inventar desconto que não
+// aconteceu (ex: um desconto geral do contrato não deve aparecer como "desconto do Pix").
+function pctDescontoRealPorForma(c, forma) {
+  if (!Array.isArray(c.pagamentos)) return 0;
+  const pags = c.pagamentos.filter(p => p.forma === forma);
+  if (!pags.length) return 0;
+  const totalBruto = pags.reduce((s, p) => s + (parseFloat(p.bruto ?? p.valor) || 0), 0);
+  const totalLiquido = pags.reduce((s, p) => s + (parseFloat(p.valor) || 0), 0);
+  if (totalBruto <= 0) return 0;
+  return Math.max(0, (totalBruto - totalLiquido) / totalBruto);
 }
 
 function calcValorAPagar(c) {
@@ -5945,9 +5962,9 @@ function openDetail(id) {
   const saldo = round2(valorAPagar - pagoBruto);
   const pct = valorAPagar > 0 ? Math.round(pagoBruto/valorAPagar*100) : 0;
   const fmtData = s => s ? s.split('-').reverse().join('/') : '—';
-  const _pixPctDetalhe = _fmtDescontoLabel(getDescontoPix()).trim().replace(/[()]/g,'');
-  const _dinheiroPctDetalhe = _fmtDescontoLabel(getDescontoDinheiro()).trim().replace(/[()]/g,'');
-  const _debitoPctDetalhe = _fmtDescontoLabel(getDescontoDebito()).trim().replace(/[()]/g,'');
+  const _pixPctDetalhe = _fmtDescontoLabel(pctDescontoRealPorForma(c, 'Pix')).trim().replace(/[()]/g,'');
+  const _dinheiroPctDetalhe = _fmtDescontoLabel(pctDescontoRealPorForma(c, 'Dinheiro')).trim().replace(/[()]/g,'');
+  const _debitoPctDetalhe = _fmtDescontoLabel(pctDescontoRealPorForma(c, 'Débito')).trim().replace(/[()]/g,'');
   const formaTxt = { ...TIPO_CONTRATO_LABEL, pix: _pixPctDetalhe ? `Pix (${_pixPctDetalhe} desc. noiva)` : 'Pix', debito: _debitoPctDetalhe ? `Débito (${_debitoPctDetalhe} desc. noiva)` : 'Débito', dinheiro: _dinheiroPctDetalhe ? `Dinheiro (${_dinheiroPctDetalhe} desc. noiva)` : 'Dinheiro' };
   const telLimpo = (c.telefone||'').replace(/\D/g,'');
   const telFormatado = c.telefoneInternacional ? (c.telefone || '') : formatarTelefone(c.telefone || '');
@@ -7110,7 +7127,8 @@ function abrirEditarPagamento(contratoId, idx) {
   document.getElementById('pag-info').innerHTML = `<strong>${c.nome}</strong><br><span style="color:var(--muted)">Editando pagamento de ${_fmtDataBR(p.data)}</span>`;
 
   document.getElementById('pag-data').value = p.data || '';
-  document.getElementById('pag-valor').value = p.bruto ?? p.valor ?? '';
+  const _vPagBruto = p.bruto ?? p.valor;
+  document.getElementById('pag-valor').value = (_vPagBruto === undefined || _vPagBruto === null) ? '' : Number(_vPagBruto).toFixed(2).replace('.', ',');
   document.getElementById('pag-forma').innerHTML = getOpcoesFormaPagamentoHTML(p.forma);
   document.getElementById('pag-forma').value = p.forma;
 
@@ -7224,7 +7242,7 @@ function atualizarPagFormaUI() {
 }
 
 function atualizarPreviewPag() {
-  const valor = parseFloat(document.getElementById('pag-valor').value) || 0;
+  const valor = parseFloat(document.getElementById('pag-valor').value.replace(',', '.')) || 0;
   const forma = document.getElementById('pag-forma').value;
   const el = document.getElementById('pag-preview');
   if (!el) return;
@@ -7266,8 +7284,15 @@ function atualizarPreviewPag() {
 
   if (pagamentoContratoId) {
     const c = contratos.find(x => x.id === pagamentoContratoId);
-    if (c && precisaVirarMistoPorForma(c, forma)) {
-      el.textContent += ' · o contrato vai virar Misto (essa forma não é a padrão dele)';
+    if (c) {
+      const pagsAtuaisPreview = c.pagamentos || [];
+      const novosPagsPreview = pagamentoEditandoIdx !== null
+        ? pagsAtuaisPreview.map((p, i) => i === pagamentoEditandoIdx ? { forma } : p)
+        : [...pagsAtuaisPreview, { forma }];
+      const formaPagResultantePreview = calcularFormaPagResultante(c, novosPagsPreview);
+      if (formaPagResultantePreview === 'misto' && c.formaPag !== 'misto') {
+        el.textContent += ' · o contrato vai virar Misto (essa forma não é a padrão dele)';
+      }
     }
   }
 }
@@ -7277,7 +7302,7 @@ async function salvarNovoPagamento() {
   const c = contratos.find(x => x.id === pagamentoContratoId);
   if (!c) return;
   const data = document.getElementById('pag-data').value;
-  const valor = parseFloat(document.getElementById('pag-valor').value);
+  const valor = parseFloat(document.getElementById('pag-valor').value.replace(',', '.'));
   const forma = document.getElementById('pag-forma').value;
   if (!data) { mostrarAlerta({ emoji: '⚠️', titulo: 'Campo obrigatório', mensagem: 'Informe a data do pagamento.' }); return; }
   if (!valor || valor <= 0) { mostrarAlerta({ emoji: '⚠️', titulo: 'Valor inválido', mensagem: 'Informe um valor válido.' }); return; }
@@ -7319,8 +7344,9 @@ async function salvarNovoPagamento() {
   const novoPago = novosPags.reduce((s,p)=>s+(parseFloat(p.valor)||0), 0);
 
   const dadosParaSalvar = { pagamentos: novosPags, pago: round2(novoPago) };
-  if (precisaVirarMistoPorForma(c, forma)) {
-    dadosParaSalvar.forma_pag = 'misto';
+  const formaPagResultante = calcularFormaPagResultante(c, novosPags);
+  if (formaPagResultante && formaPagResultante !== c.formaPag) {
+    dadosParaSalvar.forma_pag = formaPagResultante;
   }
 
   try {
@@ -7910,14 +7936,28 @@ function formaDisplayLabel(forma) {
 }
 
 // Mapa: tipo de contrato "simples" (pix/credito/dinheiro/debito) -> forma de pagamento
-// individual esperada. Usado pra detectar quando um pagamento não bate mais com o tipo
-// declarado do contrato (ex: contrato "Pix" recebendo um pagamento em Cartão) — nesse caso
-// o contrato precisa virar Misto, senão o cálculo do valor a pagar aplica o desconto errado
-// (o mesmo raciocínio já usado pra peças novas em saveEditContrato, agora também aqui).
+// individual esperada. Usado pra saber se um contrato é "simples" (elegível pra virar Misto
+// automaticamente) e, invertido, pra saber a que tipo simples uma forma corresponde.
 const MAPA_FORMA_SIMPLES_ESPERADA = { pix: 'Pix', credito: 'Cartão', dinheiro: 'Dinheiro', debito: 'Débito' };
-function precisaVirarMistoPorForma(c, forma) {
-  const esperada = MAPA_FORMA_SIMPLES_ESPERADA[c.formaPag];
-  return !!esperada && forma !== esperada;
+// Mapa reverso: forma -> tipo simples. Deriva do mapa acima pra não duplicar a mesma relação em
+// dois objetos que podem desalinhar entre si.
+const MAPA_FORMA_PARA_TIPO_SIMPLES = Object.fromEntries(Object.entries(MAPA_FORMA_SIMPLES_ESPERADA).map(([tipo, forma]) => [forma, tipo]));
+
+// Decide o forma_pag resultante do contrato dado o estado FINAL de todos os pagamentos, depois de
+// registrar ou editar um — não olha só o pagamento sendo salvo agora contra o tipo antigo. Isso
+// distingue "editar o único pagamento existente, trocando a forma" (não é mistura — se sobra 1
+// forma só no final, o contrato assume esse tipo simples, ex: Pix -> Débito) de "adicionar um
+// pagamento de forma diferente ao lado de outro já existente" (aí sim é mistura de verdade).
+// Só se aplica a contratos "simples" (pix/credito/dinheiro/debito) — Reserva/Entrega+Prazo/Misto
+// nunca são alterados automaticamente aqui; nesses casos a pessoa decide o tipo manualmente na
+// tela "Tipo de Contrato". Retorna o novo forma_pag (pode ser igual ao atual) ou null se o
+// contrato não é elegível pra essa checagem.
+function calcularFormaPagResultante(c, novosPags) {
+  if (!MAPA_FORMA_SIMPLES_ESPERADA[c.formaPag]) return null;
+  const formas = [...new Set((novosPags || []).map(p => p.forma))];
+  if (!formas.length) return null;
+  if (formas.length > 1) return 'misto';
+  return MAPA_FORMA_PARA_TIPO_SIMPLES[formas[0]] || 'misto';
 }
 
 // Desconto/Acréscimo no valor total das peças: pode ser digitado em R$ ou em %. O valor final em
