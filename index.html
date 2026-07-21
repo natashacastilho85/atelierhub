@@ -1286,6 +1286,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       </label>
       <div class="field-hint" id="c-tel-intl-hint">Digite com o código do país (ex: +1 305 555 0100). O + é opcional, mas não esqueça o código do país.</div>
     </div>
+    <div class="field-group"><label class="field-label">CPF (opcional)</label><input class="field-input" id="c-cpf" type="text" inputmode="numeric" placeholder="000.000.000-00" oninput="this.value=mascararCPF(this.value)" maxlength="14"></div>
     <div class="field-row">
       <div class="field-group"><label class="field-label">Data do casamento</label><input class="field-input" id="c-casamento" type="date"></div>
       <div class="field-group"><label class="field-label">Data do contrato</label><input class="field-input" id="c-contrato" type="date"></div>
@@ -1651,6 +1652,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       </label>
       <div class="field-hint" id="e-tel-intl-hint">Digite com o código do país (ex: +1 305 555 0100). O + é opcional, mas não esqueça o código do país.</div>
     </div>
+    <div class="field-group"><label class="field-label">CPF (opcional)</label><input class="field-input" id="e-cpf" type="text" inputmode="numeric" placeholder="000.000.000-00" oninput="this.value=mascararCPF(this.value)" maxlength="14"></div>
     <div class="field-row">
       <div class="field-group"><label class="field-label">Data do casamento</label><input class="field-input" id="e-casamento" type="date"></div>
       <div class="field-group"><label class="field-label">Data do contrato</label><input class="field-input" id="e-contrato" type="date"></div>
@@ -2459,6 +2461,7 @@ function mapContrato(r) {
     cadastro: r.created_at ? r.created_at.slice(0,10) : '',
     telefone: r.telefone || '',
     telefoneInternacional: r.telefone_internacional || false,
+    cpf: r.cpf || '',
     pecas: Array.isArray(r.pecas) ? r.pecas : [],
     pagamentos: Array.isArray(r.pagamentos) ? r.pagamentos : [],
     ficha_producao: r.ficha_producao || {},
@@ -2894,7 +2897,7 @@ function goTabById(tab) {
 
 function openFab() {
   // Limpa o formulário antes de abrir
-  ['c-nome','c-telefone','c-casamento','c-contrato','c-cidade','c-estado',
+  ['c-nome','c-telefone','c-cpf','c-casamento','c-contrato','c-cidade','c-estado',
    'c-desconto','c-acrescimo','c-pago','c-pago-pix','c-pago-cartao','c-pago-dinheiro',
    'c-f-noiva','c-f-noivo','c-f-insta','c-f-buque','c-f-cerimonial','c-f-indicacao','c-f-obs-geral'
   ].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
@@ -3175,7 +3178,14 @@ async function saveContrato() {
   const telefone = document.getElementById('c-telefone').value;
   const telIntlEl = document.getElementById('c-tel-intl');
   const telefoneInternacional = telIntlEl ? telIntlEl.checked : false;
+  const cpf = document.getElementById('c-cpf').value;
   const formaPag = document.getElementById('forma-pag-select').value;
+
+  // CPF é opcional — só valida se algo foi digitado
+  if (cpf && !validarCPF(cpf)) {
+    mostrarAlerta({ emoji: '⚠️', titulo: 'CPF inválido', mensagem: 'O CPF digitado não é válido. Confira os números ou deixe o campo em branco.' });
+    return;
+  }
 
   // Reserva com entrada exige entrada > 0 — é o que diferencia ela de Reserva sem entrada
   if (formaPag === 'reserva') {
@@ -3240,7 +3250,7 @@ async function saveContrato() {
 
   try {
     const [novoContrato] = await sbInsert('contratos', {
-      nome, status, casamento, contrato, cidade, estado, envio, telefone,
+      nome, status, casamento, contrato, cidade, estado, envio, telefone, cpf,
       telefone_internacional: telefoneInternacional,
       forma_pag: formaPag, valor_bruto: valorFinal, desconto, acrescimo,
       desconto_meta: descontoMeta, acrescimo_meta: acrescimoMeta, pecas: pecasSel,
@@ -5987,7 +5997,7 @@ function openDetail(id) {
     <div class="drawer-handle"></div>
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem;gap:0.5rem">
       <div><div style="font-family:'Calibri',serif;font-size:1.5rem;color:var(--dark)">${c.nome}</div>
-      <div style="font-size:0.65rem;color:var(--muted);margin-top:0.15rem">${c.cidade} · ${c.estado}${telFormatado?' · '+telFormatado:''}</div></div>
+      <div style="font-size:0.65rem;color:var(--muted);margin-top:0.15rem">${c.cidade} · ${c.estado}${telFormatado?' · '+telFormatado:''}${c.cpf?' · '+c.cpf:''}</div></div>
       <div style="display:flex;flex-direction:column;gap:0.3rem;align-items:flex-end">
         ${devedor?`<span style="font-size:0.55rem;letter-spacing:0.08em;padding:0.22rem 0.55rem;border-radius:20px;font-weight:600;white-space:nowrap;background:var(--bordeaux);color:white;text-transform:uppercase">⚠ Devedor</span>`:''}
         <div class="status-badge s-${statusEfetivo(c)}">${statusEfetivo(c)}</div>
@@ -6153,6 +6163,37 @@ function formatarTelefone(tel) {
   return mascararTelefone(tel);
 }
 
+// Máscara de digitação do CPF: 000.000.000-00
+function mascararCPF(val) {
+  const d = (val || '').replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 3)  return d;
+  if (d.length <= 6)  return d.slice(0,3) + '.' + d.slice(3);
+  if (d.length <= 9)  return d.slice(0,3) + '.' + d.slice(3,6) + '.' + d.slice(6);
+  return d.slice(0,3) + '.' + d.slice(3,6) + '.' + d.slice(6,9) + '-' + d.slice(9);
+}
+
+// Validação oficial dos dígitos verificadores do CPF (algoritmo da Receita Federal).
+// Confirma que o número é estruturalmente válido — NÃO confirma que existe de fato ou
+// pertence a quem digitou (isso exigiria consulta a uma API externa, fora de escopo aqui).
+function validarCPF(val) {
+  const d = (val || '').replace(/\D/g, '');
+  if (d.length !== 11) return false;
+  // Sequências como 111.111.111-11 batem na conta dos dígitos mas não são CPFs reais
+  if (/^(\d)\1{10}$/.test(d)) return false;
+
+  const calcDigitoCPF = (base) => {
+    let soma = 0, peso = base.length + 1;
+    for (let i = 0; i < base.length; i++) { soma += parseInt(base[i], 10) * peso; peso--; }
+    const resto = soma % 11;
+    return resto < 2 ? 0 : 11 - resto;
+  };
+
+  const nove = d.slice(0, 9);
+  const d10 = calcDigitoCPF(nove);
+  const d11 = calcDigitoCPF(nove + d10);
+  return d10 === parseInt(d[9], 10) && d11 === parseInt(d[10], 10);
+}
+
 // Alterna o campo de telefone entre máscara BR (padrão) e texto livre (número internacional)
 function toggleTelefoneIntl(prefix, checked) {
   const campo = document.getElementById(prefix + '-telefone');
@@ -6263,6 +6304,7 @@ function abrirEdicaoContrato(id) {
   if (!c) return;
   contratoEditandoId = id;
   document.getElementById('e-nome').value = c.nome || '';
+  document.getElementById('e-cpf').value = c.cpf || '';
   const eTelIntlEl = document.getElementById('e-tel-intl');
   if (eTelIntlEl) eTelIntlEl.checked = !!c.telefoneInternacional;
   toggleTelefoneIntl('e', !!c.telefoneInternacional);
@@ -6725,6 +6767,13 @@ async function saveEditContrato() {
 
   const eTelIntlEl2 = document.getElementById('e-tel-intl');
   const telefoneInternacionalEdit = eTelIntlEl2 ? eTelIntlEl2.checked : false;
+  const cpfEdit = document.getElementById('e-cpf').value;
+
+  // CPF é opcional — só valida se algo foi digitado
+  if (cpfEdit && !validarCPF(cpfEdit)) {
+    mostrarAlerta({ emoji: '⚠️', titulo: 'CPF inválido', mensagem: 'O CPF digitado não é válido. Confira os números ou deixe o campo em branco.' });
+    return;
+  }
 
   const descontoTipoDigitadoE = document.getElementById('e-desconto-tipo')?.value || 'valor';
   const descontoValorDigitadoE = document.getElementById('e-desconto').value;
@@ -6737,6 +6786,7 @@ async function saveEditContrato() {
       ? document.getElementById('e-telefone').value.trim()
       : (document.getElementById('e-telefone').value.replace(/\D/g,'').replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3').replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3') || document.getElementById('e-telefone').value),
     telefone_internacional: telefoneInternacionalEdit,
+    cpf: cpfEdit,
     casamento: document.getElementById('e-casamento').value,
     contrato: document.getElementById('e-contrato').value,
     cidade: document.getElementById('e-cidade').value,
