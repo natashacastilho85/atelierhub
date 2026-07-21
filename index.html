@@ -11373,13 +11373,16 @@ function atualizarStatusNotif() {
   const btn = document.getElementById('btn-ativar-notif');
   if (!txt || !btn) return;
 
-  if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
-    txt.textContent = 'Seu navegador não suporta notificações.';
+  // No Safari iOS fora da Tela de Início, 'PushManager' nem existe em window — por isso essa
+  // checagem de iOS TEM que vir antes da checagem geral de suporte, senão a pessoa nunca vê
+  // a mensagem certa (via "não suporta" ao invés de "adicione à Tela de Início").
+  if (_ehIOS() && !_ehStandalone()) {
+    txt.textContent = 'No iPhone: adicione o app à Tela de Início primeiro (Compartilhar → Adicionar à Tela de Início) — só assim dá pra ativar notificações.';
     btn.style.display = 'none';
     return;
   }
-  if (_ehIOS() && !_ehStandalone()) {
-    txt.textContent = 'No iPhone: adicione o app à Tela de Início primeiro (Compartilhar → Adicionar à Tela de Início) — só assim dá pra ativar notificações.';
+  if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+    txt.textContent = 'Seu navegador não suporta notificações.';
     btn.style.display = 'none';
     return;
   }
