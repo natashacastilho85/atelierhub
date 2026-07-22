@@ -2712,47 +2712,6 @@ async function initApp() {
 }
 
 // Apaga TODOS os dados do Supabase (contratos, gastos, peças)
-function limparTodosDados() {
-  mostrarConfirm({
-    emoji: '⚠️',
-    titulo: 'Apagar tudo?',
-    mensagem: 'Isso vai apagar TODOS os contratos, gastos e peças permanentemente. Esta ação não pode ser desfeita.',
-    txtCancelar: 'Cancelar',
-    txtConfirmar: 'Apagar tudo',
-    onConfirmar: () => {
-      mostrarConfirm({
-        emoji: '🗑️',
-        titulo: 'Segunda confirmação',
-        mensagem: 'Tem certeza absoluta? Todos os dados serão perdidos.',
-        txtCancelar: 'Cancelar',
-        txtConfirmar: 'Sim, apagar tudo',
-        onConfirmar: async () => {
-          showLoading('Limpando dados...');
-          try {
-            await Promise.all([
-              sbFetch('contratos?id=gt.-1', { method: 'DELETE', headers: { 'Prefer': '' } }),
-              sbFetch('gastos?id=gt.-1',    { method: 'DELETE', headers: { 'Prefer': '' } }),
-              sbFetch('pecas?id=gt.-1',     { method: 'DELETE', headers: { 'Prefer': '' } }),
-            ]);
-            contratos = []; gastos = []; pecas = [];
-            precDados = {};
-            matGlobais = [];
-            localStorage.removeItem('villare-prec');
-            localStorage.removeItem('villare-mat-globais');
-            localStorage.removeItem('villare-notif');
-            hideLoading();
-            renderAll();
-            mostrarAlerta({ emoji: '✅', titulo: 'Dados apagados', mensagem: 'Todos os dados foram removidos com sucesso.' });
-          } catch(e) {
-            hideLoading();
-            _mostrarErroAcao('limparTodosDados', e, { acaoLabel: 'apagar os dados' });
-          }
-        }
-      });
-    }
-  });
-}
-
 function renderAll() {
   hoje = new Date(); hoje.setHours(12,0,0,0); // atualiza data a cada render (app pode ficar aberto overnight)
   renderMetricas();
@@ -6330,13 +6289,23 @@ function abrirEdicaoContrato(id) {
     div.dataset.qtdBase = String(p.qtd || 1);
     div.dataset.valorTotalBase = String(round2((parseFloat(p.valor) || 0) * (parseInt(p.qtd) || 1)));
     div.dataset.original = 'true';
+    // Preserva o nome original SEMPRE (independente do catálogo atual) — usado no save se a peça
+    // tiver sido excluída do catálogo, pra não corromper o contrato com uma peça errada.
+    div.dataset.nomeOriginal = p.nome;
     div.style.cssText = 'display:grid;grid-template-columns:1fr 60px 24px;gap:0.4rem;align-items:center';
+    // Se a peça foi excluída do catálogo (pecaCat não encontrado), cria uma opção própria pra ela,
+    // já selecionada, mostrando o nome/valor negociado originalmente — sem isso, NENHUMA opção
+    // ficaria marcada e o navegador selecionaria a primeira peça da lista sozinho, silenciosamente.
+    const precoOriginalStr = (parseFloat(p.valor)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const optOriginal = !pecaCat
+      ? `<option value="orig" selected>${p.nome} (removida do catálogo) — R$ ${precoOriginalStr}</option>`
+      : '';
     const opts = pecas.map(pp => {
       const preco = getPrecoPecaCalculado(pp.id);
       const label = preco ? `${pp.nome} — R$ ${preco.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}` : pp.nome;
       return `<option value="${pp.id}" ${pecaCat && pp.id===pecaCat.id?'selected':''}>${label}</option>`;
     }).join('');
-    div.innerHTML = `<select class="field-input" style="padding:0.5rem 0.6rem;font-size:0.82rem">${opts}</select><input class="field-input" type="number" min="1" value="${p.qtd}" style="padding:0.5rem 0.4rem;text-align:center;font-size:0.82rem" onchange="_qtdPecaEditChange(${linhaId})"><button type="button" onclick="_removerLinhaPecaEdit(${linhaId})" style="background:none;border:none;color:var(--bordeaux);font-size:1.2rem;cursor:pointer;padding:0;line-height:1">×</button>`;
+    div.innerHTML = `<select class="field-input" style="padding:0.5rem 0.6rem;font-size:0.82rem">${optOriginal}${opts}</select><input class="field-input" type="number" min="1" value="${p.qtd}" style="padding:0.5rem 0.4rem;text-align:center;font-size:0.82rem" onchange="_qtdPecaEditChange(${linhaId})"><button type="button" onclick="_removerLinhaPecaEdit(${linhaId})" style="background:none;border:none;color:var(--bordeaux);font-size:1.2rem;cursor:pointer;padding:0;line-height:1">×</button>`;
     cont.appendChild(div);
   });
   atualizarPreviewDescAcresc('e');
@@ -6803,12 +6772,20 @@ async function saveEditContrato() {
   linhas.forEach(linha => {
     const sel = linha.querySelector('select');
     const qtdEl = linha.querySelector('input[type=number]');
+    const qtd = parseInt(qtdEl.value) || 1;
+    const valorTotalLinha = parseFloat(linha.dataset.valorTotalBase) || 0;
+    // Peça foi excluída do catálogo e ninguém trocou a seleção — preserva nome/valor originais
+    // em vez de buscar no catálogo (que não vai achar e corromperia o contrato com peça errada).
+    if (sel.value === 'orig') {
+      const valorUnitario = qtd > 0 ? round2(valorTotalLinha / qtd) : 0;
+      pecasSel.push({ nome: linha.dataset.nomeOriginal, valor: valorUnitario, qtd });
+      valorBruto += valorTotalLinha;
+      return;
+    }
     const pid = parseInt(sel.value);
     const p = pecas.find(x=>x.id===pid);
     if (!p) return;
-    const qtd = parseInt(qtdEl.value) || 1;
     // Usa o valor TOTAL travado da linha (preserva desconto/acréscimo já combinado, não recalcula do catálogo)
-    const valorTotalLinha = parseFloat(linha.dataset.valorTotalBase) || 0;
     const valorUnitario = qtd > 0 ? round2(valorTotalLinha / qtd) : 0;
     pecasSel.push({ nome: p.nome, valor: valorUnitario, qtd });
     valorBruto += valorTotalLinha;
