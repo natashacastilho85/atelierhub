@@ -68,6 +68,8 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
 <meta name="theme-color" content="#1a1410" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="/icon-192.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/4.0.0/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/5.0.8/jspdf.plugin.autotable.min.js"></script>
 <title>Atelier Hub</title>
 
 <style>
@@ -8423,7 +8425,7 @@ async function coletarTodosOsDados() {
 }
 
 async function exportarDadosPDF() {
-  showLoading('Gerando relatório...');
+  showLoading('Gerando PDF...');
   let dados;
   try {
     dados = await coletarTodosOsDados();
@@ -8432,305 +8434,275 @@ async function exportarDadosPDF() {
     _mostrarErroAcao('exportarDadosPDF', e, { acaoLabel: 'gerar o relatório' });
     return;
   }
-  hideLoading();
-
-  const fmtD    = s => s ? s.split('-').reverse().join('/') : '—';
-  const fmtDH   = s => s ? new Date(s).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
-  const fmtR    = v => 'R$\u00a0' + (parseFloat(v)||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
-  const fmtPct  = v => (parseFloat(v)||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) + '%';
-  const fmtBool = v => v ? 'Sim' : 'Não';
-  const esc     = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const email   = (_currentUser && _currentUser.email) || '';
-  const dataExp = new Date().toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric'});
-
-  const { contratos: cts, gastos: gts, pecas: pcs, precDados: pd, custosConfig: cc, matGlobais: mg, desidratacao: dd, tarefas: tf, lembretesManuais: lm } = dados;
-
-  // ── 1. CONTRATOS — resumo (situação real: mesma lógica do app) + bloco detalhado por contrato ──
-  const situacaoContrato = (c) => {
-    if (c.status === 'Cancelado') return 'Cancelado';
-    const saldo = round2(calcValorAPagar(c) - totalPago(c));
-    if (saldo <= 0.01) return 'Quitada ✓';
-    if (isDevedor(c)) return 'Devedor ⚠️';
-    return 'Saldo em aberto';
-  };
-  const ctsOrdenados = cts.slice().sort((a,b)=>(b.contrato||'').localeCompare(a.contrato||''));
-  const rowsC = ctsOrdenados.map(c => {
-    const valorFinal = calcValorAPagar(c);
-    const saldo = round2(valorFinal - totalPago(c));
-    return `<tr>
-      <td>${esc(c.nome)}</td>
-      <td>${fmtD(c.contrato)}</td>
-      <td>${fmtD(c.casamento)}</td>
-      <td>${esc(c.cidade||'—')}${c.estado?'/'+esc(c.estado):''}</td>
-      <td style="text-align:right">${fmtR(valorFinal)}</td>
-      <td style="text-align:right">${fmtR(saldo)}</td>
-      <td>${esc(situacaoContrato(c))}</td>
-    </tr>`;
-  }).join('');
-
-  const blocosDetalheContrato = ctsOrdenados.map(c => {
-    const pecasHtml = (Array.isArray(c.pecas) && c.pecas.length)
-      ? `<table><thead><tr><th>Peça</th><th style="text-align:right">Qtd</th><th style="text-align:right">Valor unit.</th></tr></thead><tbody>${
-          c.pecas.map(p => `<tr><td>${esc(p.nome)}</td><td style="text-align:right">${p.qtd||1}</td><td style="text-align:right">${fmtR(p.valor)}</td></tr>`).join('')
-        }</tbody></table>`
-      : '<p class="vazio">Nenhuma peça registrada neste contrato.</p>';
-
-    const f = c.ficha_producao || {};
-    const fichaLinhas = [
-      ['Nome da noiva', f.nomeNoiva], ['Nome do noivo', f.nomeNoivo], ['Instagram', f.instagram],
-      ['Quem fez o buquê', f.quemFezBuque], ['Cerimonialista', f.cerimonialista], ['Quem indicou', f.quemIndicou],
-      ['Iniciais/data gravada', f.iniciaisData], ['Observações', f.obsGeral],
-    ].filter(([,v]) => v);
-    const fichaHtml = fichaLinhas.length
-      ? `<ul class="kv">${fichaLinhas.map(([k,v])=>`<li><strong>${esc(k)}:</strong> ${esc(v)}</li>`).join('')}</ul>`
-      : '<p class="vazio">Ficha de produção não preenchida.</p>';
-
-    const presenteHtml = (Array.isArray(c.presente) && c.presente.length) ? esc(c.presente.join(', ')) : '—';
-    const telLabel = c.telefoneInternacional ? (c.telefone||'—') + ' (internacional)' : (c.telefone||'—');
-
-    return `<div class="bloco-contrato">
-      <h3>${esc(c.nome)} — ${fmtD(c.contrato)}</h3>
-      <ul class="kv">
-        <li><strong>CPF:</strong> ${esc(c.cpf||'—')}</li>
-        <li><strong>Telefone:</strong> ${esc(telLabel)}</li>
-        <li><strong>Cidade/Estado:</strong> ${esc(c.cidade||'—')}/${esc(c.estado||'—')}</li>
-        <li><strong>Envio:</strong> ${esc(c.envio||'—')}</li>
-        <li><strong>Data de chegada:</strong> ${fmtD(c.chegada)}</li>
-        <li><strong>Data de entrega:</strong> ${fmtD(c.entrega)}</li>
-        <li><strong>Tipo de quitação:</strong> ${esc(c.tipoQuitacao||'—')}</li>
-        <li><strong>Forma de pagamento:</strong> ${esc(TIPO_CONTRATO_LABEL[c.formaPag]||c.formaPag||'—')}</li>
-        <li><strong>Desconto:</strong> ${fmtR(c.desconto)} · <strong>Acréscimo:</strong> ${fmtR(c.acrescimo)}</li>
-        <li><strong>Presente:</strong> ${presenteHtml}</li>
-        <li><strong>Status:</strong> ${esc(c.status||'—')}</li>
-      </ul>
-      <div class="sub-titulo">Peças do contrato</div>
-      ${pecasHtml}
-      <div class="sub-titulo">Ficha de produção</div>
-      ${fichaHtml}
-    </div>`;
-  }).join('');
-
-  // ── 2. PAGAMENTOS ──
-  const rowsP = cts.flatMap(c =>
-    (Array.isArray(c.pagamentos) ? c.pagamentos : []).map(p => `<tr>
-      <td>${esc(c.nome)}</td>
-      <td>${fmtD(p.data)}</td>
-      <td>${esc(formaDisplayLabel(p.forma)||'—')}</td>
-      <td style="text-align:right">${fmtR(p.bruto??p.valor)}</td>
-      <td style="text-align:right">${fmtR(p.valor)}</td>
-      <td>${esc(p.status||'Realizado')}</td>
-    </tr>`)
-  ).join('');
-
-  // ── 3. DESPESAS — inclui parcela/cartão quando presente ──
-  const rowsG = gts.slice().sort((a,b)=>(b.data||'').localeCompare(a.data||'')).map(g => {
-    const parcelaInfo = g.parcela_num ? `${g.parcela_num}/${g.parcela_total||'?'}${g.cartao_nome?' — '+esc(g.cartao_nome):''}` : '—';
-    return `<tr>
-      <td>${fmtD(g.data)}</td>
-      <td>${esc(g.produto||'—')}</td>
-      <td>${esc(g.fornecedor||'—')}</td>
-      <td>${esc(formaDisplayLabel(g.forma)||'—')}</td>
-      <td>${parcelaInfo}</td>
-      <td style="text-align:right">${fmtR(g.valor)}</td>
-    </tr>`;
-  }).join('');
-  const totalG = gts.reduce((s,g)=>s+(parseFloat(g.valor)||0),0);
-
-  // ── 4. CATÁLOGO DE PEÇAS + PRECIFICAÇÃO DETALHADA (usa o ID direto, nunca casa por nome) ──
-  const valorHora = getValorHora();
-  const custoFixoH = getCustoFixoPorHora();
-  const rowsPc = pcs.slice().sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).map(p => {
-    const preco = getPrecoPecaCalculado(p.id);
-    const d = pd[p.id];
-    let custoHtml = '<p class="vazio">Sem dados de precificação.</p>';
-    let matsHtml = '';
-    if (d && Array.isArray(d.materiais) && d.materiais.length) {
-      const mins = d.tempo || 60;
-      const perdaPadrao = (cc.perdaResinaPadrao != null) ? cc.perdaResinaPadrao : 5;
-      const perdaResinaFrac = (d.perdaResina != null ? d.perdaResina : perdaPadrao) / 100;
-      // Mesma regra do app: só aplica a perda ao custo de materiais marcados como resina
-      // (direto ou via material global vinculado) — nunca a todos os materiais da peça.
-      const matsComPerda = d.materiais.map(m => {
-        const matG = m.matGlobalId ? mg.find(g => g.id === m.matGlobalId) : null;
-        const ehResina = matG ? matG.perdaResina === true : m.perdaResina === true;
-        if (ehResina && perdaResinaFrac > 0) return { ...m, valor: (parseFloat(m.valor)||0) * (1 + perdaResinaFrac) };
-        return m;
-      });
-      const r = calcPrec(matsComPerda, null, valorHora * (mins/60), custoFixoH * (mins/60));
-      const custoTotal = r.custoTotalReal || 0;
-      const lucro = preco - custoTotal;
-      custoHtml = `<ul class="kv">
-        <li><strong>Tempo de produção:</strong> ${mins} min</li>
-        <li><strong>Perda de resina:</strong> ${d.perdaResina != null ? fmtPct(d.perdaResina) : 'padrão do ateliê'}</li>
-        <li><strong>Custo total calculado:</strong> ${fmtR(custoTotal)}</li>
-        <li><strong>Lucro estimado:</strong> ${fmtR(lucro)}</li>
-      </ul>`;
-      matsHtml = `<table><thead><tr><th>Material</th><th style="text-align:right">Valor</th></tr></thead><tbody>${
-        d.materiais.map(m => `<tr><td>${esc(m.nome||'—')}</td><td style="text-align:right">${fmtR(m.valor)}</td></tr>`).join('')
-      }</tbody></table>`;
-      if (Array.isArray(d.processosExtras) && d.processosExtras.length) {
-        matsHtml += `<div class="sub-titulo">Processos extras desta peça</div><ul class="kv">${
-          d.processosExtras.map(pe => `<li>${esc(pe.nome)}: ${pe.mins} min</li>`).join('')
-        }</ul>`;
-      }
-    }
-    return `<div class="bloco-contrato">
-      <h3>${esc(p.nome)} — ${preco ? fmtR(preco) : 'sem preço definido'}</h3>
-      ${custoHtml}
-      ${matsHtml}
-    </div>`;
-  }).join('');
-
-  // ── 5. MATERIAIS GLOBAIS ──
-  const rowsM = mg.slice().sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).map(m => {
-    const custUnit = (m.qtdTotal > 0 && m.valorPago > 0) ? m.valorPago / m.qtdTotal : 0;
-    return `<tr>
-      <td>${esc(m.nome)}</td>
-      <td>${esc(m.unidade||'—')}</td>
-      <td style="text-align:right">${m.qtdTotal ? m.qtdTotal.toLocaleString('pt-BR') : '—'}</td>
-      <td style="text-align:right">${fmtR(m.valorPago)}</td>
-      <td style="text-align:right">${custUnit > 0 ? fmtR(custUnit) : '—'}</td>
-    </tr>`;
-  }).join('');
-
-  // ── 6. CONFIGURAÇÕES DO ATELIÊ ──
-  const formasPagHtml = (cc.formasPag||[]).map(f =>
-    `<li><strong>${esc(f.label)}:</strong> ${fmtBool(f.ativa)} ativa · taxa ${fmtPct(f.taxa)} · desconto à cliente: ${fmtBool(f.desconto)} · absorvido pelo ateliê: ${fmtBool(f.absorvido)}${f.obs?' · '+esc(f.obs):''}</li>`
-  ).join('');
-  const parcelasHtml = (cc.parcelas||[]).map(pa => `<li>${pa.n}x: taxa ${fmtPct(pa.taxa)}, absorvido: ${fmtBool(pa.absorvido)}</li>`).join('');
-  const cartoesHtml = (cc.cartoes||[]).length ? (cc.cartoes||[]).map(c=>`<li>${esc(c.nome||JSON.stringify(c))}</li>`).join('') : '<li class="vazio">Nenhum cadastrado.</li>';
-  const itensFixosHtml = (cc.itensFixos||[]).length ? (cc.itensFixos||[]).map(it=>`<li>${esc(it.nome||'—')}: ${fmtR(it.valor)}</li>`).join('') : '<li class="vazio">Nenhum cadastrado.</li>';
-  const processosHtml = (cc.processos||[]).length ? (cc.processos||[]).map(p=>`<li>${esc(p.nome||'—')}: ${p.mins||0} min</li>`).join('') : '<li class="vazio">Nenhum cadastrado.</li>';
-
-  const configHtml = `
-    <div class="sub-titulo">Custos e produção</div>
-    <ul class="kv">
-      <li><strong>Salário mensal desejado:</strong> ${fmtR(cc.salarioMensal)}</li>
-      <li><strong>Horas por dia:</strong> ${cc.horasPorDia||0}</li>
-      <li><strong>Dias por mês:</strong> ${cc.diasPorMes||0}</li>
-      <li><strong>Prazo de produção:</strong> ${cc.prazoProducao||0} dias</li>
-      <li><strong>Prazo de desidratação:</strong> ${cc.prazoDesidratacao||0} dias</li>
-      <li><strong>Prazo de quitação (Reserva/casamento):</strong> ${cc.prazoReserva ?? 'não configurado'} dias antes</li>
-      <li><strong>Aviso antes do prazo de reserva:</strong> ${cc.notifDiasAntesReserva ?? 'não configurado'} dias</li>
-      <li><strong>Prazo de quitação (entrega):</strong> ${cc.prazoEntrega ?? 'não configurado'} dias depois</li>
-      <li><strong>Aviso após entrega:</strong> ${cc.diasAvisoEntrega ?? 'não configurado'} dias</li>
-    </ul>
-    <div class="sub-titulo">Itens fixos</div><ul class="kv">${itensFixosHtml}</ul>
-    <div class="sub-titulo">Processos de produção (padrão)</div><ul class="kv">${processosHtml}</ul>
-    <div class="sub-titulo">Formas de pagamento</div><ul class="kv">${formasPagHtml}</ul>
-    <div class="sub-titulo">Parcelamento no cartão</div><ul class="kv">${parcelasHtml}</ul>
-    <div class="sub-titulo">Cartões cadastrados</div><ul class="kv">${cartoesHtml}</ul>
-    <div class="sub-titulo">Impostos</div>
-    <ul class="kv"><li><strong>Tipo:</strong> ${esc(cc.impostoConfig?.tipo||'nenhum')} · <strong>Valor:</strong> ${cc.impostoConfig?.tipo==='percentual' ? fmtPct(cc.impostoConfig?.valor) : fmtR(cc.impostoConfig?.valor)}</li></ul>
-    <div class="sub-titulo">Configuração de precificação</div>
-    <ul class="kv">
-      <li><strong>Modo:</strong> ${esc(cc.precConfig?.modo||'—')} · <strong>Valor:</strong> ${cc.precConfig?.valor ?? 'não definido'}</li>
-      <li><strong>Tarifa Pix embutida:</strong> ${fmtPct(cc.precConfig?.tarifaPix)}</li>
-      <li><strong>Parcela de referência (cartão):</strong> ${cc.precConfig?.parcelaRefCartao||1}x</li>
-    </ul>
-    <div class="sub-titulo">Mensagens de WhatsApp</div>
-    <ul class="kv">
-      <li><strong>Cobrança:</strong> ${esc(cc.msgWACobranca||'—')}</li>
-      <li><strong>Dia do casamento:</strong> ${esc(cc.msgWACasamento||'—')}</li>
-    </ul>`;
-
-  // ── 7. DESIDRATAÇÃO ──
-  const rowsD = dd.slice().sort((a,b)=>(b.data_inicio||'').localeCompare(a.data_inicio||'')).map(r => {
-    const contratoRelacionado = r.contrato_id ? (cts.find(c=>c.id===r.contrato_id)?.nome || ('#'+r.contrato_id)) : '—';
-    return `<tr>
-      <td>${esc(r.nome_noiva||'—')}</td>
-      <td>${esc(contratoRelacionado)}</td>
-      <td>${esc(r.pecas||'—')}</td>
-      <td>${esc(r.flores||'—')}</td>
-      <td>${fmtD(r.data_inicio)}</td>
-      <td>${fmtD(r.data_conclusao)}</td>
-      <td>${fmtBool(r.concluido)}</td>
-      <td>${esc(r.observacoes||'—')}</td>
-    </tr>`;
-  }).join('');
-
-  // ── 8. TAREFAS ──
-  const rowsT = tf.slice().sort((a,b)=>(a.ordem||0)-(b.ordem||0)).map(t => `<tr>
-    <td>${esc(t.texto)}</td>
-    <td>${fmtBool(t.concluida)}</td>
-  </tr>`).join('');
-
-  // ── 9. LEMBRETES MANUAIS ──
-  const rowsL = lm.slice().sort((a,b)=>(b.data_hora||'').localeCompare(a.data_hora||'')).map(n => `<tr>
-    <td>${esc(n.texto)}</td>
-    <td>${fmtDH(n.data_hora)}</td>
-    <td>${fmtBool(n.disparada)}</td>
-  </tr>`).join('');
-
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
-<title>Atelier Hub — Exportação de dados</title>
-<style>
-  body{font-family:Georgia,serif;max-width:960px;margin:0 auto;padding:2rem 1.5rem 4rem;color:#2a1a0e;font-size:.88rem;line-height:1.5}
-  h1{color:#5c3318;border-bottom:2px solid rgba(184,134,42,.3);padding-bottom:.5rem;font-size:1.35rem;margin-bottom:.3rem}
-  .meta{color:#9a7d65;font-size:.78rem;margin-bottom:2rem}
-  h2{color:#5c3318;font-size:.98rem;margin:2rem 0 .6rem;border-left:3px solid #b8862a;padding-left:.6rem}
-  h3{color:#5c3318;font-size:.86rem;margin:1.1rem 0 .3rem}
-  .sub-titulo{color:#9a7d65;font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:.7rem 0 .25rem}
-  table{width:100%;border-collapse:collapse;margin-bottom:.5rem;font-size:.8rem}
-  th{background:#f5ede2;color:#5c3318;padding:.4rem .55rem;text-align:left;border-bottom:2px solid rgba(184,134,42,.3);white-space:nowrap}
-  td{padding:.32rem .55rem;border-bottom:1px solid rgba(184,134,42,.1);vertical-align:top}
-  tr:last-child td{border-bottom:none}
-  .total td{font-weight:700;background:#fdf8f2;border-top:1px solid rgba(184,134,42,.25)}
-  .vazio{color:#9a7d65;font-style:italic;font-size:.83rem}
-  .aviso{background:#f5ede2;border-radius:8px;padding:.75rem 1rem;margin-bottom:1.5rem;font-size:.83rem;color:#5c3318;display:flex;align-items:center;justify-content:space-between;gap:1rem}
-  .btn-print{background:#5c3318;color:white;border:none;border-radius:6px;padding:.45rem 1rem;cursor:pointer;font-size:.82rem;white-space:nowrap}
-  .kv{list-style:none;padding:0;margin:0 0 .6rem;font-size:.8rem}
-  .kv li{padding:.18rem 0;border-bottom:1px dotted rgba(184,134,42,.15)}
-  .bloco-contrato{border:1px solid rgba(184,134,42,.2);border-radius:8px;padding:.8rem 1rem;margin-bottom:.9rem;page-break-inside:avoid}
-  @media print{.aviso{display:none}h2{page-break-before:auto}table{page-break-inside:avoid}.bloco-contrato{page-break-inside:avoid}}
-</style></head><body>
-<div class="aviso">
-  💡 Para salvar como PDF: toque no menu do navegador → <strong>Imprimir</strong> → <strong>Salvar como PDF</strong>
-  <button class="btn-print" onclick="window.print()">🖨️ Imprimir / PDF</button>
-</div>
-<h1>Atelier Hub — Exportação de dados</h1>
-<div class="meta">Conta: ${esc(email)} · Gerado em: ${dataExp} · ${cts.length} contrato(s) · ${gts.length} despesa(s)</div>
-
-<h2>1. Contratos — resumo financeiro</h2>
-${rowsC ? `<table><thead><tr><th>Nome</th><th>Contrato</th><th>Casamento</th><th>Cidade/UF</th><th style="text-align:right">Valor final</th><th style="text-align:right">Saldo</th><th>Situação</th></tr></thead><tbody>${rowsC}</tbody></table>` : '<p class="vazio">Nenhum contrato cadastrado.</p>'}
-
-<h2>1.1 Contratos — detalhes completos</h2>
-${blocosDetalheContrato || '<p class="vazio">Nenhum contrato cadastrado.</p>'}
-
-<h2>2. Pagamentos registrados</h2>
-${rowsP ? `<table><thead><tr><th>Noiva</th><th>Data</th><th>Forma</th><th style="text-align:right">Bruto</th><th style="text-align:right">Líquido</th><th>Status</th></tr></thead><tbody>${rowsP}</tbody></table>` : '<p class="vazio">Nenhum pagamento registrado.</p>'}
-
-<h2>3. Despesas</h2>
-${rowsG ? `<table><thead><tr><th>Data</th><th>Produto</th><th>Fornecedor</th><th>Forma</th><th>Parcela</th><th style="text-align:right">Valor</th></tr></thead><tbody>${rowsG}<tr class="total"><td colspan="5">Total</td><td style="text-align:right">${fmtR(totalG)}</td></tr></tbody></table>` : '<p class="vazio">Nenhuma despesa registrada.</p>'}
-
-<h2>4. Catálogo de peças e precificação</h2>
-${rowsPc || '<p class="vazio">Nenhuma peça cadastrada.</p>'}
-
-<h2>5. Materiais globais</h2>
-${rowsM ? `<table><thead><tr><th>Material</th><th>Unidade</th><th style="text-align:right">Qtd total</th><th style="text-align:right">Valor pago</th><th style="text-align:right">Custo/unidade</th></tr></thead><tbody>${rowsM}</tbody></table>` : '<p class="vazio">Nenhum material cadastrado.</p>'}
-
-<h2>6. Configurações do ateliê</h2>
-${configHtml}
-
-<h2>7. Desidratação</h2>
-${rowsD ? `<table><thead><tr><th>Noiva</th><th>Contrato</th><th>Peças</th><th>Flores</th><th>Início</th><th>Conclusão</th><th>Concluído</th><th>Observações</th></tr></thead><tbody>${rowsD}</tbody></table>` : '<p class="vazio">Nenhum registro de desidratação.</p>'}
-
-<h2>8. Tarefas</h2>
-${rowsT ? `<table><thead><tr><th>Tarefa</th><th>Concluída</th></tr></thead><tbody>${rowsT}</tbody></table>` : '<p class="vazio">Nenhuma tarefa cadastrada.</p>'}
-
-<h2>9. Lembretes manuais</h2>
-${rowsL ? `<table><thead><tr><th>Texto</th><th>Data/hora</th><th>Disparado</th></tr></thead><tbody>${rowsL}</tbody></table>` : '<p class="vazio">Nenhum lembrete manual cadastrado.</p>'}
-</body></html>`;
 
   try {
-    const win = window.open('', '_blank');
-    if (win) { win.document.write(html); win.document.close(); win.focus(); return; }
-  } catch(_) {}
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  const url  = URL.createObjectURL(blob);
-  const a    = Object.assign(document.createElement('a'), { href: url, download: 'atelierhub-dados-' + new Date().toISOString().slice(0,10) + '.html' });
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+    const fmtD    = s => s ? s.split('-').reverse().join('/') : '—';
+    const fmtDH   = s => s ? new Date(s).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+    const fmtR    = v => 'R$ ' + (parseFloat(v)||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+    const fmtPct  = v => (parseFloat(v)||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) + '%';
+    const fmtBool = v => v ? 'Sim' : 'Não';
+    const email   = (_currentUser && _currentUser.email) || '';
+    const dataExp = new Date().toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric'});
+
+    const { contratos: cts, gastos: gts, pecas: pcs, precDados: pd, custosConfig: cc, matGlobais: mg, desidratacao: dd, tarefas: tf, lembretesManuais: lm } = dados;
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const margemEsq = 40, margemDir = 40;
+    const largura = doc.internal.pageSize.getWidth();
+    const larguraUtil = largura - margemEsq - margemDir;
+    const corTitulo = [92, 51, 24];
+    const corMuted  = [154, 125, 101];
+
+    let y = 50;
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(...corTitulo);
+    doc.text('Atelier Hub — Exportação de dados', margemEsq, y);
+    y += 16;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(...corMuted);
+    doc.text(`Conta: ${email}  ·  Gerado em: ${dataExp}  ·  ${cts.length} contrato(s)  ·  ${gts.length} despesa(s)`, margemEsq, y);
+    y += 22;
+
+    function novaSecao(titulo) {
+      if (y > doc.internal.pageSize.getHeight() - 80) { doc.addPage(); y = 50; }
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...corTitulo);
+      doc.text(titulo, margemEsq, y);
+      y += 14;
+    }
+
+    function tabela(opts) {
+      doc.autoTable(Object.assign({
+        startY: y,
+        margin: { left: margemEsq, right: margemDir },
+        styles: { font: 'helvetica', fontSize: 8, textColor: [40,26,14], cellPadding: 4 },
+        headStyles: { fillColor: [245,237,226], textColor: corTitulo, fontStyle: 'bold' },
+        theme: 'grid',
+      }, opts));
+      y = doc.lastAutoTable.finalY + 18;
+    }
+
+    function tabelaChaveValor(linhas) {
+      tabela({
+        body: linhas, theme: 'plain',
+        styles: { font: 'helvetica', fontSize: 8, cellPadding: 3, textColor: [40,26,14], lineColor: [230,220,205], lineWidth: 0.5 },
+        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 140 }, 1: { cellWidth: larguraUtil - 140 } },
+      });
+    }
+
+    function garantirEspaco(minimo) {
+      if (y > doc.internal.pageSize.getHeight() - minimo) { doc.addPage(); y = 50; }
+    }
+
+    // ── 1. CONTRATOS — resumo (situação real: mesma lógica do app) ──
+    novaSecao('1. Contratos — resumo financeiro');
+    const situacaoContrato = (c) => {
+      if (c.status === 'Cancelado') return 'Cancelado';
+      const saldo = round2(calcValorAPagar(c) - totalPago(c));
+      if (saldo <= 0.01) return 'Quitada';
+      if (isDevedor(c)) return 'Devedor';
+      return 'Saldo em aberto';
+    };
+    const ctsOrdenados = cts.slice().sort((a,b)=>(b.contrato||'').localeCompare(a.contrato||''));
+    tabela({
+      head: [['Nome','Contrato','Casamento','Cidade/UF','Valor final','Saldo','Situação']],
+      body: ctsOrdenados.length ? ctsOrdenados.map(c => {
+        const valorFinal = calcValorAPagar(c);
+        const saldo = round2(valorFinal - totalPago(c));
+        return [c.nome, fmtD(c.contrato), fmtD(c.casamento), `${c.cidade||'—'}/${c.estado||'—'}`, fmtR(valorFinal), fmtR(saldo), situacaoContrato(c)];
+      }) : [['Nenhum contrato cadastrado.','','','','','','']],
+      columnStyles: { 4: {halign:'right'}, 5: {halign:'right'} },
+    });
+
+    // ── 1.1 CONTRATOS — detalhes completos (um bloco por contrato) ──
+    novaSecao('1.1 Contratos — detalhes completos');
+    ctsOrdenados.forEach(c => {
+      garantirEspaco(110);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...corTitulo);
+      doc.text(`${c.nome} — ${fmtD(c.contrato)}`, margemEsq, y);
+      y += 10;
+
+      const telLabel = c.telefoneInternacional ? (c.telefone||'—') + ' (internacional)' : (c.telefone||'—');
+      const pecasTexto = (Array.isArray(c.pecas) && c.pecas.length)
+        ? c.pecas.map(p => `${p.qtd||1}x ${p.nome} — ${fmtR(p.valor)}`).join('\n')
+        : 'Nenhuma peça registrada.';
+      const f = c.ficha_producao || {};
+      const fichaLinhas = [
+        ['Nome da noiva', f.nomeNoiva], ['Nome do noivo', f.nomeNoivo], ['Instagram', f.instagram],
+        ['Quem fez o buquê', f.quemFezBuque], ['Cerimonialista', f.cerimonialista], ['Quem indicou', f.quemIndicou],
+        ['Iniciais/data gravada', f.iniciaisData], ['Observações', f.obsGeral],
+      ].filter(([,v]) => v);
+
+      tabelaChaveValor([
+        ['CPF', c.cpf || '—'],
+        ['Telefone', telLabel],
+        ['Cidade/Estado', `${c.cidade||'—'}/${c.estado||'—'}`],
+        ['Envio', c.envio || '—'],
+        ['Data de chegada', fmtD(c.chegada)],
+        ['Data de entrega', fmtD(c.entrega)],
+        ['Tipo de quitação', c.tipoQuitacao || '—'],
+        ['Forma de pagamento', TIPO_CONTRATO_LABEL[c.formaPag] || c.formaPag || '—'],
+        ['Desconto / Acréscimo', `${fmtR(c.desconto)} / ${fmtR(c.acrescimo)}`],
+        ['Presente', (Array.isArray(c.presente) && c.presente.length) ? c.presente.join(', ') : '—'],
+        ['Status', c.status || '—'],
+        ['Peças', pecasTexto],
+        ...fichaLinhas,
+      ]);
+    });
+
+    // ── 2. PAGAMENTOS ──
+    novaSecao('2. Pagamentos registrados');
+    const linhasPag = cts.flatMap(c => (Array.isArray(c.pagamentos) ? c.pagamentos : []).map(p => [
+      c.nome, fmtD(p.data), formaDisplayLabel(p.forma)||'—', fmtR(p.bruto??p.valor), fmtR(p.valor), p.status||'Realizado'
+    ]));
+    tabela({
+      head: [['Noiva','Data','Forma','Bruto','Líquido','Status']],
+      body: linhasPag.length ? linhasPag : [['Nenhum pagamento registrado.','','','','','']],
+      columnStyles: { 3:{halign:'right'}, 4:{halign:'right'} },
+    });
+
+    // ── 3. DESPESAS ──
+    novaSecao('3. Despesas');
+    const totalG = gts.reduce((s,g)=>s+(parseFloat(g.valor)||0),0);
+    const linhasG = gts.slice().sort((a,b)=>(b.data||'').localeCompare(a.data||'')).map(g => {
+      const parcelaInfo = g.parcela_num ? `${g.parcela_num}/${g.parcela_total||'?'}${g.cartao_nome?' — '+g.cartao_nome:''}` : '—';
+      return [fmtD(g.data), g.produto||'—', g.fornecedor||'—', formaDisplayLabel(g.forma)||'—', parcelaInfo, fmtR(g.valor)];
+    });
+    tabela({
+      head: [['Data','Produto','Fornecedor','Forma','Parcela','Valor']],
+      body: linhasG.length ? linhasG : [['Nenhuma despesa registrada.','','','','','']],
+      foot: linhasG.length ? [['','','','','Total', fmtR(totalG)]] : undefined,
+      footStyles: { fillColor: [253,248,242], textColor: corTitulo, fontStyle:'bold' },
+      columnStyles: { 5:{halign:'right'} },
+    });
+
+    // ── 4. CATÁLOGO DE PEÇAS + PRECIFICAÇÃO DETALHADA (usa o ID direto, nunca casa por nome) ──
+    novaSecao('4. Catálogo de peças e precificação');
+    const valorHora = getValorHora();
+    const custoFixoH = getCustoFixoPorHora();
+    if (!pcs.length) {
+      tabelaChaveValor([['—', 'Nenhuma peça cadastrada.']]);
+    }
+    pcs.slice().sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).forEach(p => {
+      garantirEspaco(110);
+      const preco = getPrecoPecaCalculado(p.id);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...corTitulo);
+      doc.text(`${p.nome} — ${preco ? fmtR(preco) : 'sem preço definido'}`, margemEsq, y);
+      y += 10;
+
+      const d = pd[p.id];
+      let linhas;
+      if (d && Array.isArray(d.materiais) && d.materiais.length) {
+        const mins = d.tempo || 60;
+        const perdaPadrao = (cc.perdaResinaPadrao != null) ? cc.perdaResinaPadrao : 5;
+        const perdaResinaFrac = (d.perdaResina != null ? d.perdaResina : perdaPadrao) / 100;
+        // Mesma regra do app: só aplica a perda ao custo de materiais marcados como resina
+        // (direto ou via material global vinculado) — nunca a todos os materiais da peça.
+        const matsComPerda = d.materiais.map(m => {
+          const matG = m.matGlobalId ? mg.find(g => g.id === m.matGlobalId) : null;
+          const ehResina = matG ? matG.perdaResina === true : m.perdaResina === true;
+          if (ehResina && perdaResinaFrac > 0) return { ...m, valor: (parseFloat(m.valor)||0) * (1 + perdaResinaFrac) };
+          return m;
+        });
+        const r = calcPrec(matsComPerda, null, valorHora * (mins/60), custoFixoH * (mins/60));
+        const custoTotal = r.custoTotalReal || 0;
+        const lucro = preco - custoTotal;
+        const materiaisTexto = d.materiais.map(m => `${m.nome||'—'}: ${fmtR(m.valor)}`).join('\n');
+        const processosTexto = (Array.isArray(d.processosExtras) && d.processosExtras.length)
+          ? d.processosExtras.map(pe => `${pe.nome}: ${pe.mins} min`).join('\n') : '—';
+        linhas = [
+          ['Tempo de produção', `${mins} min`],
+          ['Perda de resina', d.perdaResina != null ? fmtPct(d.perdaResina) : 'padrão do ateliê'],
+          ['Custo total calculado', fmtR(custoTotal)],
+          ['Lucro estimado', fmtR(lucro)],
+          ['Materiais', materiaisTexto],
+          ['Processos extras', processosTexto],
+        ];
+      } else {
+        linhas = [['—', 'Sem dados de precificação.']];
+      }
+      tabelaChaveValor(linhas);
+    });
+
+    // ── 5. MATERIAIS GLOBAIS ──
+    novaSecao('5. Materiais globais');
+    const linhasM = mg.slice().sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).map(m => {
+      const custUnit = (m.qtdTotal > 0 && m.valorPago > 0) ? m.valorPago / m.qtdTotal : 0;
+      return [m.nome, m.unidade||'—', m.qtdTotal ? m.qtdTotal.toLocaleString('pt-BR') : '—', fmtR(m.valorPago), custUnit>0?fmtR(custUnit):'—'];
+    });
+    tabela({
+      head: [['Material','Unidade','Qtd total','Valor pago','Custo/unidade']],
+      body: linhasM.length ? linhasM : [['Nenhum material cadastrado.','','','','']],
+      columnStyles: { 2:{halign:'right'}, 3:{halign:'right'}, 4:{halign:'right'} },
+    });
+
+    // ── 6. CONFIGURAÇÕES DO ATELIÊ ──
+    novaSecao('6. Configurações do ateliê');
+    const formasPagTexto = (cc.formasPag||[]).map(f => `${f.label}: ${fmtBool(f.ativa)} ativa · taxa ${fmtPct(f.taxa)} · desconto: ${fmtBool(f.desconto)} · absorvido: ${fmtBool(f.absorvido)}`).join('\n') || '—';
+    const parcelasTexto = (cc.parcelas||[]).map(pa => `${pa.n}x: taxa ${fmtPct(pa.taxa)}, absorvido: ${fmtBool(pa.absorvido)}`).join('\n') || '—';
+    const cartoesTexto = (cc.cartoes||[]).length ? (cc.cartoes||[]).map(c=>c.nome||JSON.stringify(c)).join('\n') : 'Nenhum cadastrado.';
+    const itensFixosTexto = (cc.itensFixos||[]).length ? (cc.itensFixos||[]).map(it=>`${it.nome||'—'}: ${fmtR(it.valor)}`).join('\n') : 'Nenhum cadastrado.';
+    const processosTexto2 = (cc.processos||[]).length ? (cc.processos||[]).map(p=>`${p.nome||'—'}: ${p.mins||0} min`).join('\n') : 'Nenhum cadastrado.';
+    tabelaChaveValor([
+      ['Salário mensal desejado', fmtR(cc.salarioMensal)],
+      ['Horas por dia / Dias por mês', `${cc.horasPorDia||0} / ${cc.diasPorMes||0}`],
+      ['Prazo de produção', `${cc.prazoProducao||0} dias`],
+      ['Prazo de desidratação', `${cc.prazoDesidratacao||0} dias`],
+      ['Prazo de quitação (casamento)', `${cc.prazoReserva ?? 'não configurado'} dias antes`],
+      ['Aviso antes do prazo (casamento)', `${cc.notifDiasAntesReserva ?? 'não configurado'} dias`],
+      ['Prazo de quitação (entrega)', `${cc.prazoEntrega ?? 'não configurado'} dias depois`],
+      ['Aviso após entrega', `${cc.diasAvisoEntrega ?? 'não configurado'} dias`],
+      ['Itens fixos', itensFixosTexto],
+      ['Processos de produção (padrão)', processosTexto2],
+      ['Formas de pagamento', formasPagTexto],
+      ['Parcelamento no cartão', parcelasTexto],
+      ['Cartões cadastrados', cartoesTexto],
+      ['Impostos', `Tipo: ${cc.impostoConfig?.tipo||'nenhum'} · Valor: ${cc.impostoConfig?.tipo==='percentual' ? fmtPct(cc.impostoConfig?.valor) : fmtR(cc.impostoConfig?.valor)}`],
+      ['Precificação: modo/valor', `${cc.precConfig?.modo||'—'} / ${cc.precConfig?.valor ?? 'não definido'}`],
+      ['Precificação: tarifa Pix / parcela ref.', `${fmtPct(cc.precConfig?.tarifaPix)} / ${cc.precConfig?.parcelaRefCartao||1}x`],
+      ['Mensagem WhatsApp: cobrança', cc.msgWACobranca || '—'],
+      ['Mensagem WhatsApp: casamento', cc.msgWACasamento || '—'],
+    ]);
+
+    // ── 7. DESIDRATAÇÃO ──
+    novaSecao('7. Desidratação');
+    const linhasD = dd.slice().sort((a,b)=>(b.data_inicio||'').localeCompare(a.data_inicio||'')).map(r => {
+      const contratoRelacionado = r.contrato_id ? (cts.find(c=>c.id===r.contrato_id)?.nome || ('#'+r.contrato_id)) : '—';
+      return [r.nome_noiva||'—', contratoRelacionado, r.pecas||'—', r.flores||'—', fmtD(r.data_inicio), fmtD(r.data_conclusao), fmtBool(r.concluido), r.observacoes||'—'];
+    });
+    tabela({
+      head: [['Noiva','Contrato','Peças','Flores','Início','Conclusão','Concluído','Observações']],
+      body: linhasD.length ? linhasD : [['Nenhum registro de desidratação.','','','','','','','']],
+    });
+
+    // ── 8. TAREFAS ──
+    novaSecao('8. Tarefas');
+    const linhasT = tf.slice().sort((a,b)=>(a.ordem||0)-(b.ordem||0)).map(t => [t.texto, fmtBool(t.concluida)]);
+    tabela({
+      head: [['Tarefa','Concluída']],
+      body: linhasT.length ? linhasT : [['Nenhuma tarefa cadastrada.','']],
+    });
+
+    // ── 9. LEMBRETES MANUAIS ──
+    novaSecao('9. Lembretes manuais');
+    const linhasL = lm.slice().sort((a,b)=>(b.data_hora||'').localeCompare(a.data_hora||'')).map(n => [n.texto, fmtDH(n.data_hora), fmtBool(n.disparada)]);
+    tabela({
+      head: [['Texto','Data/hora','Disparado']],
+      body: linhasL.length ? linhasL : [['Nenhum lembrete manual cadastrado.','','']],
+    });
+
+    // Numeração de página em todas as páginas
+    const totalPaginas = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPaginas; i++) {
+      doc.setPage(i);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...corMuted);
+      doc.text(`Página ${i} de ${totalPaginas}`, largura - margemDir, doc.internal.pageSize.getHeight() - 20, { align: 'right' });
+    }
+
+    doc.save('atelierhub-dados-' + new Date().toISOString().slice(0,10) + '.pdf');
+  } catch (e) {
+    _mostrarErroAcao('exportarDadosPDF', e, { acaoLabel: 'gerar o relatório' });
+  }
+  hideLoading();
 }
 
 function renderProcessosPeca(pecaId, d) {
