@@ -2309,6 +2309,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     <div style="font-size:0.8rem;color:var(--brown);font-weight:600;margin-bottom:0.5rem;">Exportar dados</div>
       <button onclick="exportarDadosPDF()" style="width:100%;background:transparent;border:1px solid rgba(184,134,42,0.35);border-radius:8px;padding:0.65rem;color:var(--brown);font-size:0.82rem;cursor:pointer;letter-spacing:0.02em">📄 Exportar meus dados (PDF)</button>
       <div style="font-size:0.72rem;color:var(--muted);margin-top:0.4rem;text-align:center;line-height:1.4">Gera um relatório completo pra leitura: contratos (com peças, ficha de produção e CPF), pagamentos, despesas, catálogo com precificação detalhada, materiais, configurações do ateliê, desidratação, tarefas e lembretes manuais</div>
+      <div id="status-backup-local" style="font-size:0.7rem;color:var(--muted);margin-top:0.7rem;text-align:center;line-height:1.4"></div>
     </div>
   </div>
 </div>
@@ -2698,6 +2699,8 @@ async function initApp() {
   if (typeof ativarPushAposLogin === 'function') ativarPushAposLogin();
   carregarBadgeNotif();
   carregarBadgeTarefas();
+  // Backup automático local em background — nunca bloqueia a UI nem trava o app se falhar
+  verificarBackupLocalDiario();
   // Configura visibilidade inicial do form de novo contrato
   if (typeof onFormaPagChange === 'function') onFormaPagChange(typeof getPrimeiraFormaAtivaMinuscula === 'function' ? getPrimeiraFormaAtivaMinuscula() : 'pix');
   // Verifica assinatura ou trial — bloqueia acesso se necessário
@@ -8424,6 +8427,125 @@ async function coletarTodosOsDados() {
   };
 }
 
+// ═══════════════════ BACKUP AUTOMÁTICO LOCAL (IndexedDB) ═══════════════════
+// Guarda uma cópia diária dos dados do usuário DENTRO do próprio navegador — não
+// gera arquivo nenhum, não aparece em Downloads. Mantém só os últimos 7 dias;
+// o mais antigo é apagado sozinho quando um novo snapshot é criado.
+// IMPORTANTE: o IndexedDB é por NAVEGADOR/APARELHO, não por conta — se duas contas
+// diferentes usarem o mesmo aparelho, precisam ficar em "gavetas" separadas dentro
+// do mesmo banco. Por isso cada registro é gravado com uma chave que já inclui o
+// user_id, e toda leitura filtra pelo usuário atualmente logado.
+const BACKUP_LOCAL_DB    = 'atelierhub_backup_local';
+const BACKUP_LOCAL_STORE = 'snapshots';
+const BACKUP_LOCAL_MAX_DIAS = 7;
+
+function _chaveSnapshotLocal(uid, dataStr) { return uid + '::' + dataStr; }
+
+function _abrirBackupLocalDB() {
+  return new Promise((resolve, reject) => {
+    if (!('indexedDB' in window)) { reject(new Error('IndexedDB não suportado neste navegador')); return; }
+    const req = indexedDB.open(BACKUP_LOCAL_DB, 1);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(BACKUP_LOCAL_STORE)) {
+        db.createObjectStore(BACKUP_LOCAL_STORE, { keyPath: 'chave' });
+      }
+    };
+    req.onsuccess = (e) => resolve(e.target.result);
+    req.onerror   = (e) => reject(e.target.error);
+  });
+}
+
+// Lista os snapshots do usuário ATUALMENTE logado (nunca de outra conta que tenha usado o mesmo aparelho)
+async function _listarSnapshotsLocais(uid) {
+  if (!uid) return [];
+  const db = await _abrirBackupLocalDB();
+  try {
+    const todos = await new Promise((resolve, reject) => {
+      const tx  = db.transaction(BACKUP_LOCAL_STORE, 'readonly');
+      const req = tx.objectStore(BACKUP_LOCAL_STORE).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror   = () => reject(req.error);
+    });
+    return todos.filter(s => s.uid === uid);
+  } finally {
+    db.close(); // evita acumular conexões abertas — isso travaria uma futura mudança de versão do banco
+  }
+}
+
+async function _salvarSnapshotLocal(dados, dataStr, uid) {
+  const db = await _abrirBackupLocalDB();
+  try {
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(BACKUP_LOCAL_STORE, 'readwrite');
+      tx.objectStore(BACKUP_LOCAL_STORE).put({ chave: _chaveSnapshotLocal(uid, dataStr), uid, data: dataStr, criadoEm: new Date().toISOString(), conteudo: dados });
+      tx.oncomplete = () => resolve();
+      tx.onerror    = () => reject(tx.error);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+async function _removerSnapshotsAntigos(uid) {
+  const snapshots = await _listarSnapshotsLocais(uid); // já vem filtrado só desse usuário (e já fecha sua própria conexão)
+  if (snapshots.length <= BACKUP_LOCAL_MAX_DIAS) return;
+  const ordenados   = snapshots.slice().sort((a,b) => a.data.localeCompare(b.data));
+  const paraRemover = ordenados.slice(0, ordenados.length - BACKUP_LOCAL_MAX_DIAS);
+  const db = await _abrirBackupLocalDB();
+  try {
+    await new Promise((resolve) => {
+      const tx    = db.transaction(BACKUP_LOCAL_STORE, 'readwrite');
+      const store = tx.objectStore(BACKUP_LOCAL_STORE);
+      paraRemover.forEach(s => store.delete(s.chave));
+      tx.oncomplete = resolve;
+      tx.onerror    = resolve; // não trava o app por causa de limpeza — tenta de novo amanhã
+    });
+  } finally {
+    db.close();
+  }
+}
+
+// Chamada em background ao abrir o app (initApp). Nunca bloqueia a UI e nunca
+// derruba o app se falhar — backup automático é proteção extra, não requisito de uso.
+async function verificarBackupLocalDiario() {
+  try {
+    const uid = _uid();
+    if (!uid) return; // sem usuário logado, não há o que fazer (não deveria acontecer aqui, mas por segurança)
+    const hojeStr = new Date().toLocaleDateString('en-CA'); // AAAA-MM-DD, fuso local (evita virar o dia errado perto da meia-noite)
+    const snapshots = await _listarSnapshotsLocais(uid);
+    const jaTemHoje = snapshots.some(s => s.data === hojeStr);
+    if (!jaTemHoje) {
+      const dados = await coletarTodosOsDados();
+      await _salvarSnapshotLocal(dados, hojeStr, uid);
+      await _removerSnapshotsAntigos(uid);
+    }
+    _atualizarStatusBackupLocal();
+  } catch (e) {
+    console.warn('Backup local automático não pôde ser feito agora:', e);
+  }
+}
+
+// Atualiza o texto discreto em Configurações mostrando quando foi o último backup local
+// do usuário ATUAL (nunca mistura com snapshot de outra conta no mesmo aparelho)
+async function _atualizarStatusBackupLocal() {
+  const el = document.getElementById('status-backup-local');
+  if (!el) return;
+  try {
+    const uid = _uid();
+    if (!uid) { el.textContent = ''; return; }
+    const snapshots = await _listarSnapshotsLocais(uid);
+    if (!snapshots.length) { el.textContent = 'Backup automático local: ainda não foi feito nenhum'; return; }
+    const maisRecente = snapshots.slice().sort((a,b) => b.data.localeCompare(a.data))[0];
+    const dt = new Date(maisRecente.criadoEm);
+    const dataFmt = dt.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'});
+    const horaFmt = dt.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+    el.textContent = `🔒 Backup automático local: ${dataFmt} às ${horaFmt} (${snapshots.length}/${BACKUP_LOCAL_MAX_DIAS} dias guardados)`;
+  } catch (e) {
+    el.textContent = '';
+  }
+}
+
 async function exportarDadosPDF() {
   showLoading('Gerando PDF...');
   let dados;
@@ -11009,6 +11131,7 @@ function openConfiguracoes() {
   const msgSenha = document.getElementById('c-senha-msg');
   if (msgSenha) msgSenha.textContent = '';
   atualizarStatusNotif();
+  _atualizarStatusBackupLocal();
   // Preenche campos de impostos
   const imp = custosConfig.impostoConfig || CUSTOS_DEFAULT.impostoConfig;
   const elImpTipo = document.getElementById('c-imposto-tipo');
@@ -11396,6 +11519,19 @@ function _mostrarBannerTrial(dias) {
 
 // ── INICIALIZAÇÃO ──
 // initApp() agora é chamado pelo sistema de autenticação
+// Backup automático local não roda sozinho enquanto o app fica aberto sem fechar — só dispara
+// no login/abertura. Isso cobre os dois casos que preenchem essa lacuna: quando a pessoa volta
+// pro app depois de um tempo fora (troca de app, tela bloqueada), e como rede de segurança pro
+// caso raro de alguém deixar o app aberto e em uso contínuo por dias sem nunca sair dele.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && typeof verificarBackupLocalDiario === 'function') {
+    verificarBackupLocalDiario();
+  }
+});
+setInterval(() => {
+  if (typeof verificarBackupLocalDiario === 'function') verificarBackupLocalDiario();
+}, 60 * 60 * 1000); // a cada hora
+
 iniciarAuth();
 
 // ── NOTIF PUSH: detecta ?contrato=ID ao abrir pelo clique na notificação ──
