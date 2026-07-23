@@ -6313,6 +6313,24 @@ function abrirEdicaoContrato(id) {
     div.innerHTML = `<select class="field-input" style="padding:0.5rem 0.6rem;font-size:0.82rem">${optOriginal}${opts}</select><input class="field-input" type="number" min="1" value="${p.qtd}" style="padding:0.5rem 0.4rem;text-align:center;font-size:0.82rem" onchange="_qtdPecaEditChange(${linhaId})"><button type="button" onclick="_removerLinhaPecaEdit(${linhaId})" style="background:none;border:none;color:var(--bordeaux);font-size:1.2rem;cursor:pointer;padding:0;line-height:1">×</button>`;
     cont.appendChild(div);
   });
+
+  // Repopula Desconto/Acréscimo com os dados reais do contrato — ou limpa, se não houver.
+  // Sem isso, o campo ficava com o que sobrou de uma edição anterior (de QUALQUER contrato,
+  // já que nada limpa esses 2 campos entre edições) e salvar sobrescrevia o desconto/acréscimo
+  // real deste contrato com aquele resíduo (ou com 0, zerando um desconto já concedido).
+  // Usa descontoMeta/acrescimoMeta (tipo e valor exatamente como foram digitados, R$ ou %)
+  // quando existir; contratos antigos sem meta caem no fallback: valor final já salvo, sempre
+  // como tipo R$ (não há como saber se era % sem o meta — não inventamos).
+  const descMeta = c.descontoMeta;
+  document.getElementById('e-desconto-tipo').value = descMeta ? descMeta.tipo : 'valor';
+  document.getElementById('e-desconto').value = descMeta ? descMeta.digitado
+    : ((parseFloat(c.desconto) || 0) > 0 ? c.desconto : '');
+
+  const acrMeta = c.acrescimoMeta;
+  document.getElementById('e-acrescimo-tipo').value = acrMeta ? acrMeta.tipo : 'valor';
+  document.getElementById('e-acrescimo').value = acrMeta ? acrMeta.digitado
+    : ((parseFloat(c.acrescimo) || 0) > 0 ? c.acrescimo : '');
+
   atualizarPreviewDescAcresc('e');
 
   closeDrawer('drawer-detail');
