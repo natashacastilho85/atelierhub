@@ -791,13 +791,6 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
   padding: 2rem 0;
   font-style: italic;
 }
-@keyframes aviso-piscar {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
-#btn-aviso.piscando {
-  animation: aviso-piscar 1.3s ease-in-out infinite;
-}
 </style>
 <!-- Supabase Auth SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -888,7 +881,6 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       <span class="logo-resina">Resina</span>
     </div>
     <div style="display:flex;gap:0.6rem;align-items:center">
-      <button class="header-btn" onclick="abrirAvisoAtual()" id="btn-aviso" title="Aviso" style="font-size:1.1rem;display:none">📢</button>
       <button class="header-btn" onclick="abrirTarefas()" title="Tarefas" style="font-size:1.1rem;position:relative">✅<span id="badge-tarefas" style="display:none;position:absolute;top:0;right:0;background:var(--brown);color:white;border-radius:50%;width:14px;height:14px;font-size:0.55rem;align-items:center;justify-content:center;font-family:sans-serif"></span></button>
       <button class="header-btn" onclick="abrirCentroNotif()" id="btn-sininho" style="position:relative">🔔<span id="badge-notif" style="display:none;position:absolute;top:0;right:0;background:var(--bordeaux);color:white;border-radius:50%;width:14px;height:14px;font-size:0.55rem;align-items:center;justify-content:center;font-family:sans-serif"></span></button>
       <button class="header-btn" onclick="abrirDesidratacao()" title="Desidratação" style="font-size:1.1rem;position:relative">🌸<span id="badge-desid" style="display:none;position:absolute;top:0;right:0;background:var(--sage);color:white;border-radius:50%;width:14px;height:14px;font-size:0.55rem;align-items:center;justify-content:center;font-family:sans-serif"></span></button>
@@ -2315,10 +2307,40 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     <button class="btn-secondary" onclick="closeDrawer('drawer-custos')">Fechar</button>
     <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid rgba(184,134,42,0.15)">
     <div style="font-size:0.8rem;color:var(--brown);font-weight:600;margin-bottom:0.5rem;">Exportar dados</div>
+      <div style="font-size:0.7rem;color:var(--muted);margin-bottom:0.7rem;line-height:1.4">O <strong>PDF</strong> é pra você ler — mostra tudo organizado. O <strong>backup em arquivo</strong> é pra guardar ou restaurar depois (ex: ao trocar de celular) — é um arquivo técnico, não pra leitura.</div>
       <button onclick="exportarDadosPDF()" style="width:100%;background:transparent;border:1px solid rgba(184,134,42,0.35);border-radius:8px;padding:0.65rem;color:var(--brown);font-size:0.82rem;cursor:pointer;letter-spacing:0.02em">📄 Exportar meus dados (PDF)</button>
       <div style="font-size:0.72rem;color:var(--muted);margin-top:0.4rem;text-align:center;line-height:1.4">Gera um relatório completo pra leitura: contratos (com peças, ficha de produção e CPF), pagamentos, despesas, catálogo com precificação detalhada, materiais, configurações do ateliê, desidratação, tarefas e lembretes manuais</div>
+      <button onclick="exportarBackupArquivo()" style="width:100%;background:transparent;border:1px solid rgba(184,134,42,0.35);border-radius:8px;padding:0.65rem;color:var(--brown);font-size:0.82rem;cursor:pointer;letter-spacing:0.02em;margin-top:0.7rem">💾 Exportar backup (arquivo)</button>
+      <div style="font-size:0.72rem;color:var(--muted);margin-top:0.4rem;text-align:center;line-height:1.4">Gera um arquivo com todos os seus dados, pra guardar num lugar seguro ou restaurar depois numa reinstalação</div>
       <div id="status-backup-local" style="font-size:0.7rem;color:var(--muted);margin-top:0.7rem;text-align:center;line-height:1.4"></div>
+      <button onclick="abrirRestaurarBackup()" style="width:100%;background:transparent;border:1px solid rgba(139,26,26,0.35);border-radius:8px;padding:0.65rem;color:var(--bordeaux);font-size:0.82rem;cursor:pointer;letter-spacing:0.02em;margin-top:1rem">🔄 Restaurar backup</button>
+      <div style="font-size:0.72rem;color:var(--muted);margin-top:0.4rem;text-align:center;line-height:1.4">Substitui os dados atuais pelos de um backup — use com cuidado, essa ação não pode ser desfeita</div>
     </div>
+  </div>
+</div>
+
+<!-- DRAWER RESTAURAR BACKUP -->
+<div class="drawer-overlay" id="drawer-restaurar" onclick="closeDrawer('drawer-restaurar')">
+  <div class="drawer" onclick="event.stopPropagation()" style="max-height:95vh">
+    <div class="drawer-handle"></div>
+    <h2>Restaurar backup</h2>
+    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:1rem;line-height:1.4">Escolha de onde restaurar. Isso vai <strong>substituir todos os dados atuais</strong> — contratos, despesas, catálogo, tudo.</div>
+
+    <div style="font-size:0.78rem;color:var(--brown);font-weight:600;margin-bottom:0.4rem">Backups automáticos neste aparelho</div>
+    <div id="lista-snapshots-restaurar"><p class="vazio" style="color:var(--muted);font-size:0.78rem">Carregando...</p></div>
+
+    <div style="text-align:center;color:var(--muted);font-size:0.72rem;margin:1rem 0">— ou —</div>
+
+    <div style="font-size:0.78rem;color:var(--brown);font-weight:600;margin-bottom:0.4rem">Importar arquivo de backup</div>
+    <input type="file" id="input-arquivo-restaurar" accept="application/json,.json" style="width:100%;font-size:0.78rem;margin-bottom:0.5rem" onchange="selecionarArquivoRestaurar(this)">
+
+    <div id="bloco-resumo-restaurar" style="display:none;margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(184,134,42,0.15)">
+      <div style="font-size:0.78rem;color:var(--brown);font-weight:600;margin-bottom:0.5rem">Confirme antes de restaurar</div>
+      <div id="resumo-restaurar"></div>
+      <button class="btn-primary" style="background:var(--bordeaux);margin-top:0.8rem" onclick="confirmarRestaurar()">🔄 Restaurar agora</button>
+    </div>
+
+    <button class="btn-secondary" style="margin-top:1rem" onclick="closeDrawer('drawer-restaurar')">Cancelar</button>
   </div>
 </div>
 
@@ -2341,18 +2363,6 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
 // ── SUPABASE ──
 const SUPA_URL = 'https://fvjoerdktscnyxvlgljx.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2am9lcmRrdHNjbnl4dmxnbGp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTM2MzIsImV4cCI6MjA5NjI2OTYzMn0.SH3F2qg_nJA_2LSpPcq5kC-XlOoUCZ5sUxVYZR9FvFk';
-
-// ── AVISO ATUAL (comunicado 📢 no header) ──
-// Pra publicar um aviso novo: edite texto/expiraEm/ativo abaixo e suba no GitHub — vale pra
-// todo mundo, sem precisar de Play Store. Pra desligar na hora, antes do prazo (ex.: erro de
-// digitação), marque ativo:false. expiraEm SEMPRE com o offset de Brasília "-03:00" explícito
-// no final — sem isso, o horário pode ser lido diferente dependendo do fuso do aparelho de
-// quem estiver usando (mesmo cuidado do bug de timezone que já pegamos em outras partes do app).
-const AVISO_ATUAL = {
-  ativo: true,
-  texto: 'Testando nossa comunicação!',
-  expiraEm: '2026-07-23T23:22:00-03:00'
-};
 
 // Token do usuário logado — atualizado no onLoginSucesso
 let _authToken = null;
@@ -2719,7 +2729,6 @@ async function initApp() {
   if (typeof ativarPushAposLogin === 'function') ativarPushAposLogin();
   carregarBadgeNotif();
   carregarBadgeTarefas();
-  _atualizarIconeAviso();
   // Backup automático local em background — nunca bloqueia a UI nem trava o app se falhar
   verificarBackupLocalDiario();
   // Configura visibilidade inicial do form de novo contrato
@@ -6334,24 +6343,6 @@ function abrirEdicaoContrato(id) {
     div.innerHTML = `<select class="field-input" style="padding:0.5rem 0.6rem;font-size:0.82rem">${optOriginal}${opts}</select><input class="field-input" type="number" min="1" value="${p.qtd}" style="padding:0.5rem 0.4rem;text-align:center;font-size:0.82rem" onchange="_qtdPecaEditChange(${linhaId})"><button type="button" onclick="_removerLinhaPecaEdit(${linhaId})" style="background:none;border:none;color:var(--bordeaux);font-size:1.2rem;cursor:pointer;padding:0;line-height:1">×</button>`;
     cont.appendChild(div);
   });
-
-  // Repopula Desconto/Acréscimo com os dados reais do contrato — ou limpa, se não houver.
-  // Sem isso, o campo ficava com o que sobrou de uma edição anterior (de QUALQUER contrato,
-  // já que nada limpa esses 2 campos entre edições) e salvar sobrescrevia o desconto/acréscimo
-  // real deste contrato com aquele resíduo (ou com 0, zerando um desconto já concedido).
-  // Usa descontoMeta/acrescimoMeta (tipo e valor exatamente como foram digitados, R$ ou %)
-  // quando existir; contratos antigos sem meta caem no fallback: valor final já salvo, sempre
-  // como tipo R$ (não há como saber se era % sem o meta — não inventamos).
-  const descMeta = c.descontoMeta;
-  document.getElementById('e-desconto-tipo').value = descMeta ? descMeta.tipo : 'valor';
-  document.getElementById('e-desconto').value = descMeta ? descMeta.digitado
-    : ((parseFloat(c.desconto) || 0) > 0 ? c.desconto : '');
-
-  const acrMeta = c.acrescimoMeta;
-  document.getElementById('e-acrescimo-tipo').value = acrMeta ? acrMeta.tipo : 'valor';
-  document.getElementById('e-acrescimo').value = acrMeta ? acrMeta.digitado
-    : ((parseFloat(c.acrescimo) || 0) > 0 ? c.acrescimo : '');
-
   atualizarPreviewDescAcresc('e');
 
   closeDrawer('drawer-detail');
@@ -8585,7 +8576,204 @@ async function _atualizarStatusBackupLocal() {
   }
 }
 
+// Gera um arquivo .json com TODOS os dados (mesma fonte do PDF e do backup automático local) —
+// pra guardar em outro lugar ou restaurar depois de trocar de aparelho. Não é pra leitura humana.
+// Trava compartilhada entre os dois botões de exportação (PDF e backup em arquivo) — evita
+// toque duplo abrindo duas telas de compartilhar ao mesmo tempo (o iPhone dá erro nesse caso),
+// e evita as duas rodando juntas e disputando o mesmo indicador de carregamento.
+let _operacaoDadosEmAndamento = false;
+
+const _escHtmlRestaurar = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+let _restaurarFonteEscolhida = null;
+
+function abrirRestaurarBackup() {
+  _restaurarFonteEscolhida = null;
+  const bloco = document.getElementById('bloco-resumo-restaurar');
+  if (bloco) bloco.style.display = 'none';
+  const inputArquivo = document.getElementById('input-arquivo-restaurar');
+  if (inputArquivo) inputArquivo.value = '';
+  openDrawer('drawer-restaurar');
+  carregarListaSnapshotsParaRestaurar();
+}
+
+async function carregarListaSnapshotsParaRestaurar() {
+  const cont = document.getElementById('lista-snapshots-restaurar');
+  if (!cont) return;
+  cont.innerHTML = '<p class="vazio" style="color:var(--muted);font-size:0.78rem">Carregando...</p>';
+  try {
+    const uid = _uid();
+    const snaps = await _listarSnapshotsLocais(uid);
+    if (!snaps.length) { cont.innerHTML = '<p class="vazio" style="color:var(--muted);font-size:0.78rem">Nenhum backup automático local encontrado neste aparelho.</p>'; return; }
+    const ordenados = snaps.slice().sort((a,b) => b.data.localeCompare(a.data));
+    cont.innerHTML = ordenados.map(s => {
+      const dt = new Date(s.criadoEm);
+      const dataFmt = dt.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit',year:'numeric'});
+      const horaFmt = dt.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+      return `<button class="btn-secondary" style="width:100%;text-align:left;margin-bottom:0.4rem" onclick="selecionarSnapshotLocal('${s.data}')">📅 ${dataFmt} às ${horaFmt}</button>`;
+    }).join('');
+  } catch (e) {
+    cont.innerHTML = '<p class="vazio" style="color:var(--muted);font-size:0.78rem">Não foi possível carregar os backups locais.</p>';
+  }
+}
+
+async function selecionarSnapshotLocal(dataStr) {
+  try {
+    const uid = _uid();
+    const snaps = await _listarSnapshotsLocais(uid);
+    const snap = snaps.find(s => s.data === dataStr);
+    if (!snap) return;
+    _restaurarFonteEscolhida = { dados: snap.conteudo, origem: 'backup automático de ' + dataStr.split('-').reverse().join('/') };
+    await mostrarResumoRestaurar();
+  } catch (e) {
+    _mostrarErroAcao('selecionarSnapshotLocal', e, { acaoLabel: 'carregar esse backup' });
+  }
+}
+
+function selecionarArquivoRestaurar(inputEl) {
+  const arquivo = inputEl.files && inputEl.files[0];
+  if (!arquivo) return;
+  const leitor = new FileReader();
+  leitor.onload = async () => {
+    try {
+      const json = JSON.parse(leitor.result);
+      // Validação de verdade: confere a versão e que cada categoria tem o TIPO certo —
+      // um objeto qualquer com "dados": {} passava antes disso e restauraria tudo vazio.
+      const categoriasLista = ['contratos','gastos','pecas','tarefas','desidratacao','lembretesManuais'];
+      const valido = json && json.versao === 1 && json.dados && typeof json.dados === 'object'
+        && categoriasLista.every(cat => Array.isArray(json.dados[cat]))
+        && typeof json.dados.custosConfig === 'object' && typeof json.dados.precDados === 'object';
+      if (!valido) throw new Error('formato inválido');
+      _restaurarFonteEscolhida = { dados: json.dados, origem: 'arquivo importado (' + arquivo.name + ')' };
+      await mostrarResumoRestaurar();
+    } catch (e) {
+      mostrarAlerta({ emoji: '⚠️', titulo: 'Arquivo inválido', mensagem: 'Esse arquivo não parece ser um backup válido do Atelier Hub.' });
+    }
+  };
+  leitor.onerror = () => mostrarAlerta({ emoji: '⚠️', titulo: 'Erro ao ler arquivo', mensagem: 'Não foi possível ler esse arquivo.' });
+  leitor.readAsText(arquivo);
+}
+
+async function mostrarResumoRestaurar() {
+  const cont = document.getElementById('resumo-restaurar');
+  const bloco = document.getElementById('bloco-resumo-restaurar');
+  if (!cont || !bloco || !_restaurarFonteEscolhida) return;
+  cont.innerHTML = '<p class="vazio" style="color:var(--muted);font-size:0.78rem">Calculando o que vai mudar...</p>';
+  bloco.style.display = 'block';
+  try {
+    const atual = await coletarTodosOsDados();
+    const d = _restaurarFonteEscolhida.dados;
+    const linha = (label, antes, depois) => `<div class="detail-row"><span class="dl">${label}</span><span class="dv">${antes} → ${depois}</span></div>`;
+    const totalAtual = atual.contratos.length + atual.gastos.length + atual.pecas.length + atual.tarefas.length + atual.desidratacao.length + atual.lembretesManuais.length;
+    const totalBackup = (d.contratos||[]).length + (d.gastos||[]).length + (d.pecas||[]).length + (d.tarefas||[]).length + (d.desidratacao||[]).length + (d.lembretesManuais||[]).length;
+    // Camada extra de proteção: se o backup escolhido está vazio (ou drasticamente menor) enquanto
+    // já existe dado atual, chama atenção antes de deixar confirmar — pode ser arquivo errado/corrompido.
+    const avisoVazio = (totalBackup === 0 && totalAtual > 0)
+      ? `<div style="background:var(--bordeaux);color:white;border-radius:8px;padding:0.6rem 0.8rem;font-size:0.76rem;margin-bottom:0.6rem;font-weight:600">⚠️ Esse backup está completamente vazio — restaurar vai apagar todos os seus ${totalAtual} registro(s) atuais sem colocar nada no lugar. Confira se escolheu o arquivo certo.</div>`
+      : (totalAtual > 0 && totalBackup < totalAtual * 0.3)
+      ? `<div style="background:var(--orange);color:white;border-radius:8px;padding:0.6rem 0.8rem;font-size:0.76rem;margin-bottom:0.6rem;font-weight:600">⚠️ Esse backup tem bem menos registros (${totalBackup}) do que você tem hoje (${totalAtual}). Confirme se é o backup certo antes de continuar.</div>`
+      : '';
+    cont.innerHTML = `
+      ${avisoVazio}
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:0.6rem">Fonte: ${_escHtmlRestaurar(_restaurarFonteEscolhida.origem)}</div>
+      ${linha('Contratos', atual.contratos.length, (d.contratos||[]).length)}
+      ${linha('Despesas', atual.gastos.length, (d.gastos||[]).length)}
+      ${linha('Catálogo de peças', atual.pecas.length, (d.pecas||[]).length)}
+      ${linha('Tarefas', atual.tarefas.length, (d.tarefas||[]).length)}
+      ${linha('Desidratação', atual.desidratacao.length, (d.desidratacao||[]).length)}
+      ${linha('Lembretes manuais', atual.lembretesManuais.length, (d.lembretesManuais||[]).length)}
+    `;
+  } catch (e) {
+    cont.innerHTML = '<p class="vazio" style="color:var(--muted);font-size:0.78rem">Não foi possível calcular o resumo — tente novamente.</p>';
+    _mostrarErroAcao('mostrarResumoRestaurar', e, { acaoLabel: 'calcular o resumo' });
+  }
+}
+
+function confirmarRestaurar() {
+  if (!_restaurarFonteEscolhida) return;
+  mostrarConfirm({
+    emoji: '⚠️', titulo: 'Restaurar backup?',
+    mensagem: `Isso vai substituir TODOS os dados atuais pelos de "${_restaurarFonteEscolhida.origem}". Não pode ser desfeito.`,
+    txtCancelar: 'Cancelar', txtConfirmar: 'Continuar',
+    onConfirmar: () => {
+      mostrarConfirm({
+        emoji: '🚨', titulo: 'Tem certeza absoluta?',
+        mensagem: 'Os dados atuais serão apagados e substituídos permanentemente pelos do backup escolhido.',
+        txtCancelar: 'Cancelar', txtConfirmar: 'Sim, restaurar agora',
+        onConfirmar: executarRestauracao,
+      });
+    }
+  });
+}
+
+async function executarRestauracao() {
+  if (_operacaoDadosEmAndamento) return;
+  _operacaoDadosEmAndamento = true;
+  showLoading('Restaurando backup...');
+  try {
+    const resultado = await sbFetch('rpc/restaurar_backup_completo', {
+      method: 'POST',
+      body: JSON.stringify({ p_dados: _restaurarFonteEscolhida.dados }),
+    });
+    closeDrawer('drawer-restaurar');
+    await initApp();
+    const r = resultado || {};
+    mostrarAlerta({
+      emoji: '✅', titulo: 'Backup restaurado',
+      mensagem: `Restaurado: ${r.contratos??0} contrato(s), ${r.gastos??0} despesa(s), ${r.pecas??0} peça(s), ${r.tarefas??0} tarefa(s), ${r.desidratacao??0} registro(s) de desidratação, ${r.lembretesManuais??0} lembrete(s).`
+    });
+  } catch (e) {
+    _mostrarErroAcao('executarRestauracao', e, { acaoLabel: 'restaurar o backup' });
+  } finally {
+    hideLoading();
+    _operacaoDadosEmAndamento = false;
+  }
+}
+
+async function exportarBackupArquivo() {
+  if (_operacaoDadosEmAndamento) return;
+  _operacaoDadosEmAndamento = true;
+  try {
+    showLoading('Preparando backup...');
+    let dados;
+    try {
+      dados = await coletarTodosOsDados();
+    } catch (e) {
+      _mostrarErroAcao('exportarBackupArquivo', e, { acaoLabel: 'preparar o backup' });
+      return;
+    } finally {
+      hideLoading();
+    }
+
+    try {
+      const nomeArquivo = 'atelierhub-backup-' + new Date().toISOString().slice(0,10) + '.json';
+      const jsonTexto   = JSON.stringify({ versao: 1, exportadoEm: new Date().toISOString(), dados }, null, 2);
+      const blob = new Blob([jsonTexto], { type: 'application/json' });
+
+      // No iPhone, baixar arquivo direto é pouco confiável — a tela de compartilhar nativa funciona bem melhor
+      const arquivo = new File([blob], nomeArquivo, { type: 'application/json' });
+      if (navigator.canShare && navigator.canShare({ files: [arquivo] })) {
+        await navigator.share({ files: [arquivo], title: 'Backup Atelier Hub' });
+        return;
+      }
+
+      // Caminho padrão (Android, computador e a maioria dos navegadores): download direto
+      const url = URL.createObjectURL(blob);
+      const a   = Object.assign(document.createElement('a'), { href: url, download: nomeArquivo });
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (e) {
+      if (e && e.name === 'AbortError') return; // cancelou a tela de compartilhar — não é erro, não avisa nada
+      _mostrarErroAcao('exportarBackupArquivo', e, { acaoLabel: 'baixar o backup' });
+    }
+  } finally {
+    _operacaoDadosEmAndamento = false;
+  }
+}
+
 async function exportarDadosPDF() {
+  if (_operacaoDadosEmAndamento) return;
+  _operacaoDadosEmAndamento = true;
+  try {
   showLoading('Gerando PDF...');
   let dados;
   try {
@@ -8864,6 +9052,9 @@ async function exportarDadosPDF() {
     _mostrarErroAcao('exportarDadosPDF', e, { acaoLabel: 'gerar o relatório' });
   }
   hideLoading();
+  } finally {
+    _operacaoDadosEmAndamento = false;
+  }
 }
 
 function renderProcessosPeca(pecaId, d) {
@@ -12334,42 +12525,6 @@ async function atualizarBadgeDesid() {
 }
 
 // Carrega badge ao iniciar
-// Verifica se o aviso atual deve aparecer agora: precisa estar ativo E ainda dentro do prazo.
-// Qualquer problema (data malformada, campo faltando, AVISO_ATUAL ausente) faz retornar false —
-// o ícone simplesmente não aparece, nunca trava o carregamento do app por causa disso.
-function _avisoAtualEstaAtivo() {
-  try {
-    if (!AVISO_ATUAL || !AVISO_ATUAL.ativo || !AVISO_ATUAL.expiraEm) return false;
-    const expira = new Date(AVISO_ATUAL.expiraEm);
-    if (isNaN(expira.getTime())) return false;
-    return new Date() < expira;
-  } catch (e) {
-    return false;
-  }
-}
-
-// Mostra ou esconde o ícone 📢 no header (com o piscar via CSS). Chamada uma vez no
-// carregamento do app — não fica checando em loop.
-function _atualizarIconeAviso() {
-  try {
-    const btn = document.getElementById('btn-aviso');
-    if (!btn) return;
-    if (_avisoAtualEstaAtivo()) {
-      btn.style.display = '';
-      btn.classList.add('piscando');
-    } else {
-      btn.style.display = 'none';
-      btn.classList.remove('piscando');
-    }
-  } catch (e) { /* nunca deixa isso quebrar o carregamento do app */ }
-}
-
-// Abre o texto do aviso atual — reaproveita o popup padrão do app, sem componente novo.
-function abrirAvisoAtual() {
-  if (!AVISO_ATUAL || !AVISO_ATUAL.texto) return;
-  mostrarAlerta({ emoji: '📢', titulo: 'Aviso', mensagem: AVISO_ATUAL.texto });
-}
-
 async function carregarBadgeNotif() {
   try {
     const manuais = await sbFetch('notif_manuais?disparada=eq.false&select=id');
