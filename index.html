@@ -791,6 +791,13 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
   padding: 2rem 0;
   font-style: italic;
 }
+@keyframes aviso-piscar {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+#btn-aviso.piscando {
+  animation: aviso-piscar 1.3s ease-in-out infinite;
+}
 </style>
 <!-- Supabase Auth SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -881,6 +888,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       <span class="logo-resina">Resina</span>
     </div>
     <div style="display:flex;gap:0.6rem;align-items:center">
+      <button class="header-btn" onclick="abrirAvisoAtual()" id="btn-aviso" title="Aviso" style="font-size:1.1rem;display:none">📢</button>
       <button class="header-btn" onclick="abrirTarefas()" title="Tarefas" style="font-size:1.1rem;position:relative">✅<span id="badge-tarefas" style="display:none;position:absolute;top:0;right:0;background:var(--brown);color:white;border-radius:50%;width:14px;height:14px;font-size:0.55rem;align-items:center;justify-content:center;font-family:sans-serif"></span></button>
       <button class="header-btn" onclick="abrirCentroNotif()" id="btn-sininho" style="position:relative">🔔<span id="badge-notif" style="display:none;position:absolute;top:0;right:0;background:var(--bordeaux);color:white;border-radius:50%;width:14px;height:14px;font-size:0.55rem;align-items:center;justify-content:center;font-family:sans-serif"></span></button>
       <button class="header-btn" onclick="abrirDesidratacao()" title="Desidratação" style="font-size:1.1rem;position:relative">🌸<span id="badge-desid" style="display:none;position:absolute;top:0;right:0;background:var(--sage);color:white;border-radius:50%;width:14px;height:14px;font-size:0.55rem;align-items:center;justify-content:center;font-family:sans-serif"></span></button>
@@ -2334,6 +2342,18 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
 const SUPA_URL = 'https://fvjoerdktscnyxvlgljx.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2am9lcmRrdHNjbnl4dmxnbGp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTM2MzIsImV4cCI6MjA5NjI2OTYzMn0.SH3F2qg_nJA_2LSpPcq5kC-XlOoUCZ5sUxVYZR9FvFk';
 
+// ── AVISO ATUAL (comunicado 📢 no header) ──
+// Pra publicar um aviso novo: edite texto/expiraEm/ativo abaixo e suba no GitHub — vale pra
+// todo mundo, sem precisar de Play Store. Pra desligar na hora, antes do prazo (ex.: erro de
+// digitação), marque ativo:false. expiraEm SEMPRE com o offset de Brasília "-03:00" explícito
+// no final — sem isso, o horário pode ser lido diferente dependendo do fuso do aparelho de
+// quem estiver usando (mesmo cuidado do bug de timezone que já pegamos em outras partes do app).
+const AVISO_ATUAL = {
+  ativo: true,
+  texto: 'Testando nossa comunicação!',
+  expiraEm: '2026-07-23T23:22:00-03:00'
+};
+
 // Token do usuário logado — atualizado no onLoginSucesso
 let _authToken = null;
 
@@ -2699,6 +2719,7 @@ async function initApp() {
   if (typeof ativarPushAposLogin === 'function') ativarPushAposLogin();
   carregarBadgeNotif();
   carregarBadgeTarefas();
+  _atualizarIconeAviso();
   // Backup automático local em background — nunca bloqueia a UI nem trava o app se falhar
   verificarBackupLocalDiario();
   // Configura visibilidade inicial do form de novo contrato
@@ -12313,6 +12334,42 @@ async function atualizarBadgeDesid() {
 }
 
 // Carrega badge ao iniciar
+// Verifica se o aviso atual deve aparecer agora: precisa estar ativo E ainda dentro do prazo.
+// Qualquer problema (data malformada, campo faltando, AVISO_ATUAL ausente) faz retornar false —
+// o ícone simplesmente não aparece, nunca trava o carregamento do app por causa disso.
+function _avisoAtualEstaAtivo() {
+  try {
+    if (!AVISO_ATUAL || !AVISO_ATUAL.ativo || !AVISO_ATUAL.expiraEm) return false;
+    const expira = new Date(AVISO_ATUAL.expiraEm);
+    if (isNaN(expira.getTime())) return false;
+    return new Date() < expira;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Mostra ou esconde o ícone 📢 no header (com o piscar via CSS). Chamada uma vez no
+// carregamento do app — não fica checando em loop.
+function _atualizarIconeAviso() {
+  try {
+    const btn = document.getElementById('btn-aviso');
+    if (!btn) return;
+    if (_avisoAtualEstaAtivo()) {
+      btn.style.display = '';
+      btn.classList.add('piscando');
+    } else {
+      btn.style.display = 'none';
+      btn.classList.remove('piscando');
+    }
+  } catch (e) { /* nunca deixa isso quebrar o carregamento do app */ }
+}
+
+// Abre o texto do aviso atual — reaproveita o popup padrão do app, sem componente novo.
+function abrirAvisoAtual() {
+  if (!AVISO_ATUAL || !AVISO_ATUAL.texto) return;
+  mostrarAlerta({ emoji: '📢', titulo: 'Aviso', mensagem: AVISO_ATUAL.texto });
+}
+
 async function carregarBadgeNotif() {
   try {
     const manuais = await sbFetch('notif_manuais?disparada=eq.false&select=id');
