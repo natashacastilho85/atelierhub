@@ -17,7 +17,7 @@ self.addEventListener('push', function(event) {
     icon:    '/icon-notific.png',
     badge:   '/icon-notific.png',
     tag:     data.tag || 'atelierhub',
-    data:    { contratoId: data.contratoId || null },
+    data:    { contratoId: data.contratoId || null, tag: data.tag || null },
     vibrate: [200, 100, 200],
     requireInteraction: false,
   };
@@ -31,8 +31,20 @@ self.addEventListener('notificationclick', function(event) {
   event.notification.close();
 
   const contratoId = event.notification.data && event.notification.data.contratoId;
+  const tag = (event.notification.data && event.notification.data.tag) || '';
+  // Casamento e lembrete de saldo têm mensagem pronta pra cliente — abrem o botão de WhatsApp.
+  // Qualquer outro tipo de aviso (produção, buquê, etc.) continua abrindo o contrato, como sempre.
+  const ehCasamento = tag.startsWith('casamento-');
+  const ehSaldo = tag.startsWith('reserva-') || tag.startsWith('entregaprazo-');
   const base = self.registration.scope;
-  const url  = contratoId ? `${base}?contrato=${contratoId}` : base;
+  let url;
+  if (contratoId && (ehCasamento || ehSaldo)) {
+    url = `${base}?wa=${contratoId}&waTipo=${ehCasamento ? 'casamento' : 'saldo'}`;
+  } else if (contratoId) {
+    url = `${base}?contrato=${contratoId}`;
+  } else {
+    url = base;
+  }
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(list) {
