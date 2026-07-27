@@ -202,6 +202,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
   .metric-value { font-family:'Calibri',serif; font-size:1.55rem; font-weight:400; color:var(--dark); line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .metric-value.gold { color:var(--gold); }
   .metric-sub { font-size:0.62rem; color:var(--muted); margin-top:0.25rem; }
+  .mini-info-card { background:white; border:1px solid rgba(184,134,42,0.16); border-radius:8px; padding:0.5rem 1rem; box-shadow:0 1px 6px rgba(42,26,14,0.06); font-size:0.72rem; color:var(--muted); text-align:center; margin-bottom:0.75rem; }
 
   /* ── CARD PRODUÇÃO ── */
   .producao-card { background:white; border:1px solid rgba(184,134,42,0.16); border-radius:8px; padding:1rem; margin-bottom:1.2rem; box-shadow:0 1px 6px rgba(42,26,14,0.06); position:relative; overflow:hidden; }
@@ -917,7 +918,6 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
         <div class="metric-card">
           <div class="metric-left">
             <div class="metric-label">Faturamento · <span id="mes-label"></span></div>
-            <div class="metric-sub" id="metric-contratos-mes">— contratos</div>
           </div>
           <div class="metric-value gold" id="metric-faturamento">R$ —</div>
         </div>
@@ -929,6 +929,8 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
           <div class="metric-value" id="metric-areceber">R$ —</div>
         </div>
       </div>
+
+      <div class="mini-info-card" id="metric-contratos-mes">— contratos fechados</div>
 
       <!-- Devedores (só aparece se houver) -->
       <div id="devedores-section" style="display:none">
@@ -1412,7 +1414,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       <div class="field-group">
         <label class="field-label">Prazo de quitação</label>
         <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer;margin-bottom:0.3rem">
-          <input type="radio" name="c-tipoquitacao-reserva" value="casamento" checked style="width:14px;height:14px;accent-color:var(--brown)"> Antes do casamento
+          <input type="radio" name="c-tipoquitacao-reserva" value="casamento" style="width:14px;height:14px;accent-color:var(--brown)"> Antes do casamento
         </label>
         <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
           <input type="radio" name="c-tipoquitacao-reserva" value="entrega" style="width:14px;height:14px;accent-color:var(--brown)"> Após entrega
@@ -1427,7 +1429,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
           <input type="radio" name="c-tipoquitacao-entregaprazo" value="casamento" style="width:14px;height:14px;accent-color:var(--brown)"> Antes do casamento
         </label>
         <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
-          <input type="radio" name="c-tipoquitacao-entregaprazo" value="entrega" checked style="width:14px;height:14px;accent-color:var(--brown)"> Após entrega
+          <input type="radio" name="c-tipoquitacao-entregaprazo" value="entrega" style="width:14px;height:14px;accent-color:var(--brown)"> Após entrega
         </label>
       </div>
     </div>
@@ -2082,7 +2084,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
 </div>
 
 <!-- DRAWER CUSTOS CONFIGURÁVEIS -->
-<div class="drawer-overlay" id="drawer-custos" onclick="closeDrawer('drawer-custos')">
+<div class="drawer-overlay" id="drawer-custos" onclick="fecharConfiguracoes()">
   <div class="drawer" onclick="event.stopPropagation()" style="max-height:95vh">
     <div class="drawer-handle"></div>
     <div class="drawer-title">⚙️ Configurações</div>
@@ -2301,7 +2303,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     <div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.2rem">💍 Mensagem do dia do casamento</div>
     <textarea id="cfg-msg-casamento" style="width:100%;border:1px solid rgba(184,134,42,0.25);border-radius:8px;padding:0.65rem;font-size:0.78rem;color:var(--text);background:var(--card-bg);resize:vertical;min-height:90px;font-family:Calibri,sans-serif;line-height:1.5;margin-bottom:0.8rem"></textarea>
     <button class="btn-primary" onclick="salvarCustos()">💾 Salvar</button>
-    <button class="btn-secondary" onclick="closeDrawer('drawer-custos')">Fechar</button>
+    <button class="btn-secondary" onclick="fecharConfiguracoes()">Fechar</button>
     <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid rgba(184,134,42,0.15)">
     <div style="font-size:0.8rem;color:var(--brown);font-weight:600;margin-bottom:0.5rem;">Exportar dados</div>
       <button onclick="exportarDadosPDF()" style="width:100%;background:transparent;border:1px solid rgba(184,134,42,0.35);border-radius:8px;padding:0.65rem;color:var(--brown);font-size:0.82rem;cursor:pointer;letter-spacing:0.02em">📄 Exportar meus dados (PDF)</button>
@@ -2508,6 +2510,16 @@ function totalEntradaCaixa(c) {
 function totalPagoPorForma(c, forma) {
   if (!Array.isArray(c.pagamentos)) return 0;
   return c.pagamentos.filter(p=>p.forma===forma).reduce((s,p) => s + (parseFloat(p.valor)||0), 0);
+}
+
+// Devolve os pagamentos "reais" de um contrato pra fins de relatório (Início, Financeiro,
+// Comparativos): usa o array de pagamentos quando existe; se estiver vazio mas o contrato tem
+// um valor pago legado (c.pago), sintetiza um único registro na data de assinatura. Única
+// fonte de "dinheiro recebido" usada em todo lugar que soma isso — nunca diverge entre telas.
+function pagamentosDoContrato(c) {
+  if (Array.isArray(c.pagamentos) && c.pagamentos.length) return c.pagamentos;
+  if ((c.pago||0) > 0) return [{ data: c.contrato, valor: c.pago, forma: '—' }];
+  return [];
 }
 
 const _fmtDataBR = s => s ? s.split('-').reverse().join('/') : '—';
@@ -2750,10 +2762,12 @@ function renderMetricas() {
     const mesAtual = String(hoje.getMonth() + 1).padStart(2, '0');
     const ctrsAtivos = contratos.filter(c => c && c.status !== 'Cancelado');
 
-    // Faturamento do mês atual
+    // Faturamento do mês atual = dinheiro recebido no mês, de qualquer contrato — mesma fonte
+    // usada em Financeiro e Comparativos, nunca diverge.
     const fat = ctrsAtivos
-      .filter(c => c.contrato && typeof c.contrato === 'string' && c.contrato.startsWith(ano + '-' + mesAtual))
-      .reduce((s, c) => s + calcValorAPagar(c), 0);
+      .flatMap(pagamentosDoContrato)
+      .filter(p => p.data && typeof p.data === 'string' && p.data.startsWith(ano + '-' + mesAtual))
+      .reduce((s, p) => s + (parseFloat(p.valor) || 0), 0);
 
     const nMes = ctrsAtivos.filter(c => c.contrato && typeof c.contrato === 'string' && c.contrato.startsWith(ano + '-' + mesAtual)).length;
 
@@ -2768,7 +2782,7 @@ function renderMetricas() {
     const elRec = document.getElementById('metric-areceber');
 
     if (elFat) elFat.textContent = fat > 0 ? 'R$ ' + fat.toLocaleString('pt-BR', { minimumFractionDigits: 0 }) : 'R$ 0';
-    if (elCtrs) elCtrs.textContent = nMes + ' contrato' + (nMes === 1 ? '' : 's');
+    if (elCtrs) elCtrs.textContent = nMes + ' contrato' + (nMes === 1 ? '' : 's') + ' fechado' + (nMes === 1 ? '' : 's') + ' em ' + mesesNomes[hoje.getMonth()].toLowerCase();
     if (elRec) elRec.textContent = aReceber > 0 ? 'R$ ' + aReceber.toLocaleString('pt-BR', { minimumFractionDigits: 0 }) : 'R$ 0';
     
     const elSub = document.getElementById('metric-areceber-sub');
@@ -2884,14 +2898,13 @@ function openFab() {
   document.getElementById('c-envio').value = 'Correios';
   document.getElementById('c-status-cancelado').checked = false;
   const primeiraFormaAtiva = getPrimeiraFormaAtivaMinuscula();
-  document.getElementById('c-tipo-contrato').innerHTML = getOpcoesTipoContratoHTML('simples');
-  document.getElementById('c-tipo-contrato').value = 'simples';
-  document.getElementById('c-forma-simples').innerHTML = getOpcoesFormaSimplesHTML(primeiraFormaAtiva);
-  document.getElementById('c-forma-simples').value = primeiraFormaAtiva;
+  document.getElementById('c-tipo-contrato').innerHTML = getOpcoesTipoContratoHTML(null);
+  document.getElementById('c-forma-simples').innerHTML = getOpcoesFormaSimplesHTML(null);
   document.getElementById('c-reserva-forma').innerHTML = getOpcoesFormaPagamentoHTML(null);
   document.getElementById('forma-pag-select').value = primeiraFormaAtiva;
+  document.querySelectorAll('input[name="c-tipoquitacao-reserva"], input[name="c-tipoquitacao-entregaprazo"]').forEach(r => r.checked = false);
   const grpFormaSimplesReset = document.getElementById('c-grp-forma-simples');
-  if (grpFormaSimplesReset) grpFormaSimplesReset.style.display = '';
+  if (grpFormaSimplesReset) grpFormaSimplesReset.style.display = 'none';
   const btnInfoTipoReset = document.getElementById('c-btn-info-tipo-contrato');
   if (btnInfoTipoReset) btnInfoTipoReset.style.display = 'none';
   const btnInfoFormaReset = document.getElementById('c-btn-info-forma-simples');
@@ -2899,7 +2912,10 @@ function openFab() {
   document.getElementById('c-f-iniciais').value = 'Não';
   _preencherSelectPresente('c-f-presente');
   document.getElementById('pecas-selecionadas').innerHTML = '';
-  onFormaPagChange(primeiraFormaAtiva);
+  const hintReservaReset = document.getElementById('hint-reserva');
+  if (hintReservaReset) hintReservaReset.classList.remove('visible');
+  const hintEntregaReset = document.getElementById('hint-entregaprazo');
+  if (hintEntregaReset) hintEntregaReset.classList.remove('visible');
   const celIntl = document.getElementById('c-tel-intl');
   if (celIntl) celIntl.checked = false;
   toggleTelefoneIntl('c', false);
@@ -3155,6 +3171,18 @@ async function saveContrato() {
   const cpf = document.getElementById('c-cpf').value;
   const formaPag = document.getElementById('forma-pag-select').value;
 
+  // Tipo de contrato e forma de pagamento são obrigatórios — nada vem pré-escolhido, a pessoa
+  // sempre escolhe as características do contrato na hora de cadastrar.
+  const tipoContratoEscolhido = document.getElementById('c-tipo-contrato').value;
+  if (!tipoContratoEscolhido) {
+    mostrarAlerta({ emoji: '⚠️', titulo: 'Tipo de contrato', mensagem: 'Escolha o tipo de contrato: Pagamento total imediato, Reserva com entrada ou Reserva sem entrada.' });
+    return;
+  }
+  if (tipoContratoEscolhido === 'simples' && !document.getElementById('c-forma-simples').value) {
+    mostrarAlerta({ emoji: '⚠️', titulo: 'Forma de pagamento', mensagem: 'Escolha a forma de pagamento.' });
+    return;
+  }
+
   // CPF é opcional — só valida se algo foi digitado
   if (cpf && !validarCPF(cpf)) {
     mostrarAlerta({ emoji: '⚠️', titulo: 'CPF inválido', mensagem: 'O CPF digitado não é válido. Confira os números ou deixe o campo em branco.' });
@@ -3170,12 +3198,21 @@ async function saveContrato() {
     }
   }
 
-  // Prazo de quitação (só relevante pra Reserva com/sem entrada) — lê o rádio do bloco visível
+  // Prazo de quitação (só relevante pra Reserva com/sem entrada) — obrigatório também, sem
+  // palpite: se a forma for reserva/entrega_prazo e nenhum rádio estiver marcado, bloqueia.
   let tipoQuitacao = null;
   if (formaPag === 'reserva') {
-    tipoQuitacao = document.querySelector('input[name="c-tipoquitacao-reserva"]:checked')?.value || 'casamento';
+    tipoQuitacao = document.querySelector('input[name="c-tipoquitacao-reserva"]:checked')?.value || null;
+    if (!tipoQuitacao) {
+      mostrarAlerta({ emoji: '⚠️', titulo: 'Prazo de quitação', mensagem: 'Escolha o prazo de quitação: antes do casamento ou após a entrega.' });
+      return;
+    }
   } else if (formaPag === 'entrega_prazo') {
-    tipoQuitacao = document.querySelector('input[name="c-tipoquitacao-entregaprazo"]:checked')?.value || 'entrega';
+    tipoQuitacao = document.querySelector('input[name="c-tipoquitacao-entregaprazo"]:checked')?.value || null;
+    if (!tipoQuitacao) {
+      mostrarAlerta({ emoji: '⚠️', titulo: 'Prazo de quitação', mensagem: 'Escolha o prazo de quitação: antes do casamento ou após a entrega.' });
+      return;
+    }
   }
 
   const descontoTipoDigitado = document.getElementById('c-desconto-tipo')?.value || 'valor';
@@ -4038,13 +4075,7 @@ function renderFinanceiro() {
 
   // Contratos ativos com contrato assinado em 2026
   const ctrsAno = contratos.filter(c=>c.status!=='Cancelado' && c.contrato.startsWith(ano));
-  // Todos os pagamentos do ano (filtrados pela data do pagamento)
-  // Pra cada contrato, percorre c.pagamentos[]; se vazio, atribui c.pago à data do contrato
-  function pagamentosDoContrato(c) {
-    if (Array.isArray(c.pagamentos) && c.pagamentos.length) return c.pagamentos;
-    if ((c.pago||0) > 0) return [{ data: c.contrato, valor: c.pago, forma: '—' }];
-    return [];
-  }
+  // Todos os pagamentos do ano (filtrados pela data do pagamento) — usa a função compartilhada
   const todosPags = contratos
     .filter(c=>c.status!=='Cancelado')
     .flatMap(pagamentosDoContrato)
@@ -4052,7 +4083,7 @@ function renderFinanceiro() {
 
   const gastosAno = gastos.filter(g=>g.data.startsWith(ano));
 
-  const totalContratado = ctrsAno.reduce((s,c)=>s+c.valorBruto, 0);
+  const totalContratado = ctrsAno.reduce((s,c)=>s+calcValorAPagar(c), 0);
   const totalRecebido   = todosPags.reduce((s,p)=>s+(parseFloat(p.valor)||0), 0);
   const totalSaida      = gastosAno.reduce((s,g)=>s+g.valor, 0);
   const totalResult     = totalRecebido - totalSaida;
@@ -4068,7 +4099,7 @@ function renderFinanceiro() {
   document.getElementById('financeiro-list').innerHTML = mesesNomes.map((nome,i)=>{
     const m = String(i+1).padStart(2,'0');
     const prefMes = ano+'-'+m;
-    const contratadoMes = ctrsAno.filter(c=>c.contrato.startsWith(prefMes)).reduce((s,c)=>s+c.valorBruto, 0);
+    const contratadoMes = ctrsAno.filter(c=>c.contrato.startsWith(prefMes)).reduce((s,c)=>s+calcValorAPagar(c), 0);
     const recebidoMes = todosPags.filter(p=>p.data.startsWith(prefMes)).reduce((s,p)=>s+(parseFloat(p.valor)||0), 0);
     const saidMes = gastosAno.filter(g=>g.data.startsWith(prefMes)).reduce((s,g)=>s+g.valor, 0);
     const resMes  = recebidoMes - saidMes;
@@ -4083,7 +4114,7 @@ function renderFinanceiro() {
       </div>
       <div class="fin-month-body">
         <div class="fin-row"><span class="lbl">Novos contratos</span><span class="val" style="color:var(--brown)">${contratadoMes>0?'R$ '+contratadoMes.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</span></div>
-        <div class="fin-row"><span class="lbl">Recebido no mês</span><span class="val green">${recebidoMes>0?'R$ '+recebidoMes.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</span></div>
+        <div class="fin-row"><span class="lbl">Faturamento</span><span class="val green">${recebidoMes>0?'R$ '+recebidoMes.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</span></div>
         <div class="fin-row"><span class="lbl">Saída</span><span class="val red">${saidMes>0?'− R$ '+saidMes.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</span></div>
         <div class="fin-divider"></div>
         <div class="fin-row"><span class="lbl">Resultado líquido</span><span class="val gold">${resMes!==0?'R$ '+resMes.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}</span></div>
@@ -4391,14 +4422,19 @@ async function saveGasto() {
         const mudouValor = valorRaw !== (gEditando.valor_total_compra || gEditando.valor * gEditando.parcela_total);
 
         if (numParcelas === 1) {
-          // Mudou de parcelado para 1× — exclui grupo e cria registro simples
+          // Mudou de parcelado para 1× — cria o novo PRIMEIRO; só apaga o grupo antigo depois de
+          // confirmar que o novo existe. Se falhar no meio, o pior caso é ficar duplicado
+          // (fácil de perceber e corrigir), nunca as parcelas antigas sumidas sem substituto.
+          const [novoRegistro] = await sbInsert('gastos', { produto, fornecedor, data, valor: valorRaw, forma: 'Cartão', cartao_nome: cartao.nome });
+          if (!novoRegistro) throw new Error('O gasto não foi confirmado pelo servidor. Tente novamente.');
           for (const x of grupo) await sbDelete('gastos', x.id);
-          await sbInsert('gastos', { produto, fornecedor, data, valor: valorRaw, forma: 'Cartão', cartao_nome: cartao.nome });
 
         } else if (mudouData || mudouCartaoOuParcelas) {
-          // Data, cartão ou nº parcelas mudou — recria grupo inteiro
-          for (const x of grupo) await sbDelete('gastos', x.id);
+          // Data, cartão ou nº parcelas mudou — cria o grupo novo PRIMEIRO (criarParcelasNoBanco
+          // já confirma que todas as parcelas foram criadas antes de retornar), só apaga o
+          // grupo antigo depois.
           await criarParcelasNoBanco(produto, fornecedor, data, valorRaw, cartao, numParcelas);
+          for (const x of grupo) await sbDelete('gastos', x.id);
 
         } else {
           // Só produto/fornecedor e/ou valor — atualiza cirurgicamente
@@ -4421,9 +4457,10 @@ async function saveGasto() {
       } else {
         // ── Edição simples (Pix, Débito, ou Cartão 1×) ──
         if (isCartao && numParcelas > 1) {
-          // Mudou de simples para parcelado — exclui e recria como grupo
-          await sbDelete('gastos', gastoEditandoId);
+          // Mudou de simples para parcelado — cria o grupo novo primeiro, apaga o registro
+          // antigo só depois de confirmado.
           await criarParcelasNoBanco(produto, fornecedor, data, valorRaw, cartao, numParcelas);
+          await sbDelete('gastos', gastoEditandoId);
         } else {
           const updateBody = { produto, fornecedor, data, valor: valorRaw, forma };
           if (isCartao && cartao) updateBody.cartao_nome = cartao.nome;
@@ -4497,7 +4534,10 @@ async function criarParcelasNoBanco(produto, fornecedor, dataCompra, valorTotal,
       valor_total_compra: valorTotal
     });
   });
-  await sbInsertBatch('gastos', registros);
+  const criados = await sbInsertBatch('gastos', registros);
+  if (!Array.isArray(criados) || criados.length !== registros.length) {
+    throw new Error('As parcelas não foram todas confirmadas pelo servidor. Tente novamente.');
+  }
 }
 
 async function excluirGasto() {
@@ -4709,15 +4749,9 @@ function getMesesAno(ano) {
   return mesesNomes.map(function(_, i) {
     var m = String(i+1).padStart(2,'0');
     var cts = contratos.filter(function(c) { return c.status !== 'Cancelado'; });
-    var recebidoMes = 0;
-    cts.forEach(function(c) {
-      (c.pagamentos||[]).forEach(function(p) {
-        if ((p.data||'').startsWith(anoStr+'-'+m)) recebidoMes += parseFloat(p.valor)||0;
-      });
-      if ((!c.pagamentos||!c.pagamentos.length) && (c.pago||0) > 0) {
-        if ((c.contrato||'').startsWith(anoStr+'-'+m)) recebidoMes += parseFloat(c.pago)||0;
-      }
-    });
+    var recebidoMes = cts.flatMap(pagamentosDoContrato)
+      .filter(function(p) { return (p.data||'').startsWith(anoStr+'-'+m); })
+      .reduce(function(s,p) { return s + (parseFloat(p.valor)||0); }, 0);
     return {
       noivas: cts.filter(function(c) { return c.casamento && c.casamento.startsWith(anoStr+'-'+m); }).length,
       contratos: cts.filter(function(c) { return c.contrato && c.contrato.startsWith(anoStr+'-'+m); }).length,
@@ -5357,10 +5391,8 @@ function gerarLucroPorPeriodo() {
     var prefixo = m.ano + '-' + m.mm;
     // Receita = pagamentos recebidos no mês
     var receita = 0;
-    contratos.filter(function(c){ return c.status !== 'Cancelado'; }).forEach(function(c) {
-      (c.pagamentos||[]).forEach(function(p) {
-        if ((p.data||'').startsWith(prefixo)) receita += parseFloat(p.valor)||0;
-      });
+    contratos.filter(function(c){ return c.status !== 'Cancelado'; }).flatMap(pagamentosDoContrato).forEach(function(p) {
+      if ((p.data||'').startsWith(prefixo)) receita += parseFloat(p.valor)||0;
     });
     // Custo estimado = contratos fechados no mês
     var custo = 0;
@@ -6943,7 +6975,10 @@ async function excluirContrato() {
     txtConfirmar: 'Excluir',
     onConfirmar: async () => {
       try {
-        await sbDelete('contratos', _id);
+        const apagados = await sbDelete('contratos', _id);
+        if (!Array.isArray(apagados) || apagados.length === 0) {
+          throw new Error('A exclusão não foi confirmada pelo servidor. Tente novamente.');
+        }
         contratos = contratos.filter(x => x.id !== _id);
         closeDrawer('drawer-edit');
         contratoEditandoId = null;
@@ -6966,7 +7001,10 @@ async function excluirContratoDoDetalhe(id) {
     corConfirmar: 'var(--bordeaux)',
     onConfirmar: async () => {
       try {
-        await sbDelete('contratos', id);
+        const apagados = await sbDelete('contratos', id);
+        if (!Array.isArray(apagados) || apagados.length === 0) {
+          throw new Error('A exclusão não foi confirmada pelo servidor. Tente novamente.');
+        }
         contratos = contratos.filter(x => x.id !== id);
         closeDrawer('drawer-detail');
         renderAll();
@@ -7108,8 +7146,10 @@ function _atualizarBotaoSalvarTipo() {
   let prazoMudou = false;
   if (tipo === 'reserva' || tipo === 'entrega_prazo') {
     const novoTQ = document.querySelector('input[name="lp-tipoquitacao"]:checked')?.value || null;
-    const tqAtual = c.tipoQuitacao || (c.formaPag === 'reserva' ? 'casamento' : (c.formaPag === 'entrega_prazo' ? 'entrega' : null));
-    if (novoTQ && novoTQ !== tqAtual) prazoMudou = true;
+    // Compara com o valor CRU gravado (c.tipoQuitacao), nunca com o inferido — se estiver
+    // vazio, qualquer seleção é uma mudança real (é a primeira vez que fica confirmado de
+    // verdade), mesmo que coincida com o palpite que a tela mostra quando está vazio.
+    if (novoTQ && novoTQ !== c.tipoQuitacao) prazoMudou = true;
   }
   if (!tipoMudou && !prazoMudou) { btn.style.display = 'none'; return; }
   btn.style.display = '';
@@ -7695,6 +7735,9 @@ const CUSTOS_DEFAULT = {
 };
 
 let custosConfig = {...CUSTOS_DEFAULT};
+// Foto do custosConfig no momento em que a tela de Configurações abre — comparada na hora de
+// fechar, pra avisar se há alteração não salva. null = tela nunca foi aberta nesta sessão.
+let _custosConfigSnapshot = null;
 
 async function carregarCustosSupabase() {
   try {
@@ -7883,7 +7926,8 @@ function getFormasParaExibir(valorAtual) {
 // Opções em minúsculo (Forma de Pagamento, dentro de "Pagamento total imediato") — inclui Misto
 function getOpcoesFormaSimplesHTML(valorAtual) {
   const formas = getFormasParaExibir(valorAtual);
-  let html = formas.map(m => `<option value="${m.minusculo}" ${m.minusculo === valorAtual ? 'selected' : ''}>${m.label}</option>`).join('');
+  let html = !valorAtual ? `<option value="" disabled selected>Selecione a forma de pagamento...</option>` : '';
+  html += formas.map(m => `<option value="${m.minusculo}" ${m.minusculo === valorAtual ? 'selected' : ''}>${m.label}</option>`).join('');
   const mistoConfig = (custosConfig.formasPag || []).find(f => f.id === 'misto');
   const mistoAtivo = mistoConfig ? !!mistoConfig.ativa : true;
   const ehMistoAtual = valorAtual === 'misto';
@@ -7905,7 +7949,8 @@ function getOpcoesTipoContratoHTML(valorAtual) {
   const config = custosConfig.formasPag || [];
   const reservaAtiva = (config.find(f => f.id === 'reserva')?.ativa) ?? true;
   const entregaAtiva = (config.find(f => f.id === 'entrega_prazo')?.ativa) ?? true;
-  let html = `<option value="simples" ${valorAtual === 'simples' ? 'selected' : ''}>Pagamento total imediato</option>`;
+  let html = !valorAtual ? `<option value="" disabled selected>Selecione o tipo de contrato...</option>` : '';
+  html += `<option value="simples" ${valorAtual === 'simples' ? 'selected' : ''}>Pagamento total imediato</option>`;
   if (reservaAtiva || valorAtual === 'reserva') {
     html += `<option value="reserva" ${valorAtual === 'reserva' ? 'selected' : ''}>Reserva com entrada</option>`;
   }
@@ -8410,6 +8455,7 @@ async function salvarCustos() {
     // Salva no Supabase (sincroniza entre todos os dispositivos)
     await sbSaveConfig('villare-custos', custosConfig);
     localStorage.removeItem('villare-custos'); // Remove versão local antiga se existir
+    _custosConfigSnapshot = JSON.stringify(custosConfig); // salvou de verdade — foto atualizada
 
     // Atualiza as telas sem fechar o drawer
     if (typeof _renderPrecBody === 'function') _renderPrecBody();
@@ -8683,10 +8729,13 @@ async function exportarDadosPDF() {
         ? c.pecas.map(p => `${p.qtd||1}x ${p.nome} — ${fmtR(p.valor)}`).join('\n')
         : 'Nenhuma peça registrada.';
       const f = c.ficha_producao || {};
+      const obsPecasTexto = (f.obsPecas && Object.keys(f.obsPecas).length)
+        ? Object.entries(f.obsPecas).map(([nome, obs]) => `${nome}: ${obs}`).join('\n')
+        : null;
       const fichaLinhas = [
         ['Nome da noiva', f.nomeNoiva], ['Nome do noivo', f.nomeNoivo], ['Instagram', f.instagram],
         ['Quem fez o buquê', f.quemFezBuque], ['Cerimonialista', f.cerimonialista], ['Quem indicou', f.quemIndicou],
-        ['Iniciais/data gravada', f.iniciaisData], ['Observações', f.obsGeral],
+        ['Iniciais/data gravada', f.iniciaisData], ['Observações por peça', obsPecasTexto], ['Observações', f.obsGeral],
       ].filter(([,v]) => v);
 
       tabelaChaveValor([
@@ -10439,7 +10488,12 @@ function abrirFichaProducao(id) {
   openDrawer('drawer-ficha');
 }
 
-function _coletarDadosFicha() {
+function _coletarDadosFicha(c) {
+  const obsPecas = {};
+  (c.pecas || []).forEach((p, i) => {
+    const el = document.getElementById('f-obs-' + i);
+    if (el && el.value.trim()) obsPecas[p.nome] = el.value.trim();
+  });
   return {
     nomeNoiva: document.getElementById('f-noiva').value,
     nomeNoivo: document.getElementById('f-noivo').value,
@@ -10448,6 +10502,7 @@ function _coletarDadosFicha() {
     quemIndicou: document.getElementById('f-indicou').value,
     cerimonialista: document.getElementById('f-cerimonialista').value,
     iniciaisData: document.getElementById('f-iniciais').value,
+    obsPecas,
     /* presente vem da coluna contratos.presente, não da ficha */
     obsGeral: document.getElementById('f-obs-geral').value
   };
@@ -10456,10 +10511,11 @@ function _coletarDadosFicha() {
 async function salvarFicha() {
   const c = contratos.find(x => x.id === fichaContratoId);
   if (!c) return;
-  const f = _coletarDadosFicha();
+  const f = _coletarDadosFicha(c);
   const presenteVal = _lerPresenteCheckboxes('f-presente');
   try {
-    await sbUpdate('contratos', c.id, { ficha_producao: f, presente: presenteVal });
+    const [r] = await sbUpdate('contratos', c.id, { ficha_producao: f, presente: presenteVal });
+    if (!r) throw new Error('A ficha não foi confirmada pelo servidor. Tente novamente.');
     c.ficha_producao = f;
     c.presente = presenteVal;
     const btn = document.querySelector('#drawer-ficha .btn-primary');
@@ -10472,7 +10528,7 @@ async function salvarFicha() {
 function imprimirFicha() {
   const c = contratos.find(x => x.id === fichaContratoId);
   if (!c) return;
-  const f = _coletarDadosFicha();
+  const f = _coletarDadosFicha(c);
   gerarImpressaoFicha(c, f);
 }
 
@@ -11085,7 +11141,8 @@ function removerOpcaoPresente(idx) {
     for (const c of afetados) {
       try {
         const novoArr = c.presente.filter(p => p !== nomePresente);
-        await sbUpdate('contratos', c.id, { presente: novoArr.length ? novoArr : null });
+        const [r] = await sbUpdate('contratos', c.id, { presente: novoArr.length ? novoArr : null });
+        if (!r) throw new Error('Atualização não confirmada pelo servidor');
         c.presente = novoArr;
       } catch(e) {
         falhas++;
@@ -11155,6 +11212,28 @@ function _lerPresenteCheckboxes(containerId) {
   return Array.from(el.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
 }
 
+// Compara o estado atual com a foto tirada ao abrir — se mudou e não foi salvo, avisa antes de
+// fechar. Se a pessoa confirmar que quer sair mesmo assim, descarta as mudanças na hora (volta
+// pro estado salvo), pra não ficar uma versão "fantasma" editada só na tela pelo resto da sessão.
+function fecharConfiguracoes() {
+  const atual = JSON.stringify(custosConfig);
+  if (_custosConfigSnapshot !== null && atual !== _custosConfigSnapshot) {
+    mostrarConfirm({
+      emoji: '⚠️',
+      titulo: 'Sair sem salvar?',
+      mensagem: 'Você tem alterações que ainda não foram salvas. Elas serão perdidas se sair agora.',
+      txtCancelar: 'Continuar editando',
+      txtConfirmar: 'Sair sem salvar',
+      onConfirmar: () => {
+        custosConfig = JSON.parse(_custosConfigSnapshot);
+        closeDrawer('drawer-custos');
+      }
+    });
+  } else {
+    closeDrawer('drawer-custos');
+  }
+}
+
 function openConfiguracoes() {
   const elNome = document.getElementById('c-user-nome');
   if (elNome) elNome.value = window._currentUserName || '';
@@ -11212,6 +11291,7 @@ function openConfiguracoes() {
   if (elMsgCob) elMsgCob.value = custosConfig.msgWACobranca || CUSTOS_DEFAULT.msgWACobranca;
   const elMsgCas = document.getElementById('cfg-msg-casamento');
   if (elMsgCas) elMsgCas.value = custosConfig.msgWACasamento || CUSTOS_DEFAULT.msgWACasamento;
+  _custosConfigSnapshot = JSON.stringify(custosConfig);
   openDrawer('drawer-custos');
 }
 
@@ -11328,6 +11408,7 @@ async function salvarProcessos(aplicarATodas) {
     salvarPrecLocal();
     await sbSaveConfig('villare-custos', custosConfig);
     localStorage.removeItem('villare-custos');
+    _custosConfigSnapshot = JSON.stringify(custosConfig); // salvou de verdade — foto atualizada
     closeDrawer('drawer-processos');
     if (typeof _renderPrecBody === 'function') _renderPrecBody();
   } catch (erro) {
@@ -12056,13 +12137,14 @@ async function abrirNovaDesid() {
   const sel = document.getElementById('desid-contrato-sel');
   sel.innerHTML = '<option value="">selecione a noiva</option>';
   try {
-    // Busca todos ativos e filtra pelo statusEfetivo (chegada preenchida, entrega não)
+    // Busca todos ativos e filtra pelo statusEfetivo — mesma função usada em todo o resto do
+    // app, nunca reimplementada aqui, pra nunca discordar se a regra de "em produção" mudar
     const [lista, desidAtivas] = await Promise.all([
-      sbFetch('contratos?status=neq.Cancelado&order=nome.asc&select=id,nome,pecas,chegada,entrega'),
+      sbFetch('contratos?status=neq.Cancelado&order=nome.asc&select=id,nome,pecas,chegada,entrega,status,casamento'),
       sbFetch('desidratacao?select=contrato_id')
     ]);
     const idsJaAtivos = new Set((desidAtivas || []).map(d => d.contrato_id));
-    const emProducao = (lista || []).filter(c => c.chegada && !c.entrega && !idsJaAtivos.has(c.id));
+    const emProducao = (lista || []).filter(c => statusEfetivo(c) === 'Produção' && !idsJaAtivos.has(c.id));
     emProducao.forEach(c => {
       const opt = document.createElement('option');
       opt.value = c.id;
@@ -12161,7 +12243,8 @@ async function salvarDesid() {
   d.setDate(d.getDate() + prazo);
   const dc = d.toISOString().slice(0,10);
   try {
-    await sbInsert('desidratacao', { contrato_id: cid ? parseInt(cid) : null, nome_noiva: nome, pecas, flores, observacoes: obs, data_inicio: di, data_conclusao: dc, concluido: false });
+    const [novoRegistro] = await sbInsert('desidratacao', { contrato_id: cid ? parseInt(cid) : null, nome_noiva: nome, pecas, flores, observacoes: obs, data_inicio: di, data_conclusao: dc, concluido: false });
+    if (!novoRegistro) throw new Error('O registro não foi confirmado pelo servidor. Tente novamente.');
     closeDrawer('drawer-nova-desid');
     await renderDesidLista();
     await atualizarBadgeDesid();
