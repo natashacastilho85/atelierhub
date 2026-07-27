@@ -47,16 +47,23 @@ self.addEventListener('notificationclick', function(event) {
   }
 
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(list) {
-      for (const client of list) {
-        if ('focus' in client) {
-          client.focus();
-          if (contratoId) client.navigate(url);
-          return;
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then(function(list) {
+        for (const client of list) {
+          if ('focus' in client) {
+            client.focus();
+            if (contratoId) return client.navigate(url);
+            return;
+          }
         }
-      }
-      if (clients.openWindow) return clients.openWindow(url);
-    })
+        return clients.openWindow(url);
+      })
+      .catch(function() {
+        // Se qualquer parte acima falhar (matchAll, focus, navigate — há restrições conhecidas
+        // de navigate() dentro de TWA), garante que ao menos uma janela nova abre. Nunca pode
+        // ficar em silêncio total, sem nada acontecer quando a pessoa toca na notificação.
+        return clients.openWindow(url);
+      })
   );
 });
 
