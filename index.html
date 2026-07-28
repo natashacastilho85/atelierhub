@@ -1385,7 +1385,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     </div>
     <div class="field-group" id="grp-desconto-inicial" style="display:none">
       <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
-        <input type="checkbox" id="c-aplicar-desconto-inicial" checked style="width:14px;height:14px;accent-color:var(--brown)">
+        <input type="checkbox" id="c-aplicar-desconto-inicial" style="width:14px;height:14px;accent-color:var(--brown)">
         Aplicar desconto padrão<span id="c-desconto-inicial-pct"></span>
       </label>
     </div>
@@ -1805,7 +1805,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
 
     <div class="field-group" id="pag-desc-grp" style="display:none">
       <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
-        <input type="checkbox" id="pag-aplicar-desconto" checked onchange="atualizarPreviewPag()" style="width:14px;height:14px;accent-color:var(--brown)">
+        <input type="checkbox" id="pag-aplicar-desconto" onchange="atualizarPreviewPag()" style="width:14px;height:14px;accent-color:var(--brown)">
         Aplicar desconto padrão<span id="pag-desc-pct"></span>
       </label>
     </div>
@@ -2905,6 +2905,14 @@ function openFab() {
   document.querySelectorAll('input[name="c-tipoquitacao-reserva"], input[name="c-tipoquitacao-entregaprazo"]').forEach(r => r.checked = false);
   const grpFormaSimplesReset = document.getElementById('c-grp-forma-simples');
   if (grpFormaSimplesReset) grpFormaSimplesReset.style.display = 'none';
+  // Fecha o mesmo bug de sessão anterior grudando na tela que já corrigimos no desconto/acréscimo:
+  // sem isso, o grupo podia continuar visível e marcado de um contrato anterior na mesma sessão.
+  const grpDescInicialReset = document.getElementById('grp-desconto-inicial');
+  if (grpDescInicialReset) grpDescInicialReset.style.display = 'none';
+  const chkDescInicialReset = document.getElementById('c-aplicar-desconto-inicial');
+  if (chkDescInicialReset) chkDescInicialReset.checked = false;
+  const pctDescInicialReset = document.getElementById('c-desconto-inicial-pct');
+  if (pctDescInicialReset) pctDescInicialReset.textContent = '';
   const btnInfoTipoReset = document.getElementById('c-btn-info-tipo-contrato');
   if (btnInfoTipoReset) btnInfoTipoReset.style.display = 'none';
   const btnInfoFormaReset = document.getElementById('c-btn-info-forma-simples');
@@ -3798,7 +3806,7 @@ function onFormaPagChange(val) {
     if (grpDescInicial) {
       grpDescInicial.style.display = (val === 'pix' || val === 'dinheiro' || val === 'debito') ? '' : 'none';
       const chk = document.getElementById('c-aplicar-desconto-inicial');
-      if (chk) chk.checked = true;
+      if (chk) chk.checked = false;
       const spanPct = document.getElementById('c-desconto-inicial-pct');
       if (spanPct) {
         const taxa = val === 'pix' ? getDescontoPix() : val === 'dinheiro' ? getDescontoDinheiro() : val === 'debito' ? getDescontoDebito() : 0;
@@ -6627,7 +6635,7 @@ function _renderModalPagamentoPeca() {
         </div>
         <div id="mpp-grp-desconto" style="display:none;margin-bottom:1rem">
           <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
-            <input type="checkbox" id="mpp-aplicar-desconto" checked style="width:14px;height:14px;accent-color:var(--brown)">
+            <input type="checkbox" id="mpp-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
             Aplicar desconto padrão<span id="mpp-desc-pct"></span>
           </label>
         </div>
@@ -6678,7 +6686,7 @@ function _selecionarFormaPagamentoPeca(forma) {
   if (grpDesc) {
     grpDesc.style.display = (forma === 'Pix' || forma === 'Dinheiro' || forma === 'Débito') ? '' : 'none';
     const chk = document.getElementById('mpp-aplicar-desconto');
-    if (chk) chk.checked = true;
+    if (chk) chk.checked = false;
     const spanPct = document.getElementById('mpp-desc-pct');
     if (spanPct) {
       const taxa = forma === 'Pix' ? getDescontoPix() : forma === 'Dinheiro' ? getDescontoDinheiro() : forma === 'Débito' ? getDescontoDebito() : 0;
@@ -7040,7 +7048,7 @@ function openNovoPagamento(contratoId) {
   document.getElementById('pag-data').value = hStr;
   document.getElementById('pag-valor').value = '';
   const chkDesc = document.getElementById('pag-aplicar-desconto');
-  if (chkDesc) chkDesc.checked = true;
+  if (chkDesc) chkDesc.checked = false;
   const chkCartaoDescReset = document.getElementById('pag-cartao-aplicar-desconto');
   if (chkCartaoDescReset) chkCartaoDescReset.checked = false;
   const tipoCartaoReset = document.getElementById('pag-cartao-desc-tipo');
