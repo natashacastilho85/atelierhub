@@ -1370,6 +1370,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     </div>
     <div style="display:none">
       <select class="field-input" id="forma-pag-select" onchange="onFormaPagChange(this.value)">
+        <option value=""></option>
         <option value="pix">Pix</option>
         <option value="debito">Débito</option>
         <option value="dinheiro">Dinheiro</option>
@@ -2897,11 +2898,10 @@ function openFab() {
   if (cAcrescPreviewReset) cAcrescPreviewReset.textContent = '';
   document.getElementById('c-envio').value = 'Correios';
   document.getElementById('c-status-cancelado').checked = false;
-  const primeiraFormaAtiva = getPrimeiraFormaAtivaMinuscula();
   document.getElementById('c-tipo-contrato').innerHTML = getOpcoesTipoContratoHTML(null);
   document.getElementById('c-forma-simples').innerHTML = getOpcoesFormaSimplesHTML(null);
   document.getElementById('c-reserva-forma').innerHTML = getOpcoesFormaPagamentoHTML(null);
-  document.getElementById('forma-pag-select').value = primeiraFormaAtiva;
+  document.getElementById('forma-pag-select').value = '';
   document.querySelectorAll('input[name="c-tipoquitacao-reserva"], input[name="c-tipoquitacao-entregaprazo"]').forEach(r => r.checked = false);
   const grpFormaSimplesReset = document.getElementById('c-grp-forma-simples');
   if (grpFormaSimplesReset) grpFormaSimplesReset.style.display = 'none';
@@ -3693,7 +3693,7 @@ function onTipoContratoChange(prefixo, tipo) {
   let valorFinal;
   if (tipo === 'simples') {
     if (grpForma) grpForma.style.display = '';
-    valorFinal = document.getElementById(prefixo + '-forma-simples')?.value || 'pix';
+    valorFinal = document.getElementById(prefixo + '-forma-simples')?.value || '';
   } else {
     if (grpForma) grpForma.style.display = 'none';
     valorFinal = tipo; // 'reserva' ou 'entrega_prazo'
