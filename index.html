@@ -250,9 +250,25 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
   .filter-chip.active { background:var(--brown); border-color:var(--brown); color:white; }
 
   /* ── FAB ── */
-  .fab { position:fixed; bottom:calc(6.5rem + env(safe-area-inset-bottom)); right:1.2rem; width:52px; height:52px; background:var(--brown); border:none; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:white; cursor:pointer; box-shadow:0 4px 16px rgba(92,51,24,0.35); z-index:99; }
+  .fab { position:fixed; bottom:calc(6.5rem + env(safe-area-inset-bottom)); right:1.2rem; width:52px; height:52px; background:var(--brown); border:none; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.5rem; color:white; cursor:pointer; box-shadow:0 4px 16px rgba(92,51,24,0.35); z-index:99; transition:transform 0.25s ease; }
   .fab:active { transform:scale(0.93); }
   .fab.hidden { display:none; }
+  .fab.aberto { transform:rotate(45deg); }
+  .fab.aberto:active { transform:rotate(45deg) scale(0.93); }
+
+  .fab-backdrop { position:fixed; inset:0; background:rgba(42,26,14,0.25); opacity:0; pointer-events:none; transition:opacity 0.25s ease; z-index:90; }
+  .fab-backdrop.aberto { opacity:1; pointer-events:auto; }
+
+  .fab-mini-wrap { position:fixed; bottom:calc(6.5rem + env(safe-area-inset-bottom) + 64px); right:1.2rem; display:flex; flex-direction:column; align-items:flex-end; gap:0.7rem; z-index:98; }
+  .fab-mini-item { display:flex; align-items:center; gap:0.6rem; opacity:0; transform:translateY(10px) scale(0.85); pointer-events:none; transition:opacity 0.2s ease, transform 0.2s ease; }
+  .fab-mini-wrap.aberto .fab-mini-item { opacity:1; transform:translateY(0) scale(1); pointer-events:auto; }
+  .fab-mini-wrap.aberto .fab-mini-item.i2 { transition-delay:0.04s; }
+  .fab-mini-wrap.aberto .fab-mini-item.i1 { transition-delay:0.09s; }
+  .fab-mini-label { background:var(--dark); color:var(--cream); font-family:'Calibri', serif; font-size:0.78rem; padding:0.35rem 0.7rem; border-radius:6px; white-space:nowrap; box-shadow:0 2px 8px rgba(42,26,14,0.2); }
+  .fab-mini { width:44px; height:44px; border-radius:50%; border:none; display:flex; align-items:center; justify-content:center; font-size:1.2rem; cursor:pointer; color:white; box-shadow:0 3px 12px rgba(92,51,24,0.3); }
+  .fab-mini.contrato { background:var(--brown-mid); }
+  .fab-mini.gasto { background:var(--bordeaux); }
+  .fab-mini:active { transform:scale(0.9); }
 
   /* ── CALENDÁRIO ── */
   .cal-month-card { background:white; border:1px solid rgba(184,134,42,0.15); border-radius:8px; margin-bottom:0.75rem; overflow:hidden; box-shadow:0 1px 6px rgba(42,26,14,0.05); }
@@ -1280,6 +1296,17 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     <button class="nav-item" onclick="userGoTab('comparativos',this)"><span class="nav-icon">📊</span><span>Dados</span></button>
   </nav>
 
+  <div class="fab-backdrop" id="fab-backdrop" onclick="fecharFabDuplo()"></div>
+  <div class="fab-mini-wrap" id="fab-mini-wrap">
+    <div class="fab-mini-item i1">
+      <span class="fab-mini-label">Novo Gasto</span>
+      <button class="fab-mini gasto" onclick="fabDuploEscolher('gasto')">🧾</button>
+    </div>
+    <div class="fab-mini-item i2">
+      <span class="fab-mini-label">Novo Contrato</span>
+      <button class="fab-mini contrato" onclick="fabDuploEscolher('contrato')">📋</button>
+    </div>
+  </div>
   <button class="fab" id="fab" onclick="openFab()">＋</button>
 </div>
 
@@ -2665,7 +2692,8 @@ let hoje = new Date(); hoje.setHours(12,0,0,0);
 let contratos = [];
 let gastos = [];
 let pecas = [];
-let _origemDetalhe = null; // 'ranking' | null — para saber para onde voltar ao fechar detalhe/edição
+let _origemDetalhe = null; // aba real de onde abriu o detalhe/edição — capturada sempre em openDetail
+let _vinhaDoRanking = false; // true se especificamente veio da linha de ranking em Comparativos — só controla a rolagem extra ao voltar, não a aba em si
 let _rankUidAberto = null; // uid do item do ranking que estava expandido ao abrir o detalhe
 let _rankScrollTop = 0;   // posição de scroll da aba Dados ao abrir o detalhe
 
@@ -2850,6 +2878,29 @@ function _scrollParaMesAtual(tab) {
   return true;
 }
 
+// ── FAB DUPLO (só na aba Início) — Novo Contrato / Novo Gasto ──
+let _fabDuploAberto = false;
+function _toggleFabDuplo() {
+  _fabDuploAberto = !_fabDuploAberto;
+  document.getElementById('fab').classList.toggle('aberto', _fabDuploAberto);
+  document.getElementById('fab-mini-wrap').classList.toggle('aberto', _fabDuploAberto);
+  document.getElementById('fab-backdrop').classList.toggle('aberto', _fabDuploAberto);
+}
+function fecharFabDuplo() {
+  _fabDuploAberto = false;
+  const fab = document.getElementById('fab');
+  const wrap = document.getElementById('fab-mini-wrap');
+  const bg = document.getElementById('fab-backdrop');
+  if (fab) fab.classList.remove('aberto');
+  if (wrap) wrap.classList.remove('aberto');
+  if (bg) bg.classList.remove('aberto');
+}
+function fabDuploEscolher(tipo) {
+  fecharFabDuplo();
+  if (tipo === 'contrato') openFab();
+  else if (tipo === 'gasto') abrirNovoGasto();
+}
+
 function goTab(tab, el) {
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
@@ -2858,10 +2909,11 @@ function goTab(tab, el) {
   tela.classList.add('active');
   if (el) el.classList.add('active');
   if (!_scrollParaMesAtual(tab)) _scrollScreenToTop(tab);
+  fecharFabDuplo();
   const fab = document.getElementById('fab');
   if (tab in tabsComFab) {
     fab.classList.remove('hidden');
-    fab.onclick = tab === 'gastos' ? () => abrirNovoGasto() : () => openFab();
+    fab.onclick = tab === 'gastos' ? () => abrirNovoGasto() : tab === 'dashboard' ? () => _toggleFabDuplo() : () => openFab();
   } else {
     fab.classList.add('hidden');
   }
@@ -3281,7 +3333,6 @@ async function saveContrato() {
     contratos.push(novoMapeado);
     closeDrawer('drawer-new');
     renderAll();
-    goTabById('contratos');
     setTimeout(() => openDetail(novoMapeado.id), 300);
   } catch(e) { _mostrarErroAcao('saveContrato', e, { acaoLabel: 'salvar o contrato' }); }
 }
@@ -3865,20 +3916,20 @@ function renderProximos() {
 let _filtroTipoAtivo = 'todos';
 function setupFiltros() {
   document.querySelectorAll('#filter-row .filter-chip').forEach(chip=>{
-    chip.addEventListener('click',()=>{
+    chip.onclick = () => {
       document.querySelectorAll('#filter-row .filter-chip').forEach(c=>c.classList.remove('active'));
       chip.classList.add('active');
       renderContratos(chip.dataset.status);
-    });
+    };
   });
   document.querySelectorAll('#filter-row-tipo .filter-chip').forEach(chip=>{
-    chip.addEventListener('click',()=>{
+    chip.onclick = () => {
       document.querySelectorAll('#filter-row-tipo .filter-chip').forEach(c=>c.classList.remove('active'));
       chip.classList.add('active');
       _filtroTipoAtivo = chip.dataset.tipo;
       const statusAtivo = document.querySelector('#filter-row .filter-chip.active')?.dataset.status || 'todos';
       renderContratos(statusAtivo);
-    });
+    };
   });
 }
 
@@ -3992,7 +4043,7 @@ function contratoCardHTML(c) {
   return `<div class="contract-card" style="${cardStyle}" onclick="openDetail(${c.id})">
     
     <!-- 1ª LINHA: ETIQUETAS (Status, Devedor, Prazo à esquerda / Tipo de Contrato à direita) -->
-    <div style="display:flex; gap:0.4rem; align-items:flex-start; justify-content:space-between; margin-bottom:0.6rem;">
+    <div style="display:flex; gap:0.4rem; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; margin-bottom:0.6rem;">
       <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
         <div class="status-badge s-${status}">${status}</div>
         ${devedorBadge}
@@ -5479,7 +5530,7 @@ function gerarLucroPorPeriodo() {
 }
 
 function _abrirDetalheRanking(id, uid) {
-  _origemDetalhe = 'ranking';
+  _vinhaDoRanking = true;
   _rankUidAberto = uid || null;
   // Salva posição de scroll atual da aba Dados
   var screen = document.getElementById('screen-comparativos');
@@ -5976,6 +6027,7 @@ function renderComparativos() {
 function openDetail(id) {
   const c = contratos.find(x=>x.id===id);
   if (!c) return;
+  _origemDetalhe = _activeTab; // sempre a aba real — nunca mais um "Contratos" fixo ao fechar/excluir depois
   _limparBuscaContrato();
   // pagoBruto = o que a noiva pagou (para calcular saldo dela)
   // pagoNoCaixa = o que entrou no caixa líquido (para exibir no financeiro)
@@ -6137,30 +6189,32 @@ function _scrollAteRanking() {
 }
 
 function fecharDetalheContrato() {
-  const origem = _origemDetalhe;
-  _origemDetalhe = null;
+  const origemTab = _origemDetalhe;
+  const vinhaRanking = _vinhaDoRanking;
+  _vinhaDoRanking = false;
   closeDrawer('drawer-detail');
-  if (origem === 'ranking') {
+  if (vinhaRanking) {
     goTabById('comparativos');
     renderComparativos();
     _scrollAteRanking();
   } else {
-    goTabById('contratos');
+    goTabById(origemTab || 'contratos');
   }
 }
 
 function fecharEditContrato() {
   const idParaReabrir = contratoEditandoId;
-  const origem = _origemDetalhe;
+  const origemTab = _origemDetalhe;
+  const vinhaRanking = _vinhaDoRanking;
   closeDrawer('drawer-edit');
   if (idParaReabrir) {
     setTimeout(() => openDetail(idParaReabrir), 50);
-  } else if (origem === 'ranking') {
-    _origemDetalhe = null;
+  } else if (vinhaRanking) {
+    _vinhaDoRanking = false;
     goTabById('comparativos');
     _scrollAteRanking();
   } else {
-    goTabById('contratos');
+    goTabById(origemTab || 'contratos');
   }
 }
 
@@ -6954,16 +7008,16 @@ async function saveEditContrato() {
     const idx = contratos.findIndex(x => x.id === _idEditado);
     if (idx >= 0) contratos[idx] = mapContrato(atualizado);
     contratoEditandoId = null;
-    const origemSalvar = _origemDetalhe;
+    const _vinhaRankingSalvar = _vinhaDoRanking;
+    _vinhaDoRanking = false;
     closeDrawer('drawer-edit');
     renderAll();
-    if (origemSalvar === 'ranking') {
+    if (_vinhaRankingSalvar) {
       goTabById('comparativos');
       renderComparativos();
       _scrollAteRanking();
       setTimeout(() => openDetail(_idEditado), 450);
     } else {
-      goTabById('contratos');
       setTimeout(() => openDetail(_idEditado), 300);
     }
   } catch(e) { 
@@ -6991,7 +7045,7 @@ async function excluirContrato() {
         closeDrawer('drawer-edit');
         contratoEditandoId = null;
         renderAll();
-        goTabById('contratos');
+        goTabById(_origemDetalhe || 'contratos');
       } catch(e) { _mostrarErroAcao('excluirContrato', e, { acaoLabel: 'excluir o contrato' }); }
     }
   });
@@ -7016,7 +7070,7 @@ async function excluirContratoDoDetalhe(id) {
         contratos = contratos.filter(x => x.id !== id);
         closeDrawer('drawer-detail');
         renderAll();
-        goTabById('contratos');
+        goTabById(_origemDetalhe || 'contratos');
       } catch(e) { _mostrarErroAcao('excluirContratoDoDetalhe', e, { acaoLabel: 'excluir o contrato' }); }
     }
   });
