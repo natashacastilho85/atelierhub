@@ -1307,7 +1307,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
       <button class="fab-mini contrato" onclick="fabDuploEscolher('contrato')">📋</button>
     </div>
   </div>
-  <button class="fab" id="fab" onclick="openFab()">＋</button>
+  <button class="fab" id="fab" onclick="_toggleFabDuplo()">＋</button>
 </div>
 
 <div class="drawer-overlay" id="drawer-new" onclick="closeDrawer('drawer-new')">
@@ -2744,6 +2744,11 @@ async function initApp() {
   if (!_okCustos || !_okMat || !_okPrec) _falhouCarregamentoInicial = true;
   hideLoading();
   renderAll();
+  // Garante que o botão + já nasce conectado certo, mesmo antes de qualquer troca de aba real
+  // acontecer (a tela Início já vem marcada "active" direto no HTML, então sem isso o goTab()
+  // que liga o fab corretamente só rodaria na primeira navegação real, deixando o toque inicial
+  // cair no onclick antigo do HTML estático).
+  goTabById('dashboard');
   _atualizarNomeAtelierDashboard();
   // Ativa push notifications em background
   if (typeof ativarPushAposLogin === 'function') ativarPushAposLogin();
@@ -11563,7 +11568,15 @@ async function iniciarAuth() {
       document.getElementById('login-screen').style.display = 'flex';
     } else {
       sessaoInicial = session;
-      await onLoginSucesso(session.user);
+      // getSession() pode devolver metadados desatualizados (do token guardado localmente,
+      // que só renova sozinho de tempos em tempos) — getUser() busca do servidor de verdade,
+      // garantindo que um nome alterado recentemente não "volte" ao antigo ao reabrir o app.
+      let usuarioFresco = session.user;
+      try {
+        const { data: { user: userFresco } } = await sb.auth.getUser();
+        if (userFresco) usuarioFresco = userFresco;
+      } catch(e) { /* se falhar, segue com o da sessão local mesmo */ }
+      await onLoginSucesso(usuarioFresco);
     }
   } catch (e) {
     await sb.auth.signOut();
@@ -11575,7 +11588,12 @@ async function iniciarAuth() {
     if (event === 'SIGNED_IN' && session?.user) {
       // Ignora se já processamos essa mesma sessão inicial para evitar dupla execução
       if (sessaoInicial && sessaoInicial.access_token === session.access_token) return;
-      await onLoginSucesso(session.user);
+      let usuarioFresco = session.user;
+      try {
+        const { data: { user: userFresco } } = await sb.auth.getUser();
+        if (userFresco) usuarioFresco = userFresco;
+      } catch(e) { /* se falhar, segue com o da sessão mesmo */ }
+      await onLoginSucesso(usuarioFresco);
     } else if (event === 'TOKEN_REFRESHED' && session?.access_token) {
       // Atualiza o token em memória sempre que o Supabase renovar automaticamente
       _authToken = session.access_token;
