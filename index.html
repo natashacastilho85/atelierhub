@@ -2369,8 +2369,8 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 // quem estiver usando (mesmo cuidado do bug de timezone que já pegamos em outras partes do app).
 const AVISO_ATUAL = {
   ativo: true,
-  texto: 'Testando nossa comunicação!',
-  expiraEm: '2026-07-23T23:22:00-03:00'
+  texto: '🎉 Novidades no AtelierHub!<br><br>📋 Novos tipos de contrato — muito mais práticos, simples e abrangentes<br>💳 Novas formas de pagamento<br>📅 Configure o prazo de quitação conforme a rotina do seu ateliê<br>✨ Aprimoramento visual em algumas telas, com botão multifuncional para cadastro rápido de contratos e gastos<br>🔧 Correção de alguns bugs internos<br><br>Continue nos contando o que acha! 💛',
+  expiraEm: '2026-07-30T23:43:00-03:00'
 };
 
 // Token do usuário logado — atualizado no onLoginSucesso
@@ -2822,7 +2822,7 @@ function renderMetricas() {
 }
 
 // ── NAV ──
-const tabsComFab = { dashboard:'drawer-new', contratos:'drawer-new', gastos:'drawer-gasto' };
+const tabsComFab = { dashboard:1, contratos:1, calendario:1, financeiro:1, gastos:1, comparativos:1 };
 
 // ── SISTEMA DE BOTÃO VOLTAR (Android / navegador) ──
 //
@@ -2878,7 +2878,7 @@ function _scrollParaMesAtual(tab) {
   return true;
 }
 
-// ── FAB DUPLO (só na aba Início) — Novo Contrato / Novo Gasto ──
+// ── FAB DUPLO (todas as 6 abas) — Novo Contrato / Novo Gasto ──
 let _fabDuploAberto = false;
 function _toggleFabDuplo() {
   _fabDuploAberto = !_fabDuploAberto;
@@ -2913,7 +2913,7 @@ function goTab(tab, el) {
   const fab = document.getElementById('fab');
   if (tab in tabsComFab) {
     fab.classList.remove('hidden');
-    fab.onclick = tab === 'gastos' ? () => abrirNovoGasto() : tab === 'dashboard' ? () => _toggleFabDuplo() : () => openFab();
+    fab.onclick = () => _toggleFabDuplo();
   } else {
     fab.classList.add('hidden');
   }
