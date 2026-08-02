@@ -3738,8 +3738,8 @@ function onEntregaPrazoFormaChange(prefixo) {
 
 // Tipo de Contrato e Forma de Pagamento são dois seletores visíveis que, juntos, decidem o
 // mesmo valor que o seletor único de sempre (agora escondido) sempre decidiu sozinho. Eles só
-// calculam esse valor e acionam onFormaPagChange/onFormaPagEditChange exatamente como se o
-// seletor escondido tivesse sido mudado diretamente — nenhuma lógica de cálculo muda.
+// calculam esse valor e acionam onFormaPagChange exatamente como se o seletor escondido tivesse
+// sido mudado diretamente — nenhuma lógica de cálculo muda.
 function onTipoContratoChange(prefixo, tipo) {
   const idSelectOculto = prefixo === 'c' ? 'forma-pag-select' : 'e-forma-pag';
   const grpForma = document.getElementById(prefixo + '-grp-forma-simples');
@@ -3756,7 +3756,6 @@ function onTipoContratoChange(prefixo, tipo) {
   }
   document.getElementById(idSelectOculto).value = valorFinal;
   if (prefixo === 'c') onFormaPagChange(valorFinal);
-  else onFormaPagEditChange(valorFinal);
 }
 
 function onFormaSimplesChange(prefixo) {
@@ -3766,7 +3765,6 @@ function onFormaSimplesChange(prefixo) {
   const btnInfoForma = document.getElementById(prefixo + '-btn-info-forma-simples');
   if (btnInfoForma) btnInfoForma.style.display = (forma === 'misto') ? '' : 'none';
   if (prefixo === 'c') onFormaPagChange(forma);
-  else onFormaPagEditChange(forma);
 }
 
 function mostrarInfoTipoContrato(prefixo) {
@@ -3919,6 +3917,7 @@ function renderProximos() {
 
 // ── CONTRATOS ──
 let _filtroTipoAtivo = 'todos';
+let _ordemTabelaPrec = 'asc'; // 'asc' | 'desc' | 'az' — só dura a sessão, não é salvo
 function setupFiltros() {
   document.querySelectorAll('#filter-row .filter-chip').forEach(chip=>{
     chip.onclick = () => {
@@ -4737,10 +4736,12 @@ async function savePeca() {
 
     if (editandoPecaId === null) {
       const [r] = await sbInsert('pecas', { nome, valor: 0, descricao: desc });
+      if (!r) throw new Error('A peça não foi confirmada pelo servidor. Tente novamente.');
       pecas.push(mapPeca(r));
       idParaFocar = r.id;
     } else {
-      await sbUpdate('pecas', editandoPecaId, { nome, descricao: desc });
+      const [r] = await sbUpdate('pecas', editandoPecaId, { nome, descricao: desc });
+      if (!r) throw new Error('A alteração não foi confirmada pelo servidor. Tente novamente.');
       const p = pecas.find(x => x.id === editandoPecaId);
       if (p) { p.nome = nome; p.desc = desc; }
     }
@@ -4786,7 +4787,10 @@ async function deletePeca() {
     txtConfirmar: 'Excluir',
     onConfirmar: async () => {
       try {
-        await sbDelete('pecas', _id);
+        const apagados = await sbDelete('pecas', _id);
+        if (!Array.isArray(apagados) || apagados.length === 0) {
+          throw new Error('A exclusão não foi confirmada pelo servidor. Tente novamente.');
+        }
         pecas = pecas.filter(x=>x.id!==_id);
         editandoPecaId = null;
         renderCatalogo();
@@ -6336,7 +6340,8 @@ async function registrarChegadaBuque(contratoId) {
     valorData: hj,
     onConfirmar: async (data) => {
       try {
-        await sbUpdate('contratos', contratoId, { chegada: data });
+        const [r] = await sbUpdate('contratos', contratoId, { chegada: data });
+        if (!r) throw new Error('A chegada não foi confirmada pelo servidor. Tente novamente.');
         const idx = contratos.findIndex(x => x.id === contratoId);
         if (idx >= 0) contratos[idx].chegada = data;
         renderAll();
@@ -6357,7 +6362,8 @@ async function registrarEntregaEternizacao(contratoId) {
     valorData: hj,
     onConfirmar: async (data) => {
       try {
-        await sbUpdate('contratos', contratoId, { entrega: data });
+        const [r] = await sbUpdate('contratos', contratoId, { entrega: data });
+        if (!r) throw new Error('A entrega não foi confirmada pelo servidor. Tente novamente.');
         const idx = contratos.findIndex(x => x.id === contratoId);
         if (idx >= 0) contratos[idx].entrega = data;
         renderAll();
@@ -6827,41 +6833,6 @@ function _aplicarEventoPecaEdit(linhaId, evento) {
       descontoCartaoValor: evento.descontoCartaoValor || null,
       data: evento.data
     });
-  }
-}
-
-function onFormaPagEditChange(val) {
-  const grpReserva = document.getElementById('e-grp-pago-reserva');
-  const grpEntregaPrazo = document.getElementById('e-grp-pago-entregaprazo');
-  const grpMisto = document.getElementById('e-grp-pago-misto');
-  if (val === 'reserva') {
-    if (grpReserva) grpReserva.style.display = '';
-    if (grpEntregaPrazo) grpEntregaPrazo.style.display = 'none';
-    if (grpMisto) grpMisto.style.display = 'none';
-    onReservaFormaChange('e');
-  } else if (val === 'entrega_prazo') {
-    if (grpReserva) grpReserva.style.display = 'none';
-    if (grpEntregaPrazo) grpEntregaPrazo.style.display = '';
-    if (grpMisto) grpMisto.style.display = 'none';
-    onEntregaPrazoFormaChange('e');
-  } else if (val === 'misto') {
-    if (grpReserva) grpReserva.style.display = 'none';
-    if (grpEntregaPrazo) grpEntregaPrazo.style.display = 'none';
-    if (grpMisto) grpMisto.style.display = '';
-    preencherSelectParcelas('e-pago-cartao-parc');
-    ['pix','cartao','dinheiro','debito'].forEach(formaId => {
-      const chkUsar = document.getElementById('e-misto-' + formaId + '-usar');
-      if (chkUsar) chkUsar.checked = false;
-      const corpo = document.getElementById('e-misto-' + formaId + '-corpo');
-      if (corpo) corpo.style.display = 'none';
-    });
-    atualizarDescMistoVisibilidade('e');
-    aplicarVisibilidadeMistoAtiva('e', null);
-    atualizarTotalMisto('e');
-  } else {
-    if (grpReserva) grpReserva.style.display = 'none';
-    if (grpEntregaPrazo) grpEntregaPrazo.style.display = 'none';
-    if (grpMisto) grpMisto.style.display = 'none';
   }
 }
 
@@ -9172,6 +9143,11 @@ pecas.sort((a, b) => a.nome.localeCompare(b.nome));
   atualizarTabelaResumo();
 }
 
+function _ordenarTabelaPrec(modo) {
+  _ordemTabelaPrec = modo;
+  atualizarTabelaResumo();
+}
+
 function atualizarTabelaResumo() {
   const container = document.getElementById('prec-resumo-container');
   if (!container) return;
@@ -9183,10 +9159,18 @@ function atualizarTabelaResumo() {
     .map(p => {
       const precoVenda = getPrecoPecaCalculado(p.id) || 0;
       return { id: p.id, nome: p.nome, precoVenda };
-    }).sort((a, b) => a.precoVenda - b.precoVenda);
-    
+    });
+  if (_ordemTabelaPrec === 'asc') resumoOrdenado.sort((a, b) => a.precoVenda - b.precoVenda);
+  else if (_ordemTabelaPrec === 'desc') resumoOrdenado.sort((a, b) => b.precoVenda - a.precoVenda);
+  else resumoOrdenado.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
   let html = '<div class="prec-resumo-card">';
   html += '<div class="prec-resumo-header">Tabela de preços — catálogo</div>';
+  html += `<div style="display:flex;gap:0.4rem;margin-bottom:0.9rem;flex-wrap:wrap">
+    <button class="filter-chip${_ordemTabelaPrec==='asc'?' active':''}" onclick="_ordenarTabelaPrec('asc')">Menor valor</button>
+    <button class="filter-chip${_ordemTabelaPrec==='desc'?' active':''}" onclick="_ordenarTabelaPrec('desc')">Maior valor</button>
+    <button class="filter-chip${_ordemTabelaPrec==='az'?' active':''}" onclick="_ordenarTabelaPrec('az')">A-Z</button>
+  </div>`;
   resumoOrdenado.forEach(r => {
     const semVal = r.precoVenda <= 0;
     const fmt = v => 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:2,maximumFractionDigits:2});
@@ -9576,7 +9560,10 @@ function excluirPecaPrec(pecaId) {
     txtConfirmar: 'Excluir',
     onConfirmar: async () => {
       try {
-        await sbDelete('pecas', pecaId);
+        const apagados = await sbDelete('pecas', pecaId);
+        if (!Array.isArray(apagados) || apagados.length === 0) {
+          throw new Error('A exclusão não foi confirmada pelo servidor. Tente novamente.');
+        }
         pecas = pecas.filter(x => x.id !== pecaId);
         delete precDados[pecaId];
         salvarPrecLocal();
@@ -9594,6 +9581,9 @@ async function duplicarPecaPrec(pecaId) {
   
   try {
     const novaDB = await sbInsert('pecas', { nome: novoNome, valor: p.valor || 0 });
+    if (!Array.isArray(novaDB) || !novaDB[0]) {
+      throw new Error('A peça duplicada não foi confirmada pelo servidor. Tente novamente.');
+    }
     const novaId = novaDB[0].id;
     
     pecas.push({ id: novaId, nome: novoNome, valor: p.valor || 0, desc: p.desc || '' });
@@ -12201,7 +12191,8 @@ async function salvarNotifManual() {
   // Salva como UTC-3 (Brasília)
   const dataHora = data + 'T' + hora + ':00-03:00';
   try {
-    await sbInsert('notif_manuais', { texto, data_hora: dataHora, disparada: false });
+    const [r] = await sbInsert('notif_manuais', { texto, data_hora: dataHora, disparada: false });
+    if (!r) throw new Error('A notificação não foi confirmada pelo servidor. Tente novamente.');
     closeDrawer('drawer-notif-manual');
     await renderCentroNotif(); // já atualiza o badge com o count real do banco
   } catch(e) { _mostrarErroAcao('salvarNotifManual', e, { acaoLabel: 'salvar a notificação' }); }
@@ -12640,6 +12631,7 @@ async function adicionarTarefa() {
 
   try {
     const [r] = await sbInsert('tarefas', { texto, concluida: false, ordem: proximaOrdem });
+    if (!r) throw new Error('A tarefa não foi confirmada pelo servidor. Tente novamente.');
     _tarefas.push(mapTarefa(r));
     input.value = '';
     renderTarefas();
@@ -12652,10 +12644,13 @@ async function toggleTarefa(id) {
   t.concluida = !t.concluida;
   renderTarefas(); // atualiza UI imediatamente (otimista)
   try {
-    await sbFetch('tarefas?id=eq.' + id, {
+    const resultado = await sbFetch('tarefas?id=eq.' + id, {
       method: 'PATCH',
       body: JSON.stringify({ concluida: t.concluida })
     });
+    if (!Array.isArray(resultado) || resultado.length === 0) {
+      throw new Error('A alteração não foi confirmada pelo servidor.');
+    }
   } catch(e) {
     // Reverte em caso de erro
     t.concluida = !t.concluida;
@@ -12668,7 +12663,10 @@ async function excluirTarefa(id) {
   _tarefas = _tarefas.filter(x => x.id !== id);
   renderTarefas(); // otimista
   try {
-    await sbDelete('tarefas', id);
+    const apagados = await sbDelete('tarefas', id);
+    if (!Array.isArray(apagados) || apagados.length === 0) {
+      throw new Error('A exclusão não foi confirmada pelo servidor.');
+    }
   } catch(e) {
     await carregarTarefas(); // recarga em caso de erro
     _mostrarErroAcao('excluirTarefa', e, { acaoLabel: 'excluir a tarefa' });
