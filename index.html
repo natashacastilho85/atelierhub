@@ -259,8 +259,8 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
   .fab-backdrop { position:fixed; inset:0; background:rgba(42,26,14,0.25); opacity:0; pointer-events:none; transition:opacity 0.25s ease; z-index:90; }
   .fab-backdrop.aberto { opacity:1; pointer-events:auto; }
 
-  .fab-mini-wrap { position:fixed; bottom:calc(6.5rem + env(safe-area-inset-bottom) + 64px); right:1.2rem; display:flex; flex-direction:column; align-items:flex-end; gap:0.7rem; z-index:98; pointer-events:none; }
-  .fab-mini-wrap.aberto { pointer-events:auto; }
+  .fab-mini-wrap { position:fixed; bottom:calc(6.5rem + env(safe-area-inset-bottom) + 64px); right:1.2rem; display:none; flex-direction:column; align-items:flex-end; gap:0.7rem; z-index:98; }
+  .fab-mini-wrap.mostrando { display:flex; }
   .fab-mini-item { display:flex; align-items:center; gap:0.6rem; opacity:0; transform:translateY(10px) scale(0.85); pointer-events:none; transition:opacity 0.2s ease, transform 0.2s ease; }
   .fab-mini-wrap.aberto .fab-mini-item { opacity:1; transform:translateY(0) scale(1); pointer-events:auto; }
   .fab-mini-wrap.aberto .fab-mini-item.i2 { transition-delay:0.04s; }
@@ -2886,11 +2886,27 @@ function _scrollParaMesAtual(tab) {
 
 // ── FAB DUPLO (todas as 6 abas) — Novo Contrato / Novo Gasto ──
 let _fabDuploAberto = false;
+let _fabTimeoutFechar = null;
 function _toggleFabDuplo() {
   _fabDuploAberto = !_fabDuploAberto;
-  document.getElementById('fab').classList.toggle('aberto', _fabDuploAberto);
-  document.getElementById('fab-mini-wrap').classList.toggle('aberto', _fabDuploAberto);
-  document.getElementById('fab-backdrop').classList.toggle('aberto', _fabDuploAberto);
+  const fab = document.getElementById('fab');
+  const wrap = document.getElementById('fab-mini-wrap');
+  const backdrop = document.getElementById('fab-backdrop');
+  fab.classList.toggle('aberto', _fabDuploAberto);
+  backdrop.classList.toggle('aberto', _fabDuploAberto);
+
+  if (_fabDuploAberto) {
+    clearTimeout(_fabTimeoutFechar);
+    wrap.classList.add('mostrando'); // display:flex — itens ainda com opacity:0 (estado padrão deles)
+    void wrap.offsetHeight; // força o navegador a registrar esse quadro ANTES de animar
+    wrap.classList.add('aberto'); // agora anima de verdade pra opacity:1/transform
+  } else {
+    wrap.classList.remove('aberto'); // anima de volta pra opacity:0/transform primeiro
+    clearTimeout(_fabTimeoutFechar);
+    _fabTimeoutFechar = setTimeout(() => {
+      wrap.classList.remove('mostrando'); // só sai do layout depois da animação de saída terminar
+    }, 300);
+  }
 }
 function fecharFabDuplo() {
   _fabDuploAberto = false;
@@ -2898,8 +2914,14 @@ function fecharFabDuplo() {
   const wrap = document.getElementById('fab-mini-wrap');
   const bg = document.getElementById('fab-backdrop');
   if (fab) fab.classList.remove('aberto');
-  if (wrap) wrap.classList.remove('aberto');
   if (bg) bg.classList.remove('aberto');
+  if (wrap && wrap.classList.contains('mostrando')) {
+    wrap.classList.remove('aberto');
+    clearTimeout(_fabTimeoutFechar);
+    _fabTimeoutFechar = setTimeout(() => {
+      wrap.classList.remove('mostrando');
+    }, 300);
+  }
 }
 function fabDuploEscolher(tipo) {
   fecharFabDuplo();
