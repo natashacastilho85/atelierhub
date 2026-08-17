@@ -7636,6 +7636,9 @@ async function salvarPrecLocal() {
   } catch(e) {
     console.error('Erro salvarPrecLocal:', e);
     if (!_ehErroConexao(e)) _logErroSistema('salvarPrecLocal', e);
+    if (typeof mostrarAlerta === 'function') {
+      mostrarAlerta({ emoji: '⚠️', titulo: 'Não salvou', mensagem: 'O preço calculado não foi salvo no servidor. Toque na peça de novo pra tentar salvar.' });
+    }
   }
 }
 
@@ -10339,12 +10342,18 @@ function excluirMaterialGlobal() {
     titulo: 'Excluir material?',
     mensagem: `"${m.nome}" será removido dos materiais globais permanentemente.`,
     txtConfirmar: 'Excluir',
-    onConfirmar: () => {
-      matGlobais = matGlobais.filter(x => x.id !== _id);
-      matEditandoId = null;
-      salvarMatGlobais();
-      renderMatGlobais();
-      closeDrawer('drawer-mat-novo');
+    onConfirmar: async () => {
+      const anterior = matGlobais;
+      try {
+        matGlobais = matGlobais.filter(x => x.id !== _id);
+        await salvarMatGlobais();
+        matEditandoId = null;
+        renderMatGlobais();
+        closeDrawer('drawer-mat-novo');
+      } catch(e) {
+        matGlobais = anterior; // reverte — a exclusão não foi confirmada pelo servidor
+        _mostrarErroAcao('excluirMaterialGlobal', e, { acaoLabel: 'excluir o material' });
+      }
     }
   });
 }
