@@ -2473,11 +2473,15 @@ async function sbInsertBatch(table, rows) {
 async function sbSaveConfig(chave, valor) {
   const uid = _uid();
   if (!uid) throw new Error('Usuário não autenticado');
-  return sbFetch('configuracoes?on_conflict=user_id,chave', {
+  const resultado = await sbFetch('configuracoes?on_conflict=user_id,chave', {
     method: 'POST',
-    headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+    headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
     body: JSON.stringify({ user_id: uid, chave, valor, updated_at: new Date().toISOString() })
   });
+  if (!Array.isArray(resultado) || resultado.length === 0) {
+    throw new Error('A configuração não foi confirmada pelo servidor. Tente novamente.');
+  }
+  return resultado;
 }
 
 function mapContrato(r) {
@@ -7899,11 +7903,6 @@ function getValorHora() {
   return horasMes > 0 ? custosConfig.salarioMensal / horasMes : 0;
 }
 
-function getSalarioPorPeca() {
-  // Mantido por compatibilidade — não usado diretamente; renderPrecCard usa getValorHora() × tempo
-  return getValorHora();
-}
-
 function getCustoFixoPorHora() {
   const totalFixo = custosConfig.itensFixos.reduce((s, i) => s + (parseFloat(i.valor) || 0), 0);
   // Se imposto for fixo mensal, entra no rateio junto com os custos fixos
@@ -8419,14 +8418,20 @@ async function _recalcularDesidratacaoExistentes(novoPrazo) {
       mostrarAlerta({ emoji: '🌸', titulo: 'Nenhum registro em andamento', mensagem: 'Não há flores em desidratação para atualizar.' });
       return;
     }
+    let sucesso = 0;
     for (const r of dados) {
       const d = new Date(r.data_inicio + 'T12:00:00');
       d.setDate(d.getDate() + novoPrazo);
       const nova_conclusao = d.toISOString().slice(0, 10);
-      await sbFetch('desidratacao?id=eq.' + r.id, { method: 'PATCH', body: JSON.stringify({ data_conclusao: nova_conclusao }) });
+      const resultado = await sbFetch('desidratacao?id=eq.' + r.id, { method: 'PATCH', body: JSON.stringify({ data_conclusao: nova_conclusao }) });
+      if (Array.isArray(resultado) && resultado.length > 0) sucesso++;
     }
-    const n = dados.length;
-    mostrarAlerta({ emoji: '✅', titulo: `${n} registro${n > 1 ? 's' : ''} atualizado${n > 1 ? 's' : ''}`, mensagem: 'As datas de conclusão foram recalculadas com o novo prazo.' });
+    const n = sucesso;
+    if (sucesso < dados.length) {
+      mostrarAlerta({ emoji: '⚠️', titulo: 'Nem tudo foi atualizado', mensagem: `${sucesso} de ${dados.length} registros foram confirmados pelo servidor. Tente novamente para completar os demais.` });
+    } else {
+      mostrarAlerta({ emoji: '✅', titulo: `${n} registro${n > 1 ? 's' : ''} atualizado${n > 1 ? 's' : ''}`, mensagem: 'As datas de conclusão foram recalculadas com o novo prazo.' });
+    }
     if (typeof renderDesid === 'function') renderDesid();
   } catch (e) {
     _mostrarErroAcao('_recalcularDesidratacaoExistentes', e, { acaoLabel: 'atualizar os prazos' });
@@ -11649,7 +11654,7 @@ async function debugPushSubscription() {
       const subJson = sub.toJSON();
       const result = await sbFetch('push_subscriptions', {
         method: 'POST',
-        headers: { 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+        headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
         body: JSON.stringify({
           user_id: _uid(),
           endpoint: subJson.endpoint,
@@ -11657,7 +11662,7 @@ async function debugPushSubscription() {
           updated_at: new Date().toISOString()
         })
       });
-      linhas.push('Salvo no banco: ✅');
+      linhas.push('Salvo no banco: ' + (Array.isArray(result) && result.length > 0 ? '✅' : '❌ (servidor não confirmou)'));
     }
 
   } catch(e) {
@@ -11887,9 +11892,9 @@ async function _executarSubscricaoPush() {
   }
 
   const subJson = sub.toJSON();
-  await sbFetch('push_subscriptions', {
+  const resultado = await sbFetch('push_subscriptions', {
     method: 'POST',
-    headers: { 'Prefer': 'resolution=merge-duplicates', 'Content-Type': 'application/json' },
+    headers: { 'Prefer': 'resolution=merge-duplicates,return=representation', 'Content-Type': 'application/json' },
     body: JSON.stringify({
       user_id: _uid(),
       endpoint: subJson.endpoint,
@@ -11897,6 +11902,9 @@ async function _executarSubscricaoPush() {
       updated_at: new Date().toISOString()
     })
   });
+  if (!Array.isArray(resultado) || resultado.length === 0) {
+    return { ok: false, motivo: 'nao-confirmado-servidor' };
+  }
 
   console.log('✅ Push subscription ativa e salva no Supabase');
   return { ok: true };
@@ -12181,10 +12189,14 @@ async function excluirNotif(tipo, id) {
     corConfirmar: 'var(--bordeaux)',
     onConfirmar: async () => {
       try {
+        let apagados;
         if (tipo === 'auto') {
-          await sbFetch('push_log?id=eq.'+id, { method:'DELETE', headers:{'Prefer':''} });
+          apagados = await sbFetch('push_log?id=eq.'+id, { method:'DELETE' });
         } else {
-          await sbFetch('notif_manuais?id=eq.'+id, { method:'DELETE', headers:{'Prefer':''} });
+          apagados = await sbFetch('notif_manuais?id=eq.'+id, { method:'DELETE' });
+        }
+        if (!Array.isArray(apagados) || apagados.length === 0) {
+          throw new Error('A exclusão não foi confirmada pelo servidor. Tente novamente.');
         }
         await renderCentroNotif();
       } catch(e) { _mostrarErroAcao('excluirNotif', e, { acaoLabel: 'apagar a notificação' }); }
@@ -12354,7 +12366,10 @@ async function concluirDesid(id) {
     corConfirmar: 'var(--sage)',
     onConfirmar: async () => {
       try {
-        await sbFetch('desidratacao?id=eq.'+id, { method:'PATCH', body: JSON.stringify({ concluido: true }) });
+        const resultado = await sbFetch('desidratacao?id=eq.'+id, { method:'PATCH', body: JSON.stringify({ concluido: true }) });
+        if (!Array.isArray(resultado) || resultado.length === 0) {
+          throw new Error('A conclusão não foi confirmada pelo servidor. Tente novamente.');
+        }
         await renderDesidLista();
         await atualizarBadgeDesid();
       } catch(e) { _mostrarErroAcao('concluirDesid', e, { acaoLabel: 'concluir a desidratação' }); }
@@ -12370,7 +12385,10 @@ async function excluirDesid(id) {
     txtConfirmar: 'Excluir',
     onConfirmar: async () => {
       try {
-        await sbFetch('desidratacao?id=eq.'+id, { method:'DELETE', headers:{'Prefer':''} });
+        const apagados = await sbFetch('desidratacao?id=eq.'+id, { method:'DELETE' });
+        if (!Array.isArray(apagados) || apagados.length === 0) {
+          throw new Error('A exclusão não foi confirmada pelo servidor. Tente novamente.');
+        }
         await renderDesidLista();
         await atualizarBadgeDesid();
       } catch(e) { _mostrarErroAcao('excluirDesid', e, { acaoLabel: 'excluir o registro' }); }
@@ -12492,10 +12510,13 @@ async function salvarEdicaoDesid() {
   d.setDate(d.getDate() + prazo);
   corpo.data_conclusao = d.toISOString().slice(0,10);
   try {
-    await sbFetch('desidratacao?id=eq.'+_desidEditandoId, {
+    const resultado = await sbFetch('desidratacao?id=eq.'+_desidEditandoId, {
       method: 'PATCH',
       body: JSON.stringify(corpo)
     });
+    if (!Array.isArray(resultado) || resultado.length === 0) {
+      throw new Error('A edição não foi confirmada pelo servidor. Tente novamente.');
+    }
     _desidEditandoId = null;
     // Restaura o botao salvar para o modo novo
     const btnSalvar = document.querySelector('#drawer-nova-desid button[onclick="salvarEdicaoDesid()"]');
@@ -12733,12 +12754,15 @@ async function _tarefaDrop(e, targetId) {
 
   // Persiste no Supabase (em paralelo)
   try {
-    await Promise.all(_tarefas.map(t =>
+    const resultados = await Promise.all(_tarefas.map(t =>
       sbFetch('tarefas?id=eq.' + t.id, {
         method: 'PATCH',
         body: JSON.stringify({ ordem: t.ordem })
       })
     ));
+    if (resultados.some(r => !Array.isArray(r) || r.length === 0)) {
+      throw new Error('Uma ou mais tarefas não confirmaram a nova ordem no servidor.');
+    }
   } catch(e) {
     await carregarTarefas(); // Recarga se falhar
     _mostrarErroAcao('_tarefaDrop', e, { acaoLabel: 'salvar a nova ordem' });
@@ -12821,12 +12845,15 @@ async function _touchEnd(e) {
         _tarefas.forEach((t, i) => { t.ordem = i; });
         renderTarefas();
         try {
-          await Promise.all(_tarefas.map(t =>
+          const resultados = await Promise.all(_tarefas.map(t =>
             sbFetch('tarefas?id=eq.' + t.id, {
               method: 'PATCH',
               body: JSON.stringify({ ordem: t.ordem })
             })
           ));
+          if (resultados.some(r => !Array.isArray(r) || r.length === 0)) {
+            throw new Error('Uma ou mais tarefas não confirmaram a nova ordem no servidor.');
+          }
         } catch(e) {
           await carregarTarefas();
           _mostrarErroAcao('_touchEnd', e, { acaoLabel: 'salvar a nova ordem' });
