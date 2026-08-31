@@ -5230,7 +5230,7 @@ function _getCustoPeca(nomePeca) {
   var salario = valorHora * (mins / 60);
   var custo   = custoFixoH * (mins / 60);
   var r = calcPrec(matComPerda, null, salario, custo);
-  return r.custoTotalReal || null;
+  return r.custoTotalExato ?? r.custoTotalReal ?? null;
 }
 
 function gerarLucroPorPeca() {
@@ -7731,6 +7731,7 @@ function calcPrec(materiais, _ignorado, salario, custoFixoHora) {
   return {
     custoMat: r2(custoMat),
     custoTotalReal: r2(custoTotalReal),
+    custoTotalExato: custoTotalReal, // sem arredondar — usar sempre que o resultado alimentar OUTRA conta (lucro, margem recalculada); use custoTotalReal, já arredondado, só pra exibição
     impostoValor: r2(impostoValor),
     impostoPerc: impostoPerc * 100,
     impostoTipo: imp.tipo,
@@ -8879,7 +8880,7 @@ async function exportarDadosPDF() {
           return m;
         });
         const r = calcPrec(matsComPerda, null, valorHora * (mins/60), custoFixoH * (mins/60));
-        const custoTotal = r.custoTotalReal || 0;
+        const custoTotal = r.custoTotalExato || 0;
         const lucro = preco - custoTotal;
         const materiaisTexto = d.materiais.map(m => `${m.nome||'—'}: ${fmtR(m.valor)}`).join('\n');
         const processosTexto = (Array.isArray(d.processosExtras) && d.processosExtras.length)
@@ -9324,9 +9325,9 @@ function renderPrecCard(p, d, valorHora, custoFixoHora, cardIdx) {
       ? custosConfig.impostoConfig : { tipo: 'nenhum', valor: 0 };
     const impostoPerc0 = imp0.tipo === 'percentual' ? (parseFloat(imp0.valor) || 0) / 100 : 0;
     if (modoPrec === 'markup') {
-      d.margemVenda = Math.round((d.precoVenda / r.custoTotalReal) * 100) / 100;
+      d.margemVenda = Math.round((d.precoVenda / r.custoTotalExato) * 100) / 100;
     } else {
-      d.margemVenda = Math.round(((d.precoVenda - r.custoTotalReal - d.precoVenda * impostoPerc0) / d.precoVenda) * 1000) / 10;
+      d.margemVenda = Math.round(((d.precoVenda - r.custoTotalExato - d.precoVenda * impostoPerc0) / d.precoVenda) * 1000) / 10;
     }
   } else if (r.precoCalc > 0) {
     // Grava automaticamente na primeira vez que houver um valor calculável, sem exigir digitação manual
@@ -9500,15 +9501,15 @@ function renderPrecCard(p, d, valorHora, custoFixoHora, cardIdx) {
       <div class="prec-res-row"><span class="lbl" style="color:var(--bordeaux)">Impostos sobre o preço (${r.impostoPerc.toFixed(2).replace('.',',')}%)</span><span class="val" style="color:var(--bordeaux)" id="prec-imposto-${p.id}">${fmtR((d.precoVenda > 0 ? d.precoVenda : r.precoCalc) * r.impostoPerc / 100)}</span></div>` : `<span id="prec-imposto-${p.id}" style="display:none"></span>`}
       <div class="prec-res-row">
         <span class="lbl" style="color:var(--sage)">Lucro no preço de venda</span>
-        <span class="val" style="color:var(--sage);font-weight:600" id="prec-lucro-${p.id}">${fmtR((d.precoVenda > 0 ? d.precoVenda : r.precoCalc) - r.custoTotalReal - (r.impostoTipo === 'percentual' ? (d.precoVenda > 0 ? d.precoVenda : r.precoCalc) * r.impostoPerc / 100 : 0))}</span>
+        <span class="val" style="color:var(--sage);font-weight:600" id="prec-lucro-${p.id}">${fmtR((d.precoVenda > 0 ? d.precoVenda : r.precoCalc) - r.custoTotalExato - (r.impostoTipo === 'percentual' ? (d.precoVenda > 0 ? d.precoVenda : r.precoCalc) * r.impostoPerc / 100 : 0))}</span>
       </div>
       <div class="prec-res-row">
         <span class="lbl" style="color:var(--sage)">Lucro no Pix</span>
-        <span class="val" style="color:var(--sage)" id="prec-lucro-pix-${p.id}">${fmtR((d.precoVenda > 0 ? d.precoVenda : r.precoCalc) * (1 - r.tarifaPix) - r.custoTotalReal)}</span>
+        <span class="val" style="color:var(--sage)" id="prec-lucro-pix-${p.id}">${fmtR((d.precoVenda > 0 ? d.precoVenda : r.precoCalc) * (1 - r.tarifaPix) - r.custoTotalExato)}</span>
       </div>
       <div class="prec-res-row">
         <span class="lbl" style="color:var(--sage)">Lucro no Crédito</span>
-        <span class="val" style="color:var(--sage)" id="prec-lucro-cartao-${p.id}">${fmtR((d.precoVenda > 0 ? d.precoVenda : r.precoCalc) * (1 - r.taxaRefCartao) - r.custoTotalReal)}</span>
+        <span class="val" style="color:var(--sage)" id="prec-lucro-cartao-${p.id}">${fmtR((d.precoVenda > 0 ? d.precoVenda : r.precoCalc) * (1 - r.taxaRefCartao) - r.custoTotalExato)}</span>
       </div>
 
       <!-- PREÇO DE VENDA + MARGEM/MARKUP lado a lado -->
@@ -9557,7 +9558,7 @@ function renderPrecCard(p, d, valorHora, custoFixoHora, cardIdx) {
   if (!m || !m.matGlobalId) return;
   const matG = matGlobais.find(x => x.id === m.matGlobalId);
   if (!matG) return;
-  const qtd = parseFloat(val) || 0;
+  const qtd = Math.max(0, parseFloat(val) || 0);
   const qtdTotal = parseFloat(matG.qtdTotal) || 0;
   const valorPago = parseFloat(matG.valorPago) || 0;
   m.qtdUsada = qtd;
@@ -9575,7 +9576,7 @@ function renderPrecCard(p, d, valorHora, custoFixoHora, cardIdx) {
 
 function atualizarMatPrec(pecaId, idx, val) {
   const d = getPrecPeca(pecaId);
-  d.materiais[idx].valor = parseFloat(val) || 0;
+  d.materiais[idx].valor = Math.max(0, parseFloat(val) || 0);
   recalcularCard(pecaId);
   salvarPrecLocal();
   renderCatalogo();
@@ -10016,11 +10017,11 @@ function recalcularCard(pecaId) {
   const elCalc = document.getElementById('prec-calc-' + pecaId);
   if (elCalc) elCalc.textContent = fmtR(r.precoCalc);
   const elLucro = document.getElementById('prec-lucro-' + pecaId);
-  if (elLucro) elLucro.textContent = fmtR(r.precoCalc - r.custoTotalReal - r.impostoValor);
+  if (elLucro) elLucro.textContent = fmtR(r.precoCalc - r.custoTotalExato - r.impostoValor);
   const elLucroPix = document.getElementById('prec-lucro-pix-' + pecaId);
-  if (elLucroPix) elLucroPix.textContent = fmtR((d.precoVenda > 0 ? d.precoVenda : r.precoCalc) * (1 - r.tarifaPix) - r.custoTotalReal);
+  if (elLucroPix) elLucroPix.textContent = fmtR((d.precoVenda > 0 ? d.precoVenda : r.precoCalc) * (1 - r.tarifaPix) - r.custoTotalExato);
   const elLucroCartao = document.getElementById('prec-lucro-cartao-' + pecaId);
-  if (elLucroCartao) elLucroCartao.textContent = fmtR((d.precoVenda > 0 ? d.precoVenda : r.precoCalc) * (1 - r.taxaRefCartao) - r.custoTotalReal);
+  if (elLucroCartao) elLucroCartao.textContent = fmtR((d.precoVenda > 0 ? d.precoVenda : r.precoCalc) * (1 - r.taxaRefCartao) - r.custoTotalExato);
   const elCalcLbl = document.getElementById('prec-calclbl-' + pecaId);
   if (elCalcLbl) elCalcLbl.textContent = r.modo === 'markup'
     ? 'Preço Markup (' + r.markup.toFixed(2) + '×)'
@@ -10039,15 +10040,15 @@ function recalcularCard(pecaId) {
     // Preço fixado: mantém R$, recalcula margem
     let novaMargemVenda = null;
     if (modoPrec === 'markup') {
-      novaMargemVenda = Math.round((d.precoVenda / r.custoTotalReal) * 100) / 100;
+      novaMargemVenda = Math.round((d.precoVenda / r.custoTotalExato) * 100) / 100;
     } else {
-      novaMargemVenda = Math.round(((d.precoVenda - r.custoTotalReal - d.precoVenda * impostoPerc2) / d.precoVenda) * 1000) / 10;
+      novaMargemVenda = Math.round(((d.precoVenda - r.custoTotalExato - d.precoVenda * impostoPerc2) / d.precoVenda) * 1000) / 10;
     }
     d.margemVenda = novaMargemVenda;
     const elMargemVenda = document.getElementById('prec-margem-venda-' + pecaId);
     if (elMargemVenda && novaMargemVenda !== null) elMargemVenda.value = novaMargemVenda;
     const impostoValor2 = d.precoVenda * impostoPerc2;
-    const lucroFixado = d.precoVenda - r.custoTotalReal - impostoValor2;
+    const lucroFixado = d.precoVenda - r.custoTotalExato - impostoValor2;
     const elLucroVenda = document.getElementById('prec-lucro-' + pecaId);
     if (elLucroVenda) {
       elLucroVenda.textContent = fmtR(lucroFixado);
