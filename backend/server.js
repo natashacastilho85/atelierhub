@@ -43,6 +43,14 @@ function addBusinessDays(dateStr, days) {
   return d.toISOString().split('T')[0];
 }
 
+// Diferença em dias corridos entre duas datas 'YYYY-MM-DD' (toDate - fromDate). Meio-dia UTC
+// evita qualquer problema de horário de verão / borda de fuso na subtração.
+function diffDays(fromDateStr, toDateStr) {
+  const de = new Date(fromDateStr + 'T12:00:00Z');
+  const ate = new Date(toDateStr + 'T12:00:00Z');
+  return Math.round((ate - de) / 86400000);
+}
+
 function totalPago(c) {
   // Precisa bater exatamente com a mesma função no app (index.html): Pix, Dinheiro e Débito
   // usam o líquido (a cliente pagou menos, por causa do desconto); Cartão usa o bruto (a
@@ -177,10 +185,13 @@ async function _verificarNotificacoesInterno() {
     .select('id, casamento, status, forma_pag, tipo_quitacao, pagamentos, pago, valor_bruto, acrescimo, desconto, chegada, entrega, nome, user_id')
     .neq('status', 'Cancelado');
 
-  if (error) { console.error('[notif] Erro ao buscar contratos:', error); return; }
-  if (!contratos || !contratos.length) { console.log('[notif] Nenhum contrato ativo.'); return; }
+  if (error) console.error('[notif] Erro ao buscar contratos:', error);
 
-  console.log(`[notif] ${contratos.length} contrato(s)`);
+  if (contratos && contratos.length) {
+    console.log(`[notif] ${contratos.length} contrato(s)`);
+  } else {
+    console.log('[notif] Nenhum contrato ativo.');
+  }
 
   // Busca em lote os dois modelos de prazo de quitação (antes do casamento / após entrega) de
   // cada usuária que tem ao menos um contrato Reserva com entrada OU Reserva sem entrada — os
@@ -214,7 +225,7 @@ async function _verificarNotificacoesInterno() {
     }
   }
 
-  for (const c of contratos) {
+  for (const c of (contratos || [])) {
     if (!c.casamento || !c.user_id) continue;
     const uid = c.user_id;
     const id  = c.id;
@@ -286,6 +297,35 @@ async function _verificarNotificacoesInterno() {
     // 8. 💍 Dia do casamento
     if (cas === today)
       await disparar(uid, `casamento-${id}`, '💍 Dia do casamento!', `Hoje é o grande dia de ${c.nome}! 🌸`, id);
+  }
+
+  // 9. 🌸 Desidratação concluída — dispara no dia previsto (data_conclusao) e repete a cada 2
+  // dias corridos enquanto o registro não for marcado como concluído por Natasha/assinante.
+  // Independente da lista de contratos acima: mesmo sem nenhum contrato ativo, desidratações
+  // pendentes continuam sendo verificadas normalmente.
+  const { data: desidPendentes, error: errDesid } = await supabase
+    .from('desidratacao')
+    .select('id, user_id, nome_noiva, data_conclusao')
+    .eq('concluido', false)
+    .not('data_conclusao', 'is', null)
+    .lte('data_conclusao', today);
+
+  if (errDesid) {
+    console.error('[notif] Erro ao buscar desidratação:', errDesid.message);
+  } else if (desidPendentes && desidPendentes.length) {
+    for (const d of desidPendentes) {
+      if (!d.user_id) continue;
+      const diasAtraso = diffDays(d.data_conclusao, today);
+      if (diasAtraso < 0 || diasAtraso % 2 !== 0) continue; // só no dia previsto e depois a cada 2 dias
+
+      const nome = d.nome_noiva || 'Buquê';
+      const titulo = diasAtraso === 0 ? '🌸 Desidratação concluída' : '🌸 Desidratação pendente';
+      const corpo = diasAtraso === 0
+        ? `${nome} — prazo de desidratação chegou ao fim, confira e marque como concluída`
+        : `${nome} — ainda não foi marcada como concluída (${diasAtraso} dias após o prazo)`;
+
+      await disparar(d.user_id, `desid-${d.id}-d${diasAtraso}`, titulo, corpo, null);
+    }
   }
 
   console.log('[notif] Verificação concluída.');
