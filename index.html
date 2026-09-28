@@ -3299,7 +3299,7 @@ async function saveContrato() {
     if (!p) return;
     const qtd = parseInt(qtdEl.value) || 1;
     const precoCalculado = getPrecoPecaCalculado(pid) || 0;
-    pecasSel.push({ nome: p.nome, valor: precoCalculado, qtd });
+    pecasSel.push({ nome: p.nome, valor: precoCalculado, qtd, pecaLinhaId: gerarPecaLinhaId() });
     valorBruto += precoCalculado * qtd;
   });
   valorBruto = round2(valorBruto);
@@ -6051,6 +6051,11 @@ function openDetail(id) {
   if (!c) return;
   _origemDetalhe = _activeTab; // sempre a aba real — nunca mais um "Contratos" fixo ao fechar/excluir depois
   _limparBuscaContrato();
+  // true se pelo menos uma peça deste contrato tem pagamento(s) vinculado(s) por pecaLinhaId — nesse
+  // caso a taxa já aparece detalhada por peça acima, e a linha única "Crédito Nx" (que somava tudo
+  // misturado) não deve mais aparecer. Contratos de pagamento único no cadastro (sem vínculo por
+  // peça) continuam mostrando essa linha única, como sempre mostraram.
+  let temAlgumaPecaComPagamentoVinculado = false;
   // pagoBruto = o que a noiva pagou (para calcular saldo dela)
   // pagoNoCaixa = o que entrou no caixa líquido (para exibir no financeiro)
   const pagoBruto = totalPago(c);
@@ -6104,16 +6109,35 @@ function openDetail(id) {
     </div>
     <div class="detail-section">
       <div class="detail-section-title">Peças contratadas</div>
-      ${c.pecas.map(p => {
-        const vUnit = (parseFloat(p.valor)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-        const vTotal = ((parseFloat(p.valor)||0)*(parseInt(p.qtd)||1)).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-        return `<div class="detail-row">
-          <span class="dl">${p.qtd>1?p.qtd+'× ':''} ${p.nome}</span>
-          <span class="dv" style="text-align:right;line-height:1.5">
-            ${p.qtd>1?`<span style="font-size:0.68rem;color:var(--muted)">R$ ${vUnit} × ${p.qtd}</span><br>`:''}R$ ${vTotal}
-          </span>
-        </div>`;
-      }).join('')}
+      ${(() => {
+        // Pagamentos vinculados a uma peça específica via pecaLinhaId (fluxo de editar peça).
+        // Contratos de pagamento único no cadastro inicial não têm esse vínculo — nesse caso
+        // pagsDaPeca(p) volta vazio e a peça exibe só nome+valor, como sempre exibiu.
+        const pagsDaPeca = p => p.pecaLinhaId
+          ? (c.pagamentos||[]).filter(pg => pg.pecaLinhaId === p.pecaLinhaId)
+          : [];
+        temAlgumaPecaComPagamentoVinculado = c.pecas.some(p => pagsDaPeca(p).length > 0);
+        return c.pecas.map(p => {
+          const vUnit = (parseFloat(p.valor)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+          const vTotal = ((parseFloat(p.valor)||0)*(parseInt(p.qtd)||1)).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+          const pagsVinculados = pagsDaPeca(p);
+          const detalhePagsHtml = pagsVinculados.length
+            ? `<div style="margin-top:0.25rem">${pagsVinculados.map(pg => {
+                const liquidoPg = (parseFloat(pg.valor)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+                return `<div style="display:flex;justify-content:space-between;font-size:0.68rem;color:var(--muted);padding:0.1rem 0">
+                  <span>${_descricaoPagamento(pg)}</span><span>R$ ${liquidoPg}</span>
+                </div>`;
+              }).join('')}</div>`
+            : '';
+          return `<div class="detail-row" style="align-items:flex-start">
+            <span class="dl">${p.qtd>1?p.qtd+'× ':''} ${p.nome}</span>
+            <span class="dv" style="text-align:right;line-height:1.5">
+              ${p.qtd>1?`<span style="font-size:0.68rem;color:var(--muted)">R$ ${vUnit} × ${p.qtd}</span><br>`:''}R$ ${vTotal}
+              ${detalhePagsHtml}
+            </span>
+          </div>`;
+        }).join('');
+      })()}
       <div class="detail-row" style="padding-top:0.4rem;border-top:1px solid rgba(184,134,42,0.15)">
         <span class="dl" style="color:var(--dark)">Total</span>
         <span class="dv" style="color:var(--dark);font-family:'Calibri',serif;font-size:1.05rem">R$ ${c.pecas.reduce((s,p)=>s+((parseFloat(p.valor)||0)*(parseInt(p.qtd)||1)),0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
@@ -6130,8 +6154,11 @@ function openDetail(id) {
         } else if (desc > 0) {
           linhas += `<div class="detail-row"><span class="dl" style="color:var(--muted)">Desconto</span><span class="dv" style="color:var(--bordeaux)">− ${fmtR(desc)}</span></div>`;
         }
-        // 2. Taxa (sobre base já ajustada — só exibe se houver pagamento registrado)
-        if (temPag && c.formaPag === 'credito') {
+        // 2. Taxa (sobre base já ajustada — só exibe se houver pagamento registrado).
+        // Só roda quando NENHUMA peça tem pagamento vinculado por pecaLinhaId — nesse caso a
+        // taxa já aparece detalhada por peça acima, e mostrar essa linha também duplicaria e
+        // voltaria a misturar parcelas diferentes numa taxa só (o bug original).
+        if (temPag && c.formaPag === 'credito' && !temAlgumaPecaComPagamentoVinculado) {
           const _pCreditoDet = c.pagamentos.find(p => !p.origemPeca) || c.pagamentos[0];
           const nD = (_pCreditoDet && _pCreditoDet.parcelas) || 1;
           const taxaD = getTaxaParcela(nD);
@@ -6392,6 +6419,13 @@ async function registrarEntregaEternizacao(contratoId) {
 let contratoEditandoId = null;
 // Controle do novo fluxo: pagamento por peça ao adicionar/aumentar quantidade na edição
 let _pecaLinhaSeq = 0;
+
+// Identificador PERSISTENTE de uma linha de peça dentro de um contrato — gravado em c.pecas[i].pecaLinhaId
+// e usado para vincular pagamentos (c.pagamentos[i].pecaLinhaId) à peça exata que geraram, mesmo quando
+// duas peças do contrato têm o mesmo nome. Diferente de _pecaLinhaSeq/linhaId acima, que é só um handle
+// de DOM da sessão atual e nunca é salvo. Uma vez atribuído a uma peça, esse id nunca muda.
+let _pecaLinhaIdSeq = 0;
+function gerarPecaLinhaId() { return 'pl_' + Date.now() + '_' + (++_pecaLinhaIdSeq); }
 let _eventosPagamentoPecaEdit = {}; // { linhaId: { valorTotalBase, forma, parcelas, data, semPagamento } }
 
 function abrirEdicaoContrato(id) {
@@ -6425,6 +6459,9 @@ function abrirEdicaoContrato(id) {
     div.dataset.qtdBase = String(p.qtd || 1);
     div.dataset.valorTotalBase = String(round2((parseFloat(p.valor) || 0) * (parseInt(p.qtd) || 1)));
     div.dataset.original = 'true';
+    // Preserva o pecaLinhaId já existente (vincula pagamentos antigos corretamente); peça de
+    // contrato antigo que nunca teve esse id adota um novo agora, na primeira reabertura pós-correção.
+    div.dataset.pecaLinhaId = p.pecaLinhaId || gerarPecaLinhaId();
     // Preserva o nome original SEMPRE (independente do catálogo atual) — usado no save se a peça
     // tiver sido excluída do catálogo, pra não corromper o contrato com uma peça errada.
     div.dataset.nomeOriginal = p.nome;
@@ -6516,6 +6553,7 @@ function _criarLinhaPecaEdit(pecaId, qtdInicial) {
   div.dataset.qtdBase = '0';
   div.dataset.valorTotalBase = '0';
   div.dataset.original = 'false';
+  div.dataset.pecaLinhaId = gerarPecaLinhaId();
   div.style.cssText = 'display:grid;grid-template-columns:1fr 60px 24px;gap:0.4rem;align-items:center';
   div.innerHTML = `<select class="field-input" style="padding:0.5rem 0.6rem;font-size:0.82rem" onchange="_pecaEditTrocouSelecao(${linhaId})">${_optsLinhaPeca(pecaId)}</select><input class="field-input" type="number" min="1" value="${qtdInicial}" style="padding:0.5rem 0.4rem;text-align:center;font-size:0.82rem" onchange="_qtdPecaEditChange(${linhaId})"><button type="button" onclick="_removerLinhaPecaEdit(${linhaId})" style="background:none;border:none;color:var(--bordeaux);font-size:1.2rem;cursor:pointer;padding:0;line-height:1">×</button>`;
   container.appendChild(div);
@@ -6629,7 +6667,9 @@ function _qtdPecaEditChange(linhaId) {
 let _modalPecaTemp = null;
 
 function _abrirModalPagamentoPeca(linhaId, nomePeca, qtdDelta, precoUnitCatalogo) {
-  _modalPecaTemp = { linhaId, nomePeca, qtdDelta, precoUnitCatalogo, etapa: 1, forma: null, parcelas: 1 };
+  const _divPecaLinha = document.querySelector(`#e-pecas-selecionadas > div[data-linha-id="${linhaId}"]`);
+  const pecaLinhaId = _divPecaLinha ? _divPecaLinha.dataset.pecaLinhaId : null;
+  _modalPecaTemp = { linhaId, pecaLinhaId, nomePeca, qtdDelta, precoUnitCatalogo, etapa: 1, forma: null, parcelas: 1 };
   let overlay = document.getElementById('modal-pag-peca');
   if (!overlay) {
     overlay = document.createElement('div');
@@ -6813,7 +6853,8 @@ function _confirmarPagamentoPeca() {
     descontoCartaoAtivo,
     descontoCartaoTipo,
     descontoCartaoValor,
-    data
+    data,
+    pecaLinhaId: _modalPecaTemp.pecaLinhaId || null
   });
   _fecharModalPagamentoPeca();
 }
@@ -6844,7 +6885,8 @@ function _aplicarEventoPecaEdit(linhaId, evento) {
       descontoCartaoAtivo: evento.descontoCartaoAtivo || false,
       descontoCartaoTipo: evento.descontoCartaoTipo || null,
       descontoCartaoValor: evento.descontoCartaoValor || null,
-      data: evento.data
+      data: evento.data,
+      pecaLinhaId: evento.pecaLinhaId || null
     });
   }
 }
@@ -6895,9 +6937,10 @@ async function saveEditContrato() {
     const valorTotalLinha = parseFloat(linha.dataset.valorTotalBase) || 0;
     // Peça foi excluída do catálogo e ninguém trocou a seleção — preserva nome/valor originais
     // em vez de buscar no catálogo (que não vai achar e corromperia o contrato com peça errada).
+    const pecaLinhaId = linha.dataset.pecaLinhaId || gerarPecaLinhaId();
     if (sel.value === 'orig') {
       const valorUnitario = qtd > 0 ? round2(valorTotalLinha / qtd) : 0;
-      pecasSel.push({ nome: linha.dataset.nomeOriginal, valor: valorUnitario, qtd });
+      pecasSel.push({ nome: linha.dataset.nomeOriginal, valor: valorUnitario, qtd, pecaLinhaId });
       valorBruto += valorTotalLinha;
       return;
     }
@@ -6906,7 +6949,7 @@ async function saveEditContrato() {
     if (!p) return;
     // Usa o valor TOTAL travado da linha (preserva desconto/acréscimo já combinado, não recalcula do catálogo)
     const valorUnitario = qtd > 0 ? round2(valorTotalLinha / qtd) : 0;
-    pecasSel.push({ nome: p.nome, valor: valorUnitario, qtd });
+    pecasSel.push({ nome: p.nome, valor: valorUnitario, qtd, pecaLinhaId });
     valorBruto += valorTotalLinha;
   });
   dados.pecas = pecasSel;
@@ -6980,6 +7023,7 @@ async function saveEditContrato() {
       const novoPag = { data: ev.data, valor: liquido, bruto: brutoFinal, forma: ev.forma, status: 'Realizado', origemPeca: true };
       if (ev.forma === 'Cartão' && ev.parcelas) novoPag.parcelas = ev.parcelas;
       if (descTipoPeca) { novoPag.descontoCartaoTipo = descTipoPeca; novoPag.descontoCartaoValor = descValorPeca; }
+      if (ev.pecaLinhaId) novoPag.pecaLinhaId = ev.pecaLinhaId;
       pagamentosFinal.push(novoPag);
       pagamentosMudaram = true;
     });
