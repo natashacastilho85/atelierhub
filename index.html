@@ -2532,19 +2532,6 @@ function totalPago(c) {
 }
 
 // Total que efetivamente caiu no caixa (líquido após taxas). Usado no financeiro.
-function totalEntradaCaixa(c) {
-  if (Array.isArray(c.pagamentos) && c.pagamentos.length) {
-    return c.pagamentos.reduce((s,p)=>s+(parseFloat(p.valor)||0), 0);
-  }
-  return parseFloat(c.pago) || 0;
-}
-
-// Soma por forma de pagamento (valor líquido = o que a noiva pagou)
-function totalPagoPorForma(c, forma) {
-  if (!Array.isArray(c.pagamentos)) return 0;
-  return c.pagamentos.filter(p=>p.forma===forma).reduce((s,p) => s + (parseFloat(p.valor)||0), 0);
-}
-
 // Devolve os pagamentos "reais" de um contrato pra fins de relatório (Início, Financeiro,
 // Comparativos): usa o array de pagamentos quando existe; se estiver vazio mas o contrato tem
 // um valor pago legado (c.pago), sintetiza um único registro na data de assinatura. Única
@@ -2844,10 +2831,6 @@ const tabsComFab = { dashboard:1, contratos:1, calendario:1, financeiro:1, gasto
 let _drawerStack = [];  // ids dos drawers abertos na ordem
 let _activeTab   = 'dashboard'; // aba atualmente visível
 let _tabOrigem   = null;        // aba que estava ativa quando o primeiro drawer abriu
-
-function _garantirRaiz() {
-  history.replaceState({ villare: 'root' }, '');
-}
 
 function _scrollScreenToTop(tab) {
   const tela = document.getElementById('screen-'+tab);
@@ -3241,13 +3224,6 @@ window.addEventListener('load', () => {
 // Use getDescontoPix() e getTarifaCartao() em vez destas constantes onde possível
 const TAXA_PIX_DESC = 0.07;      // fallback — sobrescrito por getDescontoPix()
 const TAXA_CARTAO_3X = 0.0701;   // fallback — sobrescrito por getTarifaCartao()
-
-function calcEntradaCaixa(valor, formaPag, opts) {
-  opts = opts || {};
-  if (!valor || valor <= 0) return 0;
-  if (formaPag === 'pix') return valor * (1 - getDescontoPix()); // só no fechamento total
-  return valor; // fallback
-}
 
 async function saveContrato() {
   const nome = document.getElementById('c-nome').value;
@@ -4566,7 +4542,8 @@ async function saveGasto() {
       } else {
         const insertBody = { produto, fornecedor, data, valor: valorRaw, forma };
         if (isCartao && cartao) insertBody.cartao_nome = cartao.nome;
-        await sbInsert('gastos', insertBody);
+        const [novoGasto] = await sbInsert('gastos', insertBody);
+        if (!novoGasto) throw new Error('O gasto não foi confirmado pelo servidor. Tente novamente.');
       }
     }
 
@@ -4646,7 +4623,10 @@ async function excluirGasto() {
       txtConfirmar: 'Todas do grupo',
       onCancelar: async () => {
         try {
-          await sbDelete('gastos', g.id);
+          const apagados = await sbDelete('gastos', g.id);
+          if (!Array.isArray(apagados) || apagados.length === 0) {
+            throw new Error('A exclusão não foi confirmada pelo servidor. Tente novamente.');
+          }
           gastos = gastos.filter(x => x.id !== g.id);
           gastoEditandoId = null;
           closeDrawer('drawer-gasto');
@@ -4655,7 +4635,10 @@ async function excluirGasto() {
       },
       onConfirmar: async () => {
         try {
-          for (const x of grupo) await sbDelete('gastos', x.id);
+          const resultados = await Promise.all(grupo.map(x => sbDelete('gastos', x.id)));
+          if (resultados.some(r => !Array.isArray(r) || r.length === 0)) {
+            throw new Error('Uma ou mais parcelas não foram confirmadas como excluídas pelo servidor.');
+          }
           const ids = grupo.map(x => x.id);
           gastos = gastos.filter(x => !ids.includes(x.id));
           gastoEditandoId = null;
@@ -4674,7 +4657,10 @@ async function excluirGasto() {
       txtConfirmar: 'Excluir',
       onConfirmar: async () => {
         try {
-          await sbDelete('gastos', _id);
+          const apagados = await sbDelete('gastos', _id);
+          if (!Array.isArray(apagados) || apagados.length === 0) {
+            throw new Error('A exclusão não foi confirmada pelo servidor. Tente novamente.');
+          }
           gastos = gastos.filter(x => x.id !== _id);
           gastoEditandoId = null;
           closeDrawer('drawer-gasto');
@@ -7651,14 +7637,6 @@ function getPrecPeca(pecaId) {
 }
 
 // Calcula margem% dado preço cartão fixado e custo total
-function calcMargemDePreco(precoCartao, custoTotalReal) {
-  const tarifaCartao = getTarifaCartao();
-  const precoBase = precoCartao * (1 - tarifaCartao);
-  if (precoBase <= 0 || custoTotalReal <= 0) return 0;
-  const margem = (precoBase - custoTotalReal) / precoBase * 100;
-  return Math.max(0, margem);
-}
-
 // Calcula preço cartão dado margem% e custo total
 function calcPrecoDeMargemCartao(margem, custoTotalReal) {
   const margemPerc = (parseFloat(margem) || 0) / 100;
@@ -7744,11 +7722,6 @@ function calcPrec(materiais, _ignorado, salario, custoFixoHora) {
     markup: markupEfetivo,
     modo,
   };
-}
-
-function openPrecificacao() {
-  _renderPrecBody();
-  openDrawer('drawer-prec');
 }
 
 // ── CUSTOS CONFIGURÁVEIS ──
@@ -8242,11 +8215,6 @@ function adicionarParcelaConfig() {
   renderParcelasCreditoConfig(); // já ordena internamente
 }
 
-function removerParcelaConfig(n) {
-  custosConfig.parcelas = (custosConfig.parcelas || []).filter(p => p.n !== n);
-  renderParcelasCreditoConfig();
-}
-
 function atualizarVisibilidadeParcelasCredito() {
   const credito = (custosConfig.formasPag || []).find(f => f.id === 'credito');
   const secao = document.getElementById('c-parcelas-secao');
@@ -8378,7 +8346,7 @@ function toggleFormaPag(idx, ativa) {
 
 function atualizarTaxaForma(idx, val) {
   if (custosConfig.formasPag && custosConfig.formasPag[idx]) {
-    custosConfig.formasPag[idx].taxa = parseFloat(val) || 0;
+    custosConfig.formasPag[idx].taxa = Math.max(0, parseFloat(val) || 0);
   }
 }
 
@@ -8409,10 +8377,6 @@ function atualizarPrazoEntrega(val) {
 
 function atualizarDiasAvisoEntrega(val) {
   custosConfig.diasAvisoEntrega = (val === '' || val === null || val === undefined) ? null : (parseInt(val) || 0);
-}
-
-function openCustos() {
-  openConfiguracoes();
 }
 
 async function _recalcularDesidratacaoExistentes(novoPrazo) {
@@ -8974,42 +8938,17 @@ async function exportarDadosPDF() {
       doc.text(`Página ${i} de ${totalPaginas}`, largura - margemDir, doc.internal.pageSize.getHeight() - 20, { align: 'right' });
     }
 
-    doc.save('atelierhub-dados-' + new Date().toISOString().slice(0,10) + '.pdf');
+    doc.save('atelierhub-dados-' + new Date().toLocaleDateString('en-CA') + '.pdf');
   } catch (e) {
     _mostrarErroAcao('exportarDadosPDF', e, { acaoLabel: 'gerar o relatório' });
   }
   hideLoading();
 }
 
-function renderProcessosPeca(pecaId, d) {
-  const procs = custosConfig.processos || [];
-  if (!procs.length) return '';
-
-  // Inicializa tempos por processo para esta peça se não existir
-  if (!d.processosMins) {
-    d.processosMins = procs.map(p => p.mins || 0);
-  }
-  // Garante que o array tem o mesmo tamanho que a lista global
-  while (d.processosMins.length < procs.length) d.processosMins.push(0);
-
-  const rows = procs.map((proc, i) => {
-    const val = d.processosMins[i] ?? proc.mins ?? 0;
-    return `<div class="prec-proc-row">
-      <span class="prec-proc-nome">${proc.nome || 'Processo ' + (i+1)}</span>
-      <input class="prec-proc-input" type="number" min="0" step="1"
-        value="${val > 0 ? val : ''}" placeholder="0"
-        oninput="atualizarProcessoPeca(${pecaId}, ${i}, this.value)">
-      <span class="prec-proc-unit">min</span>
-    </div>`;
-  }).join('');
-
-  return `<div class="prec-processos-wrap">${rows}</div>`;
-}
-
 function atualizarProcessoPeca(pecaId, idx, val) {
   const d = getPrecPeca(pecaId);
   if (!d.processosMins) d.processosMins = (custosConfig.processos || []).map(p => parseInt(p.mins) || 0);
-  d.processosMins[idx] = parseInt(val) || 0;
+  d.processosMins[idx] = Math.max(0, parseInt(val) || 0);
   const totalGlobais = d.processosMins.reduce((s, v) => s + (parseInt(v) || 0), 0);
   const totalExtras  = (d.processosExtras || []).reduce((s, p) => s + (parseInt(p.mins) || 0), 0);
   d.tempo = Math.max(1, (totalGlobais + totalExtras) || 1);
@@ -9216,24 +9155,6 @@ function atualizarTabelaResumo() {
 }
   
 // Busca peça por nome e mostra sugestões. Clicar rola até o card.
-function buscarPecaPrec(termo) {
-  const el = document.getElementById('prec-busca-result');
-  if (!el) return;
-  const t = (termo || '').trim().toLowerCase();
-  const matches = t
-    ? pecas.filter(p => p.nome.toLowerCase().includes(t)).slice(0, 8)
-    : pecas.slice(0, 8);
-  if (!matches.length) {
-    el.innerHTML = '<div class="prec-busca-empty">Nenhuma peça encontrada</div>';
-    el.classList.add('aberta');
-    return;
-  }
-  el.innerHTML = matches.map(p =>
-    `<div class="prec-busca-item" onclick="irParaPeca(${p.id})">${p.nome}</div>`
-  ).join('');
-  el.classList.add('aberta');
-}
-
 function irParaPeca(pecaId) {
   const card = document.getElementById('prec-card-' + pecaId);
   if (!card) return;
@@ -9257,14 +9178,6 @@ function irParaPeca(pecaId) {
   const res = document.getElementById('prec-busca-result');
   if (inp) inp.value = '';
   if (res) res.classList.remove('aberta');
-}
-
-function irParaPrimeiraPeca() {
-  const inp = document.getElementById('prec-busca-input');
-  if (!inp) return;
-  const t = inp.value.trim().toLowerCase();
-  const match = t ? pecas.find(p => p.nome.toLowerCase().includes(t)) : pecas[0];
-  if (match) irParaPeca(match.id);
 }
 
 // Fecha a lista de busca ao clicar fora do campo
@@ -9640,47 +9553,6 @@ async function duplicarPecaPrec(pecaId) {
   } catch(e) { _mostrarErroAcao('duplicarPecaPrec', e, { acaoLabel: 'duplicar a peça' }); }
 }
 
-function simularPorPreco(pecaId, precoDigitado) {
-  const preco = parseFloat(precoDigitado) || 0;
-  const el = document.getElementById('prec-simul-resultado-' + pecaId);
-  if (!el) return;
-  if (!preco) { el.textContent = ''; return; }
-
-  const d = getPrecPeca(pecaId);
-  const mins = d.tempo || 1;
-  const perdaResina = d.perdaResina || 0;
-  const salario = getValorHora() * (mins / 60);
-  const custoFixo = getCustoFixoPorHora() * (mins / 60);
-  const materiaisComPerda = (d.materiais || []).map(m => {
-    const matG = m.matGlobalId ? matGlobais.find(g => g.id === m.matGlobalId) : null;
-    const ehResina = matG ? matG.perdaResina === true : m.perdaResina === true;
-    return { ...m, valor: (parseFloat(m.valor) || 0) * (ehResina ? (1 + perdaResina / 100) : 1) };
-  });
-  const custoMat = materiaisComPerda.reduce((s, m) => s + (parseFloat(m.valor) || 0), 0);
-  const custoTotal = custoMat + salario + custoFixo;
-
-  const imp = custosConfig.impostoConfig || CUSTOS_DEFAULT.impostoConfig;
-  const impostoPerc = imp.tipo === 'percentual' ? (parseFloat(imp.valor) || 0) / 100 : 0;
-  const impostoValor = preco * impostoPerc;
-  const lucro = preco - custoTotal - impostoValor;
-
-  const pc = custosConfig.precConfig || CUSTOS_DEFAULT.precConfig;
-  const modo = pc.modo || 'markup';
-
-  let resultado = '';
-  if (modo === 'markup') {
-    const markup = custoTotal > 0 ? preco / custoTotal : 0;
-    const lucroFmt = lucro.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
-    resultado = `→ Markup ${markup.toFixed(2)}× | Lucro R$ ${lucroFmt}`;
-  } else {
-    const margem = preco > 0 ? ((lucro / preco) * 100) : 0;
-    const lucroFmt = lucro.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
-    resultado = `→ Margem ${margem.toFixed(1)}% | Lucro R$ ${lucroFmt}`;
-  }
-  el.textContent = resultado;
-  el.style.color = lucro >= 0 ? 'var(--sage)' : 'var(--bordeaux)';
-}
-
 
 function atualizarLucrosPixCartao(pecaId, precoVenda, custoTotal) {
   const pc = (typeof custosConfig !== 'undefined' && custosConfig.precConfig)
@@ -9787,7 +9659,7 @@ function salvarProcessoExtra(pecaId) {
 function atualizarProcessoExtra(pecaId, idx, val) {
   const d = getPrecPeca(pecaId);
   if (!d.processosExtras || !d.processosExtras[idx]) return;
-  d.processosExtras[idx].mins = parseInt(val) || 0;
+  d.processosExtras[idx].mins = Math.max(0, parseInt(val) || 0);
   _recalcularTempoComExtras(d);
   recalcularCard(pecaId);
   salvarPrecLocal();
@@ -9818,13 +9690,6 @@ function _recalcularTempoComExtras(d) {
   const totalExtras  = (d.processosExtras || []).reduce((s, p) => s + (parseInt(p.mins) || 0), 0);
   d.tempo = totalGlobais + totalExtras;
   // Atualiza campo de tempo no card se visível
-}
-
-function atualizarMarkupMargem(pecaId, val) {
-  const d = getPrecPeca(pecaId);
-  d.margemOuMarkup = parseFloat(val) || null;
-  recalcularCard(pecaId);
-  salvarPrecLocal();
 }
 
 function atualizarPrecoVenda(pecaId, val) {
@@ -9923,14 +9788,6 @@ function atualizarTempoPrec(pecaId, val) {
   
   recalcularCard(pecaId);
   
-  salvarPrecLocal();
-  renderCatalogo();
-}
-
-function atualizarPrecoPrec(pecaId, val) {
-  const d = getPrecPeca(pecaId);
-  d.precoFixado = parseFloat(val) || null;
-  recalcularCard(pecaId);
   salvarPrecLocal();
   renderCatalogo();
 }
@@ -10098,37 +9955,7 @@ function toggleSecaoPrec(secaoId, setaId) {
   if (seta) seta.textContent = el.classList.contains('aberto') ? '▼' : '▶';
 }
   
-function simularMargem(pecaId, margemVal) {
-  const el = document.getElementById('prec-simul-res-' + pecaId);
-  if (!el) return;
 
-  const margem = parseFloat(margemVal);
-  if (isNaN(margem)) { el.innerHTML = '← digite a margem'; return; }
-
-  const d = getPrecPeca(pecaId);
-  const mins = d.tempo || getTotalProcessosMins() || 60;
-  const salario = getValorHora() * (mins / 60);
-  const custoFixo = getCustoFixoPorHora() * (mins / 60);
-  const _perdaPadrao = (typeof custosConfig !== "undefined" && custosConfig.perdaResinaPadrao != null) ? custosConfig.perdaResinaPadrao : 5;
-  const perdaResina = (d.perdaResina != null ? d.perdaResina : _perdaPadrao) / 100;
-  const materiaisComPerda = d.materiais.map(m => {
-    const matG = m.matGlobalId ? matGlobais.find(g => g.id === m.matGlobalId) : null;
-    const ehResina = matG ? matG.perdaResina === true : m.perdaResina === true;
-    if (ehResina && perdaResina > 0) {
-      return { ...m, valor: (parseFloat(m.valor) || 0) * (1 + perdaResina) };
-    }
-    return m;
-  });
-  const custoTotalReal = materiaisComPerda.reduce((s, m) => s + (parseFloat(m.valor) || 0), 0) + salario + custoFixo;
-
-  const r = calcPrecoDeMargemCartao(margem, custoTotalReal);
-  const fmt = v => 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
-  const lucro = r.precoBase - custoTotalReal;
-  const cor = lucro >= 0 ? 'var(--sage)' : 'var(--bordeaux)';
-  const aviso = lucro < 0 ? ` <span style="font-size:0.7rem;color:var(--bordeaux)">⚠ Prejuízo!</span>` : '';
-
-  el.innerHTML = `<span style="color:${cor}"><strong>Crédito: ${fmt(r.precoCartao)}</strong> · Pix: ${fmt(r.precoBase)} · lucro ${fmt(lucro)}</span>${aviso}`;
-}
 
 
 // ── MATERIAIS GLOBAIS ──
@@ -10626,11 +10453,6 @@ function imprimirFicha() {
   if (!c) return;
   const f = _coletarDadosFicha(c);
   gerarImpressaoFicha(c, f);
-}
-
-async function salvarEImprimirFicha() {
-  await salvarFicha();
-  imprimirFicha();
 }
 
   function imprimirFichaPeloForm(prefixo) {
@@ -11637,50 +11459,6 @@ async function iniciarAuth() {
 }
 
 
-async function debugPushSubscription() {
-  const linhas = [];
-  try {
-    linhas.push('Service Worker: ' + ('serviceWorker' in navigator ? '✅' : '❌'));
-    linhas.push('PushManager: ' + ('PushManager' in window ? '✅' : '❌'));
-
-    const perm = await Notification.requestPermission();
-    linhas.push('Permissão: ' + perm);
-
-    if (!('serviceWorker' in navigator)) { mostrarAlerta({emoji:'🔔', titulo:'Diagnóstico push', mensagem: linhas.join('\n')}); return; }
-
-    const reg = await navigator.serviceWorker.ready;
-    linhas.push('SW registrado: ✅');
-    linhas.push('SW scope: ' + reg.scope);
-
-    const sub = await reg.pushManager.getSubscription();
-    if (sub) {
-      linhas.push('Subscrição existente: ✅');
-      linhas.push('Endpoint: ' + sub.endpoint.slice(0, 50) + '...');
-    } else {
-      linhas.push('Subscrição: ❌ nenhuma');
-    }
-
-    // Testa salvar no Supabase
-    if (sub) {
-      const subJson = sub.toJSON();
-      const result = await sbFetch('push_subscriptions', {
-        method: 'POST',
-        headers: { 'Prefer': 'resolution=merge-duplicates,return=representation' },
-        body: JSON.stringify({
-          user_id: _uid(),
-          endpoint: subJson.endpoint,
-          subscription: subJson,
-          updated_at: new Date().toISOString()
-        })
-      });
-      linhas.push('Salvo no banco: ' + (Array.isArray(result) && result.length > 0 ? '✅' : '❌ (servidor não confirmou)'));
-    }
-
-  } catch(e) {
-    linhas.push('ERRO: ' + e.message);
-  }
-  mostrarAlerta({emoji:'🔔', titulo:'Diagnóstico push', mensagem: linhas.join('\n')});
-}
 async function verificarAssinatura() {
   try {
     const uid = _uid();
