@@ -6146,6 +6146,10 @@ function openDetail(id) {
         };
         const linhaPeca = p => `<span class="dl">${p.qtd>1?p.qtd+'× ':''} ${p.nome}</span><span class="dv" style="text-align:right;line-height:1.5">${fmtValorPeca(p)}</span>`;
 
+        // Cabeçalho de data, no topo do bloco — antes das peças, não depois — pra deixar claro que
+        // a data se refere a TODAS as peças do bloco (grupo ou individual), nunca só à última.
+        const headerData = data => `<div style="font-size:0.62rem;color:var(--muted-light);padding-bottom:0.15rem">${fmtData(data)}</div>`;
+
         // Separa peças em grupo (mesmo grupoIniId) de peças individuais (sem grupo).
         const jaRenderizadoGrupo = new Set();
         return c.pecas.map(p => {
@@ -6154,20 +6158,22 @@ function openDetail(id) {
             jaRenderizadoGrupo.add(p.grupoIniId);
             const pecasDoMesmoGrupo = c.pecas.filter(x => x.grupoIniId === p.grupoIniId);
             const pagsGrupo = pagsDoGrupo(p.grupoIniId);
-            const dataGrupo = pagsGrupo[0]?.data ? fmtData(pagsGrupo[0].data) : fmtData(c.contrato);
+            const dataGrupo = pagsGrupo[0]?.data || c.contrato;
             return `<div class="detail-row" style="align-items:flex-start;flex-direction:column;gap:0.3rem">
+              ${headerData(dataGrupo)}
               ${pecasDoMesmoGrupo.map(pp => `<div style="display:flex;justify-content:space-between;width:100%">${linhaPeca(pp)}</div>`).join('')}
-              ${pagsGrupo.length ? `<div style="width:100%;padding-top:0.2rem">
-                <span style="font-size:0.62rem;color:var(--muted-light)">${dataGrupo}</span>
-                ${pagsGrupo.map(fmtPag).join('')}
-              </div>` : ''}
+              ${pagsGrupo.length ? `<div style="width:100%;padding-top:0.1rem">${pagsGrupo.map(fmtPag).join('')}</div>` : ''}
             </div>`;
           }
-          // Peça individual (adicionada depois, via editar contrato) — detalhe já vinculado a ela só.
+          // Peça individual (adicionada depois, via editar contrato) — mesma estrutura de cabeçalho
+          // de data, pra ficar visualmente igual ao caso de grupo (nunca "sem data", perdida).
           const pagsVinculados = pagsDaPeca(p);
-          return `<div class="detail-row" style="align-items:flex-start">
-            ${linhaPeca(p)}
-          </div>${pagsVinculados.length ? `<div style="padding:0 0 0.3rem">${pagsVinculados.map(fmtPag).join('')}</div>` : ''}`;
+          const dataIndividual = pagsVinculados[0]?.data;
+          return `<div class="detail-row" style="align-items:flex-start;flex-direction:column;gap:0.3rem">
+            ${dataIndividual ? headerData(dataIndividual) : ''}
+            <div style="display:flex;justify-content:space-between;width:100%">${linhaPeca(p)}</div>
+            ${pagsVinculados.length ? `<div style="width:100%;padding-top:0.1rem">${pagsVinculados.map(fmtPag).join('')}</div>` : ''}
+          </div>`;
         }).join('');
       })()}
       <div class="detail-row" style="padding-top:0.4rem;border-top:1px solid rgba(184,134,42,0.15)">
