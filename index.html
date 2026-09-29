@@ -199,7 +199,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
   .metric-card .metric-left { padding-left:0.4rem; }
   .metric-card.wide { grid-column:unset; }
   .metric-label { font-size:0.6rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-bottom:0.35rem; }
-  .metric-value { font-family:'Calibri',serif; font-size:1.55rem; font-weight:400; color:var(--dark); line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .metric-value { font-family:'Calibri',serif; font-size:clamp(1.05rem, 5.5vw, 1.55rem); font-weight:400; color:var(--dark); line-height:1.1; white-space:nowrap; }
   .metric-value.gold { color:var(--gold); }
   .metric-sub { font-size:0.62rem; color:var(--muted); margin-top:0.25rem; }
   .mini-info-card { background:white; border:1px solid rgba(184,134,42,0.16); border-radius:8px; padding:0.5rem 1rem; box-shadow:0 1px 6px rgba(42,26,14,0.06); font-size:0.72rem; color:var(--muted); text-align:center; margin-bottom:0.75rem; }
@@ -2817,9 +2817,9 @@ function renderMetricas() {
     const elCtrs = document.getElementById('metric-contratos-mes');
     const elRec = document.getElementById('metric-areceber');
 
-    if (elFat) elFat.textContent = fat > 0 ? 'R$ ' + fat.toLocaleString('pt-BR', { minimumFractionDigits: 0 }) : 'R$ 0';
+    if (elFat) elFat.textContent = fat > 0 ? 'R$ ' + fat.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'R$ 0,00';
     if (elCtrs) elCtrs.textContent = nMes + ' contrato' + (nMes === 1 ? '' : 's') + ' fechado' + (nMes === 1 ? '' : 's') + ' em ' + mesesNomes[hoje.getMonth()].toLowerCase();
-    if (elRec) elRec.textContent = aReceber > 0 ? 'R$ ' + aReceber.toLocaleString('pt-BR', { minimumFractionDigits: 0 }) : 'R$ 0';
+    if (elRec) elRec.textContent = aReceber > 0 ? 'R$ ' + aReceber.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'R$ 0,00';
     
     const elSub = document.getElementById('metric-areceber-sub');
     if (elSub) elSub.style.display = aReceber > 0 ? '' : 'none';
