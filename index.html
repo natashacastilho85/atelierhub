@@ -2556,16 +2556,28 @@ function _descricaoPagamento(p) {
   if (p.forma === 'Cartão') {
     const partesCartao = [];
     if (p.descontoCartaoValor > 0) {
-      partesCartao.push(p.descontoCartaoTipo === 'valor' ? `desc. R$${p.descontoCartaoValor}` : `desc. ${p.descontoCartaoValor}%`);
+      // bruto (em p) já é o valor pós-desconto de cartão — reconstrói o valor de referência
+      // (pré-desconto) só quando o tipo é percentual, pra poder mostrar o valor em R$ do desconto.
+      // Quando o tipo já é 'valor', descontoCartaoValor JÁ É o valor em R$, nenhum cálculo necessário.
+      const valorDescCartao = p.descontoCartaoTipo === 'valor'
+        ? round2(parseFloat(p.descontoCartaoValor) || 0)
+        : (bruto > 0 && p.descontoCartaoValor < 100 ? round2((bruto / (1 - p.descontoCartaoValor/100)) - bruto) : 0);
+      partesCartao.push(p.descontoCartaoTipo === 'valor'
+        ? `desc. R$${p.descontoCartaoValor}`
+        : `desc. ${p.descontoCartaoValor}% (R$ ${valorDescCartao.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})})`);
     }
     if (temTaxa) {
+      // bruto já está pós-desconto de cartão (se houve), então bruto-liquido é só a tarifa,
+      // nunca soma o desconto do cupom acima — os dois valores em R$ não se sobrepõem.
+      const valorTaxa = round2(bruto - liquido);
       const pctTaxa = bruto > 0 ? ((bruto - liquido) / bruto) * 100 : 0;
-      partesCartao.push(`tarifa absorvida${pctTaxa > 0 ? ' ('+pctTaxa.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+'%)' : ''}`);
+      partesCartao.push(`tarifa absorvida${pctTaxa > 0 ? ' ('+pctTaxa.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+`%, R$ ${valorTaxa.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})})` : ')'}`);
     }
     if (partesCartao.length) descTxt = ' · ' + partesCartao.join(', ');
   } else if (temTaxa) {
     const pctDesc = bruto > 0 ? ((bruto - liquido) / bruto) * 100 : 0;
-    if (pctDesc > 0) descTxt = ` · ${pctDesc.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}% desc.`;
+    const valorDesc = round2(bruto - liquido);
+    if (pctDesc > 0) descTxt = ` · ${pctDesc.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}% desc. (R$ ${valorDesc.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})})`;
   }
   return `${formaDisplayLabel(p.forma)||'—'}${parc}${descTxt}`;
 }
@@ -6150,31 +6162,48 @@ function openDetail(id) {
         // a data se refere a TODAS as peças do bloco (grupo ou individual), nunca só à última.
         const headerData = data => `<div style="font-size:0.62rem;color:var(--muted-light);padding-bottom:0.15rem">${fmtData(data)}</div>`;
 
-        // Separa peças em grupo (mesmo grupoIniId) de peças individuais (sem grupo).
+        // Separa peças em grupo (mesmo grupoIniId) de peças individuais (sem grupo), montando um
+        // bloco por grupo/peça com sua data de referência — depois ordena todos os blocos por essa
+        // data (mais antiga primeiro) antes de gerar o HTML, pra a lista refletir a ordem em que as
+        // peças foram de fato contratadas/pagas, não a ordem de inserção no array do banco.
         const jaRenderizadoGrupo = new Set();
-        return c.pecas.map(p => {
+        const blocos = c.pecas.map(p => {
           if (p.grupoIniId) {
-            if (jaRenderizadoGrupo.has(p.grupoIniId)) return ''; // já saiu junto do primeiro item do grupo
+            if (jaRenderizadoGrupo.has(p.grupoIniId)) return null; // já saiu junto do primeiro item do grupo
             jaRenderizadoGrupo.add(p.grupoIniId);
             const pecasDoMesmoGrupo = c.pecas.filter(x => x.grupoIniId === p.grupoIniId);
             const pagsGrupo = pagsDoGrupo(p.grupoIniId);
             const dataGrupo = pagsGrupo[0]?.data || c.contrato;
-            return `<div class="detail-row" style="align-items:flex-start;flex-direction:column;gap:0.3rem">
+            const html = `<div class="detail-row" style="align-items:flex-start;flex-direction:column;gap:0.3rem">
               ${headerData(dataGrupo)}
               ${pecasDoMesmoGrupo.map(pp => `<div style="display:flex;justify-content:space-between;width:100%">${linhaPeca(pp)}</div>`).join('')}
               ${pagsGrupo.length ? `<div style="width:100%;padding-top:0.1rem">${pagsGrupo.map(fmtPag).join('')}</div>` : ''}
             </div>`;
+            return { data: dataGrupo, html };
           }
           // Peça individual (adicionada depois, via editar contrato) — mesma estrutura de cabeçalho
           // de data, pra ficar visualmente igual ao caso de grupo (nunca "sem data", perdida).
           const pagsVinculados = pagsDaPeca(p);
           const dataIndividual = pagsVinculados[0]?.data;
-          return `<div class="detail-row" style="align-items:flex-start;flex-direction:column;gap:0.3rem">
+          const html = `<div class="detail-row" style="align-items:flex-start;flex-direction:column;gap:0.3rem">
             ${dataIndividual ? headerData(dataIndividual) : ''}
             <div style="display:flex;justify-content:space-between;width:100%">${linhaPeca(p)}</div>
             ${pagsVinculados.length ? `<div style="width:100%;padding-top:0.1rem">${pagsVinculados.map(fmtPag).join('')}</div>` : ''}
           </div>`;
-        }).join('');
+          // Sem data vinculada (contrato de pagamento único no cadastro, sem grupoIniId nenhum):
+          // fica sem chave de ordenação — vai para o fim da lista, sem quebrar a ordenação das
+          // demais peças que TÊM data conhecida.
+          return { data: dataIndividual || null, html };
+        }).filter(Boolean);
+
+        blocos.sort((a, b) => {
+          if (!a.data && !b.data) return 0;
+          if (!a.data) return 1;  // sem data conhecida vai para o fim
+          if (!b.data) return -1;
+          return a.data.localeCompare(b.data); // datas em 'YYYY-MM-DD' ordenam corretamente como string
+        });
+
+        return blocos.map(b => b.html).join('');
       })()}
       <div class="detail-row" style="padding-top:0.4rem;border-top:1px solid rgba(184,134,42,0.15)">
         <span class="dl" style="color:var(--dark)">Total</span>
