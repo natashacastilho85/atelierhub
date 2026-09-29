@@ -2556,12 +2556,7 @@ function _descricaoPagamento(p) {
   if (p.forma === 'Cartão') {
     const partesCartao = [];
     if (p.descontoCartaoValor > 0) {
-      // bruto (em p) já é o valor pós-desconto de cartão — reconstrói o valor de referência
-      // (pré-desconto) só quando o tipo é percentual, pra poder mostrar o valor em R$ do desconto.
-      // Quando o tipo já é 'valor', descontoCartaoValor JÁ É o valor em R$, nenhum cálculo necessário.
-      const valorDescCartao = p.descontoCartaoTipo === 'valor'
-        ? round2(parseFloat(p.descontoCartaoValor) || 0)
-        : (bruto > 0 && p.descontoCartaoValor < 100 ? round2((bruto / (1 - p.descontoCartaoValor/100)) - bruto) : 0);
+      const valorDescCartao = valorDescontoCartao(p);
       partesCartao.push(p.descontoCartaoTipo === 'valor'
         ? `desc. R$${p.descontoCartaoValor}`
         : `desc. ${p.descontoCartaoValor}% (R$ ${valorDescCartao.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})})`);
@@ -3455,24 +3450,41 @@ function gerarPagamentosIniciais(forma, valor, dataContrato, desconto, grupoIniI
   
 function round2(v) { return Math.round((parseFloat(v)||0) * 100) / 100; }
 
+// Valor em R$ do desconto de CARTÃO (cupom dado à cliente, nunca a tarifa da maquininha) de um
+// pagamento — p.bruto já é pós-desconto (calcCartao aplica desconto antes da tarifa), então
+// reconstrói o valor de referência (pré-desconto) só quando o tipo é percentual. Quando o tipo já
+// é 'valor', descontoCartaoValor JÁ É o valor em R$. Mesma fórmula usada em _descricaoPagamento,
+// extraída aqui pra não duplicar a lógica entre a descrição do pagamento e o cálculo do desconto
+// total do contrato (descontoMistoConcedido).
+function valorDescontoCartao(p) {
+  if (!(p.descontoCartaoValor > 0)) return 0;
+  if (p.descontoCartaoTipo === 'valor') return round2(parseFloat(p.descontoCartaoValor) || 0);
+  const bruto = parseFloat(p.bruto) || 0;
+  if (!(bruto > 0) || p.descontoCartaoValor >= 100) return 0;
+  return round2((bruto / (1 - p.descontoCartaoValor/100)) - bruto);
+}
+
 // ── CÁLCULO GLOBAL DO VALOR A PAGAR ──
-// Soma o desconto que a noiva não deve, concedido em pagamentos Pix/Dinheiro/Débito dentro de um
-// contrato Misto. Cada pagamento já carrega p.bruto (valor nominal digitado) e p.valor (líquido
-// após o desconto vigente NAQUELE momento) — a diferença é o desconto realmente concedido naquela
-// parcela, sem recalcular com a taxa atual de Configurações (que pode ter mudado desde então).
-// Cartão fica de fora: a tarifa (absorvida ou não) é negociação do ateliê com a maquininha, e um
-// eventual cupom de desconto no Cartão já reduz p.bruto na origem (calcCartao) — já está refletido
-// em totalPago() sem precisar de abatimento aqui. Usada tanto no cálculo do valor a pagar quanto na
-// exibição do detalhe do contrato, para nunca divergir (mesmo princípio de calcValorAPagar).
+// Soma o desconto que a noiva não deve: em Pix/Dinheiro/Débito, usa p.bruto (valor nominal) vs
+// p.valor (líquido após o desconto vigente NAQUELE momento) — a diferença é o desconto realmente
+// concedido naquela parcela, sem recalcular com a taxa atual de Configurações (que pode ter mudado
+// desde então). Em Cartão, soma só o CUPOM de desconto (valorDescontoCartao) — nunca a tarifa da
+// maquininha, que é custo/negociação do ateliê e não reduz o que a cliente deve. Usada tanto no
+// cálculo do valor a pagar quanto na exibição do detalhe do contrato, pra nunca divergir (mesmo
+// princípio de calcValorAPagar).
 function descontoMistoConcedido(c) {
   if (!Array.isArray(c.pagamentos)) return 0;
-  return round2(c.pagamentos
-    .filter(p => p.forma === 'Pix' || p.forma === 'Dinheiro' || p.forma === 'Débito')
-    .reduce((s, p) => {
+  return round2(c.pagamentos.reduce((s, p) => {
+    if (p.forma === 'Pix' || p.forma === 'Dinheiro' || p.forma === 'Débito') {
       const bruto = parseFloat(p.bruto ?? p.valor) || 0;
       const liquido = parseFloat(p.valor) || 0;
       return s + Math.max(0, bruto - liquido);
-    }, 0));
+    }
+    if (p.forma === 'Cartão') {
+      return s + valorDescontoCartao(p);
+    }
+    return s;
+  }, 0));
 }
 
 // Calcula o % de desconto REALMENTE concedido nos pagamentos de uma forma específica (Pix/
@@ -3497,15 +3509,17 @@ function calcValorAPagar(c) {
   const desc = parseFloat(c.desconto)  || 0;
   const base = round2((parseFloat(c.valorBruto) || 0) + acr - desc);
   const temPag = Array.isArray(c.pagamentos) && c.pagamentos.length > 0;
-  // Cartão nunca reduz o valor a pagar: a tarifa (absorvida ou não) é custo/negociação do ateliê
-  // com a maquininha — a cliente é cobrada o valor cheio no cartão dela de qualquer forma.
-  if (c.formaPag === 'credito' || !temPag) return base;
-  // Pix/Dinheiro/Débito/Misto/Reserva/Entrega+Prazo: usa o desconto REAL concedido em cada
-  // pagamento já registrado (bruto - líquido de cada um), nunca a taxa configurada hoje em
-  // Configurações. Isso evita dois erros: (1) se a taxa mudar depois de já existirem pagamentos
-  // antigos, o saldo deles não muda sozinho; (2) se "aplicar desconto" foi desmarcado numa parcela
-  // específica, essa parcela não ganha desconto que não foi de fato dado. Cliente não deve a
-  // diferença de um desconto que o ateliê decidiu dar — só deve o que efetivamente concedeu.
+  if (!temPag) return base;
+  // A tarifa de Cartão (absorvida ou não) nunca reduz o valor a pagar: é custo/negociação do
+  // ateliê com a maquininha, a cliente é cobrada o valor cheio de qualquer forma. Mas um cupom de
+  // DESCONTO real em Cartão é diferente — a cliente É cobrada com desconto de fato (bruto do
+  // pagamento já sai menor) — e isso vale mesmo quando forma_pag do contrato é 'credito': antes
+  // dessa correção, esse caso retornava 'base' direto, escondendo o desconto de cartão que
+  // descontoMistoConcedido já soma corretamente para Misto/Pix/etc. Pix/Dinheiro/Débito: usa o
+  // desconto REAL concedido em cada pagamento já registrado (bruto - líquido), nunca a taxa
+  // configurada hoje em Configurações — evita dois erros: (1) se a taxa mudar depois de já
+  // existirem pagamentos antigos, o saldo deles não muda sozinho; (2) se "aplicar desconto" foi
+  // desmarcado numa parcela específica, essa parcela não ganha desconto que não foi de fato dado.
   return round2(base - descontoMistoConcedido(c));
 }
 
@@ -6099,8 +6113,15 @@ function openDetail(id) {
   const linkWaBtn = telLimpo ? `javascript:abrirWhatsBusiness('${telLimpo}', null, ${c.telefoneInternacional ? 'true' : 'false'})` : '';
   const devedor = isDevedor(c);
 
-  // Histórico de pagamentos
-  const pags = Array.isArray(c.pagamentos) ? c.pagamentos : [];
+  // Histórico de pagamentos — cópia ordenada por data (mais antiga primeiro), sem alterar
+  // c.pagamentos original (usado em outros cálculos que não dependem de ordem, como totalPago).
+  // Pagamento sem data conhecida vai para o fim, sem quebrar a ordenação dos demais.
+  const pags = (Array.isArray(c.pagamentos) ? [...c.pagamentos] : []).sort((a, b) => {
+    if (!a.data && !b.data) return 0;
+    if (!a.data) return 1;
+    if (!b.data) return -1;
+    return a.data.localeCompare(b.data);
+  });
   
   const pago = pags.reduce((acc, p) => acc + (parseFloat(p.valor) || 0), 0);
   
@@ -6236,7 +6257,7 @@ function openDetail(id) {
         } else if (temPag) {
           const descConcedido = descontoMistoConcedido(c);
           if (descConcedido > 0.01) {
-            linhas += `<div class="detail-row"><span class="dl" style="color:var(--muted)">Desconto (Pix/Dinheiro/Débito)</span><span class="dv" style="color:var(--bordeaux)">− ${fmtR(descConcedido)}</span></div>`;
+            linhas += `<div class="detail-row"><span class="dl" style="color:var(--muted)">Descontos</span><span class="dv" style="color:var(--bordeaux)">− ${fmtR(descConcedido)}</span></div>`;
           }
         }
         linhas += `<div class="detail-row" style="border-top:1px solid rgba(184,134,42,0.15);padding-top:0.4rem;margin-top:0.2rem">
