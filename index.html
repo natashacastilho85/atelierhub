@@ -3226,6 +3226,12 @@ const TAXA_PIX_DESC = 0.07;      // fallback — sobrescrito por getDescontoPix(
 const TAXA_CARTAO_3X = 0.0701;   // fallback — sobrescrito por getTarifaCartao()
 
 async function saveContrato() {
+  // Identifica o CONJUNTO de peças cadastradas juntas na criação do contrato — distinto do
+  // pecaLinhaId individual de cada peça. Serve pra agrupar visualmente, na tela de detalhe, o(s)
+  // pagamento(s) do cadastro inicial junto de TODAS as peças que nasceram com o contrato, sem
+  // tentar (e errar) dividir esse pagamento entre elas. Peças adicionadas depois, na edição, NÃO
+  // recebem esse id — cada uma usa seu próprio pecaLinhaId, já vinculado ao pagamento que a gerou.
+  const _grupoIniIdNovoContrato = gerarPecaLinhaId();
   const nome = document.getElementById('c-nome').value;
   const status = document.getElementById('c-status-cancelado').checked ? 'Cancelado' : 'Reserva';
   const casamento = document.getElementById('c-casamento').value;
@@ -3299,7 +3305,7 @@ async function saveContrato() {
     if (!p) return;
     const qtd = parseInt(qtdEl.value) || 1;
     const precoCalculado = getPrecoPecaCalculado(pid) || 0;
-    pecasSel.push({ nome: p.nome, valor: precoCalculado, qtd, pecaLinhaId: gerarPecaLinhaId() });
+    pecasSel.push({ nome: p.nome, valor: precoCalculado, qtd, pecaLinhaId: gerarPecaLinhaId(), grupoIniId: _grupoIniIdNovoContrato });
     valorBruto += precoCalculado * qtd;
   });
   valorBruto = round2(valorBruto);
@@ -3325,7 +3331,7 @@ async function saveContrato() {
   let valorFinal = valorBruto;
   // base = valorBruto + acréscimo - desconto (entram no preço antes de qualquer taxa)
   const baseCalcNovo = round2(valorFinal + acrescimo - desconto);
-  const pagamentosIni = gerarPagamentosIniciais(formaPag, baseCalcNovo, contrato);
+  const pagamentosIni = gerarPagamentosIniciais(formaPag, baseCalcNovo, contrato, undefined, _grupoIniIdNovoContrato);
 
   try {
     const [novoContrato] = await sbInsert('contratos', {
@@ -3345,34 +3351,38 @@ async function saveContrato() {
   } catch(e) { _mostrarErroAcao('saveContrato', e, { acaoLabel: 'salvar o contrato' }); }
 }
 
-function gerarPagamentosIniciais(forma, valor, dataContrato, desconto) {
+function gerarPagamentosIniciais(forma, valor, dataContrato, desconto, grupoIniId) {
   // valor = preço de venda (bruto)
   // base = valor + acréscimo - desconto (acréscimo já está embutido em valor ao chamar essa função)
   // O desconto já foi subtraído de valor antes de chamar essa função
+  // Aplica grupoIniId (se fornecido) a TODOS os pagamentos retornados, sem precisar tocar cada
+  // return/push individual abaixo — usado na tela de detalhe pra agrupar visualmente, sob a mesma
+  // data, os pagamentos do cadastro inicial junto de todas as peças que nasceram com o contrato.
+  const _comGrupoIni = pags => grupoIniId ? pags.map(p => ({ ...p, grupoIniId })) : pags;
   const data = dataContrato || new Date().toLocaleDateString('en-CA'); // retorna YYYY-MM-DD no fuso do dispositivo (evita bug UTC)
   const base = round2(parseFloat(valor) || 0);
   if (forma === 'pix') {
     const chkIni = document.getElementById('c-aplicar-desconto-inicial');
     const aplicarDesconto = !chkIni || chkIni.checked;
     const noivaPaga = calcLiquidoComDesconto(base, 'Pix', aplicarDesconto);
-    return [{ data, valor: noivaPaga, bruto: base, forma: 'Pix', status: 'Realizado' }];
+    return _comGrupoIni([{ data, valor: noivaPaga, bruto: base, forma: 'Pix', status: 'Realizado' }]);
   } else if (forma === 'debito') {
     const chkIniDeb = document.getElementById('c-aplicar-desconto-inicial');
     const aplicarDescontoDeb = !chkIniDeb || chkIniDeb.checked;
     const noivaPagaDebito = calcLiquidoComDesconto(base, 'Débito', aplicarDescontoDeb);
-    return [{ data, valor: noivaPagaDebito, bruto: base, forma: 'Débito', status: 'Realizado' }];
+    return _comGrupoIni([{ data, valor: noivaPagaDebito, bruto: base, forma: 'Débito', status: 'Realizado' }]);
   } else if (forma === 'dinheiro') {
     const chkIniDin = document.getElementById('c-aplicar-desconto-inicial');
     const aplicarDescontoDin = !chkIniDin || chkIniDin.checked;
     const noivaPagaDinheiro = calcLiquidoComDesconto(base, 'Dinheiro', aplicarDescontoDin);
-    return [{ data, valor: noivaPagaDinheiro, bruto: base, forma: 'Dinheiro', status: 'Realizado' }];
+    return _comGrupoIni([{ data, valor: noivaPagaDinheiro, bruto: base, forma: 'Dinheiro', status: 'Realizado' }]);
   } else if (forma === 'credito') {
     const parcEl = document.getElementById('c-credito-parc');
     const n = parcEl ? (parseInt(parcEl.value) || 1) : 1;
     // Sem desconto específico aqui — pagamento único, então o desconto/acréscimo geral do
     // contrato (campo "Desconto"/"Acréscimo" no topo) já está embutido em 'base'.
     const rCC = calcCartao(base, false, null, null, n);
-    return [{ data, valor: rCC.liquido, bruto: rCC.bruto, forma: 'Cartão', parcelas: n, status: 'Realizado' }];
+    return _comGrupoIni([{ data, valor: rCC.liquido, bruto: rCC.bruto, forma: 'Cartão', parcelas: n, status: 'Realizado' }]);
   } else if (forma === 'reserva') {
     const pagoEntrada = round2(parseFloat(document.getElementById('c-pago').value) || 0);
     const formaEntrada = document.getElementById('c-reserva-forma')?.value || 'Pix';
@@ -3387,7 +3397,7 @@ function gerarPagamentosIniciais(forma, valor, dataContrato, desconto) {
     }
     const pag = { data, valor: liquidoEntrada, bruto: pagoEntrada, forma: formaEntrada, status: 'Realizado' };
     if (parcEntrada) pag.parcelas = parcEntrada;
-    return [pag];
+    return _comGrupoIni([pag]);
   } else if (forma === 'entrega_prazo') {
     // Reserva sem entrada: nasce sem nenhum pagamento — 100% do valor fica em aberto. A forma do
     // primeiro pagamento só é decidida quando ela for de fato registrada, depois, no contrato.
@@ -3426,7 +3436,7 @@ function gerarPagamentosIniciais(forma, valor, dataContrato, desconto) {
       const liquidoDeb = calcLiquidoComDesconto(pDebito, 'Débito', !!(chkMDeb && chkMDeb.checked));
       p.push({ data, valor: liquidoDeb, bruto: pDebito, forma: 'Débito', status: 'Realizado' });
     }
-    return p;
+    return _comGrupoIni(p);
   }
   return [];
 }
@@ -6110,32 +6120,54 @@ function openDetail(id) {
     <div class="detail-section">
       <div class="detail-section-title">Peças contratadas</div>
       ${(() => {
-        // Pagamentos vinculados a uma peça específica via pecaLinhaId (fluxo de editar peça).
-        // Contratos de pagamento único no cadastro inicial não têm esse vínculo — nesse caso
-        // pagsDaPeca(p) volta vazio e a peça exibe só nome+valor, como sempre exibiu.
+        // Duas formas de vínculo peça↔pagamento, ambas por id — nunca por nome (nomes podem repetir):
+        // 1) pecaLinhaId: peça individual adicionada via editar contrato → pagamento daquela peça só.
+        // 2) grupoIniId: peças cadastradas JUNTAS na criação do contrato → o(s) pagamento(s) do
+        //    cadastro inicial são exibidos uma vez, sob o conjunto dessas peças, nunca divididos
+        //    ou repetidos por peça (não há como saber qual parte é de qual peça nesse pagamento).
         const pagsDaPeca = p => p.pecaLinhaId
           ? (c.pagamentos||[]).filter(pg => pg.pecaLinhaId === p.pecaLinhaId)
           : [];
-        temAlgumaPecaComPagamentoVinculado = c.pecas.some(p => pagsDaPeca(p).length > 0);
-        return c.pecas.map(p => {
+        const pagsDoGrupo = grupoId => (c.pagamentos||[]).filter(pg => pg.grupoIniId === grupoId);
+
+        temAlgumaPecaComPagamentoVinculado = c.pecas.some(p => pagsDaPeca(p).length > 0)
+          || c.pecas.some(p => p.grupoIniId && pagsDoGrupo(p.grupoIniId).length > 0);
+
+        const fmtPag = pg => {
+          const liquidoPg = (parseFloat(pg.valor)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+          return `<div style="display:flex;justify-content:space-between;font-size:0.68rem;color:var(--muted);padding:0.1rem 0">
+            <span>${_descricaoPagamento(pg)}</span><span>R$ ${liquidoPg}</span>
+          </div>`;
+        };
+        const fmtValorPeca = p => {
           const vUnit = (parseFloat(p.valor)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
           const vTotal = ((parseFloat(p.valor)||0)*(parseInt(p.qtd)||1)).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+          return `${p.qtd>1?`<span style="font-size:0.68rem;color:var(--muted)">R$ ${vUnit} × ${p.qtd}</span><br>`:''}R$ ${vTotal}`;
+        };
+        const linhaPeca = p => `<span class="dl">${p.qtd>1?p.qtd+'× ':''} ${p.nome}</span><span class="dv" style="text-align:right;line-height:1.5">${fmtValorPeca(p)}</span>`;
+
+        // Separa peças em grupo (mesmo grupoIniId) de peças individuais (sem grupo).
+        const jaRenderizadoGrupo = new Set();
+        return c.pecas.map(p => {
+          if (p.grupoIniId) {
+            if (jaRenderizadoGrupo.has(p.grupoIniId)) return ''; // já saiu junto do primeiro item do grupo
+            jaRenderizadoGrupo.add(p.grupoIniId);
+            const pecasDoMesmoGrupo = c.pecas.filter(x => x.grupoIniId === p.grupoIniId);
+            const pagsGrupo = pagsDoGrupo(p.grupoIniId);
+            const dataGrupo = pagsGrupo[0]?.data ? fmtData(pagsGrupo[0].data) : fmtData(c.contrato);
+            return `<div class="detail-row" style="align-items:flex-start;flex-direction:column;gap:0.3rem">
+              ${pecasDoMesmoGrupo.map(pp => `<div style="display:flex;justify-content:space-between;width:100%">${linhaPeca(pp)}</div>`).join('')}
+              ${pagsGrupo.length ? `<div style="width:100%;padding-top:0.2rem">
+                <span style="font-size:0.62rem;color:var(--muted-light)">${dataGrupo}</span>
+                ${pagsGrupo.map(fmtPag).join('')}
+              </div>` : ''}
+            </div>`;
+          }
+          // Peça individual (adicionada depois, via editar contrato) — detalhe já vinculado a ela só.
           const pagsVinculados = pagsDaPeca(p);
-          const detalhePagsHtml = pagsVinculados.length
-            ? `<div style="margin-top:0.25rem">${pagsVinculados.map(pg => {
-                const liquidoPg = (parseFloat(pg.valor)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-                return `<div style="display:flex;justify-content:space-between;font-size:0.68rem;color:var(--muted);padding:0.1rem 0">
-                  <span>${_descricaoPagamento(pg)}</span><span>R$ ${liquidoPg}</span>
-                </div>`;
-              }).join('')}</div>`
-            : '';
           return `<div class="detail-row" style="align-items:flex-start">
-            <span class="dl">${p.qtd>1?p.qtd+'× ':''} ${p.nome}</span>
-            <span class="dv" style="text-align:right;line-height:1.5">
-              ${p.qtd>1?`<span style="font-size:0.68rem;color:var(--muted)">R$ ${vUnit} × ${p.qtd}</span><br>`:''}R$ ${vTotal}
-              ${detalhePagsHtml}
-            </span>
-          </div>`;
+            ${linhaPeca(p)}
+          </div>${pagsVinculados.length ? `<div style="padding:0 0 0.3rem">${pagsVinculados.map(fmtPag).join('')}</div>` : ''}`;
         }).join('');
       })()}
       <div class="detail-row" style="padding-top:0.4rem;border-top:1px solid rgba(184,134,42,0.15)">
@@ -6462,6 +6494,10 @@ function abrirEdicaoContrato(id) {
     // Preserva o pecaLinhaId já existente (vincula pagamentos antigos corretamente); peça de
     // contrato antigo que nunca teve esse id adota um novo agora, na primeira reabertura pós-correção.
     div.dataset.pecaLinhaId = p.pecaLinhaId || gerarPecaLinhaId();
+    // Preserva o grupoIniId se a peça já tiver (contrato criado após esta correção). NÃO gera um
+    // novo se estiver ausente — diferente do pecaLinhaId acima, não há como inventar retroativamente
+    // quais peças de um contrato antigo nasceram juntas no cadastro inicial.
+    if (p.grupoIniId) div.dataset.grupoIniId = p.grupoIniId;
     // Preserva o nome original SEMPRE (independente do catálogo atual) — usado no save se a peça
     // tiver sido excluída do catálogo, pra não corromper o contrato com uma peça errada.
     div.dataset.nomeOriginal = p.nome;
@@ -6938,9 +6974,11 @@ async function saveEditContrato() {
     // Peça foi excluída do catálogo e ninguém trocou a seleção — preserva nome/valor originais
     // em vez de buscar no catálogo (que não vai achar e corromperia o contrato com peça errada).
     const pecaLinhaId = linha.dataset.pecaLinhaId || gerarPecaLinhaId();
+    // grupoIniId só existe se a peça já tinha (contrato criado pós-correção); nunca inventado aqui.
+    const grupoIniId = linha.dataset.grupoIniId || undefined;
     if (sel.value === 'orig') {
       const valorUnitario = qtd > 0 ? round2(valorTotalLinha / qtd) : 0;
-      pecasSel.push({ nome: linha.dataset.nomeOriginal, valor: valorUnitario, qtd, pecaLinhaId });
+      pecasSel.push({ nome: linha.dataset.nomeOriginal, valor: valorUnitario, qtd, pecaLinhaId, ...(grupoIniId && { grupoIniId }) });
       valorBruto += valorTotalLinha;
       return;
     }
@@ -6949,7 +6987,7 @@ async function saveEditContrato() {
     if (!p) return;
     // Usa o valor TOTAL travado da linha (preserva desconto/acréscimo já combinado, não recalcula do catálogo)
     const valorUnitario = qtd > 0 ? round2(valorTotalLinha / qtd) : 0;
-    pecasSel.push({ nome: p.nome, valor: valorUnitario, qtd, pecaLinhaId });
+    pecasSel.push({ nome: p.nome, valor: valorUnitario, qtd, pecaLinhaId, ...(grupoIniId && { grupoIniId }) });
     valorBruto += valorTotalLinha;
   });
   dados.pecas = pecasSel;
