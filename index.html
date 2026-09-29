@@ -2553,26 +2553,29 @@ function _descricaoPagamento(p) {
   const temTaxa = Math.abs(bruto - liquido) > 0.01;
   const parc = p.parcelas ? ` ${p.parcelas}×` : '';
   let descTxt = '';
+  // O trecho "(X%, R$ Y,YY)" nunca deve quebrar no meio — ou fica inteiro na linha, ou o bloco
+  // inteiro desce pra próxima, nunca separando o "R$" do valor ou o "%" do parêntese.
+  const nowrap = txt => `<span style="white-space:nowrap">${txt}</span>`;
   if (p.forma === 'Cartão') {
     const partesCartao = [];
     if (p.descontoCartaoValor > 0) {
       const valorDescCartao = valorDescontoCartao(p);
       partesCartao.push(p.descontoCartaoTipo === 'valor'
         ? `desc. R$${p.descontoCartaoValor}`
-        : `desc. ${p.descontoCartaoValor}% (R$ ${valorDescCartao.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})})`);
+        : `desc. ${p.descontoCartaoValor}% ${nowrap(`(R$ ${valorDescCartao.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})})`)}`);
     }
     if (temTaxa) {
       // bruto já está pós-desconto de cartão (se houve), então bruto-liquido é só a tarifa,
       // nunca soma o desconto do cupom acima — os dois valores em R$ não se sobrepõem.
       const valorTaxa = round2(bruto - liquido);
       const pctTaxa = bruto > 0 ? ((bruto - liquido) / bruto) * 100 : 0;
-      partesCartao.push(`tarifa absorvida${pctTaxa > 0 ? ' ('+pctTaxa.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+`%, R$ ${valorTaxa.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})})` : ')'}`);
+      partesCartao.push(`tarifa absorvida${pctTaxa > 0 ? ' '+nowrap(`(${pctTaxa.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}%, R$ ${valorTaxa.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})})`) : ')'}`);
     }
     if (partesCartao.length) descTxt = ' · ' + partesCartao.join(', ');
   } else if (temTaxa) {
     const pctDesc = bruto > 0 ? ((bruto - liquido) / bruto) * 100 : 0;
     const valorDesc = round2(bruto - liquido);
-    if (pctDesc > 0) descTxt = ` · ${pctDesc.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}% desc. (R$ ${valorDesc.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})})`;
+    if (pctDesc > 0) descTxt = ` · ${pctDesc.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}% desc. ${nowrap(`(R$ ${valorDesc.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})})`)}`;
   }
   return `${formaDisplayLabel(p.forma)||'—'}${parc}${descTxt}`;
 }
@@ -2584,9 +2587,9 @@ function pagamentoLinhaHtml(p, { tappable = false, onClick = '' } = {}) {
   const clique = tappable && onClick ? ` onclick="${onClick}" style="cursor:pointer"` : '';
   return `<div class="detail-row" style="flex-direction:column;align-items:stretch;font-size:0.78rem"${clique}>
     <span style="font-size:0.66rem;color:var(--muted-light);margin-bottom:0.2rem">${_fmtDataBR(p.data)}</span>
-    <span style="display:flex;justify-content:space-between;align-items:center">
+    <span style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem">
       <span class="dl" style="padding:0">${_descricaoPagamento(p)}</span>
-      <span class="dv">R$ ${liquido.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+      <span class="dv" style="white-space:nowrap;flex-shrink:0">R$ ${liquido.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
     </span>
   </div>`;
 }
@@ -6168,8 +6171,8 @@ function openDetail(id) {
 
         const fmtPag = pg => {
           const liquidoPg = (parseFloat(pg.valor)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-          return `<div style="display:flex;justify-content:space-between;font-size:0.68rem;color:var(--muted);padding:0.1rem 0">
-            <span>${_descricaoPagamento(pg)}</span><span>R$ ${liquidoPg}</span>
+          return `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;font-size:0.68rem;color:var(--muted);padding:0.1rem 0">
+            <span>${_descricaoPagamento(pg)}</span><span style="white-space:nowrap;flex-shrink:0">R$ ${liquidoPg}</span>
           </div>`;
         };
         const fmtValorPeca = p => {
