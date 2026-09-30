@@ -1834,11 +1834,11 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
 
     <div class="field-group" id="pag-desc-grp" style="display:none">
       <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
-        <input type="checkbox" id="pag-aplicar-desconto" onchange="atualizarPagDescPersonalizarUI();atualizarPreviewPag()" style="width:14px;height:14px;accent-color:var(--brown)">
+        <input type="checkbox" id="pag-aplicar-desconto" onchange="atualizarPagDescPersonalizarUI('padrao');atualizarPreviewPag()" style="width:14px;height:14px;accent-color:var(--brown)">
         Aplicar desconto padrão<span id="pag-desc-pct"></span>
       </label>
-      <label id="pag-desc-personalizar-label" style="display:none;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer;margin-top:0.4rem">
-        <input type="checkbox" id="pag-desc-personalizar" onchange="atualizarPagDescPersonalizarUI();atualizarPreviewPag()" style="width:14px;height:14px;accent-color:var(--brown)">
+      <label id="pag-desc-personalizar-label" style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer;margin-top:0.4rem">
+        <input type="checkbox" id="pag-desc-personalizar" onchange="atualizarPagDescPersonalizarUI('personalizar');atualizarPreviewPag()" style="width:14px;height:14px;accent-color:var(--brown)">
         Personalizar desconto
       </label>
       <div id="pag-desc-personalizar-campos" style="display:none;margin-top:0.4rem">
@@ -6867,11 +6867,11 @@ function _renderModalPagamentoPeca() {
         </div>
         <div id="mpp-grp-desconto" style="display:none;margin-bottom:1rem">
           <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
-            <input type="checkbox" id="mpp-aplicar-desconto" onchange="atualizarMppDescPersonalizarUI()" style="width:14px;height:14px;accent-color:var(--brown)">
+            <input type="checkbox" id="mpp-aplicar-desconto" onchange="atualizarMppDescPersonalizarUI('padrao')" style="width:14px;height:14px;accent-color:var(--brown)">
             Aplicar desconto padrão<span id="mpp-desc-pct"></span>
           </label>
-          <label id="mpp-desc-personalizar-label" style="display:none;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer;margin-top:0.4rem">
-            <input type="checkbox" id="mpp-desc-personalizar" onchange="atualizarMppDescPersonalizarUI()" style="width:14px;height:14px;accent-color:var(--brown)">
+          <label id="mpp-desc-personalizar-label" style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer;margin-top:0.4rem">
+            <input type="checkbox" id="mpp-desc-personalizar" onchange="atualizarMppDescPersonalizarUI('personalizar')" style="width:14px;height:14px;accent-color:var(--brown)">
             Personalizar desconto
           </label>
           <div id="mpp-desc-personalizar-campos" style="display:none;margin-top:0.4rem">
@@ -6983,9 +6983,11 @@ function _confirmarPagamentoPeca() {
   let descontoPersonalizadoTipo = null, descontoPersonalizadoValor = null;
   if (_modalPecaTemp.forma === 'Pix' || _modalPecaTemp.forma === 'Dinheiro' || _modalPecaTemp.forma === 'Débito') {
     const chkDesc = document.getElementById('mpp-aplicar-desconto');
-    aplicarDesconto = chkDesc ? chkDesc.checked : true;
     const chkPersonalizarMpp = document.getElementById('mpp-desc-personalizar');
-    if (aplicarDesconto && chkPersonalizarMpp && chkPersonalizarMpp.checked) {
+    const personalizarAtivoMpp = !!(chkPersonalizarMpp && chkPersonalizarMpp.checked);
+    // Personalizar marcado = desconto aplicado (o customizado), independente do checkbox "padrão".
+    aplicarDesconto = personalizarAtivoMpp || (chkDesc ? chkDesc.checked : true);
+    if (personalizarAtivoMpp) {
       descontoPersonalizadoTipo = document.getElementById('mpp-desc-personalizar-tipo')?.value || 'percentual';
       descontoPersonalizadoValor = parseFloat(document.getElementById('mpp-desc-personalizar-valor')?.value) || 0;
     }
@@ -7562,27 +7564,27 @@ function atualizarCartaoDescUI(prefixo) {
 // "Personalizar desconto" só faz sentido — e só aparece — quando "Aplicar desconto padrão" está
 // marcado; sem desconto nenhum, não há o que personalizar. Desmarcar o padrão esconde e desmarca
 // a personalização junto, evitando um estado inconsistente (personalizado marcado, padrão não).
-function atualizarPagDescPersonalizarUI() {
+// "Aplicar desconto padrão" e "Personalizar desconto" são escolhas independentes e mutuamente
+// exclusivas — nunca um depende do outro estar marcado primeiro. Marcar um desmarca
+// automaticamente o outro, porque não faz sentido os dois ativos ao mesmo tempo (qual desconto
+// valeria?). Os campos de tipo/valor só aparecem quando "Personalizar" está marcado.
+function atualizarPagDescPersonalizarUI(origem) {
   const chkPadrao = document.getElementById('pag-aplicar-desconto');
-  const labelPersonalizar = document.getElementById('pag-desc-personalizar-label');
   const chkPersonalizar = document.getElementById('pag-desc-personalizar');
   const campos = document.getElementById('pag-desc-personalizar-campos');
-  const mostraPersonalizarOpcao = !!(chkPadrao && chkPadrao.checked);
-  if (labelPersonalizar) labelPersonalizar.style.display = mostraPersonalizarOpcao ? 'flex' : 'none';
-  if (!mostraPersonalizarOpcao && chkPersonalizar) chkPersonalizar.checked = false;
-  if (campos) campos.style.display = (mostraPersonalizarOpcao && chkPersonalizar && chkPersonalizar.checked) ? '' : 'none';
+  if (origem === 'padrao' && chkPadrao && chkPadrao.checked && chkPersonalizar) chkPersonalizar.checked = false;
+  if (origem === 'personalizar' && chkPersonalizar && chkPersonalizar.checked && chkPadrao) chkPadrao.checked = false;
+  if (campos) campos.style.display = (chkPersonalizar && chkPersonalizar.checked) ? '' : 'none';
 }
 
 // Equivalente de atualizarPagDescPersonalizarUI, para o modal de pagamento por peça (prefixo mpp-).
-function atualizarMppDescPersonalizarUI() {
+function atualizarMppDescPersonalizarUI(origem) {
   const chkPadrao = document.getElementById('mpp-aplicar-desconto');
-  const labelPersonalizar = document.getElementById('mpp-desc-personalizar-label');
   const chkPersonalizar = document.getElementById('mpp-desc-personalizar');
   const campos = document.getElementById('mpp-desc-personalizar-campos');
-  const mostraPersonalizarOpcao = !!(chkPadrao && chkPadrao.checked);
-  if (labelPersonalizar) labelPersonalizar.style.display = mostraPersonalizarOpcao ? 'flex' : 'none';
-  if (!mostraPersonalizarOpcao && chkPersonalizar) chkPersonalizar.checked = false;
-  if (campos) campos.style.display = (mostraPersonalizarOpcao && chkPersonalizar && chkPersonalizar.checked) ? '' : 'none';
+  if (origem === 'padrao' && chkPadrao && chkPadrao.checked && chkPersonalizar) chkPersonalizar.checked = false;
+  if (origem === 'personalizar' && chkPersonalizar && chkPersonalizar.checked && chkPadrao) chkPadrao.checked = false;
+  if (campos) campos.style.display = (chkPersonalizar && chkPersonalizar.checked) ? '' : 'none';
 }
 
 function atualizarPagFormaUI() {
@@ -7627,6 +7629,10 @@ function atualizarPagFormaUI() {
         const taxa = forma === 'Pix' ? getDescontoPix() : forma === 'Dinheiro' ? getDescontoDinheiro() : getDescontoDebito();
         spanPct.textContent = _fmtDescontoLabel(taxa);
       }
+      const chkPersonalizarTrocaForma = document.getElementById('pag-desc-personalizar');
+      if (chkPersonalizarTrocaForma) chkPersonalizarTrocaForma.checked = false;
+      const valorPersonalizarTrocaForma = document.getElementById('pag-desc-personalizar-valor');
+      if (valorPersonalizarTrocaForma) valorPersonalizarTrocaForma.value = '';
     }
     atualizarPagDescPersonalizarUI();
   }
@@ -7642,9 +7648,11 @@ function atualizarPreviewPag() {
 
   if (forma === 'Pix' || forma === 'Dinheiro' || forma === 'Débito') {
     const chkDesc = document.getElementById('pag-aplicar-desconto');
-    const aplicarDesconto = !chkDesc || chkDesc.checked;
     const chkPersonalizar = document.getElementById('pag-desc-personalizar');
     const personalizarAtivo = !!(chkPersonalizar && chkPersonalizar.checked);
+    // Personalizar marcado = desconto está sendo aplicado (o customizado), independente do estado
+    // do checkbox "padrão" — os dois são mutuamente exclusivos na UI, nunca dependentes entre si.
+    const aplicarDesconto = personalizarAtivo || !chkDesc || chkDesc.checked;
     const descontoCustom = personalizarAtivo
       ? { tipo: document.getElementById('pag-desc-personalizar-tipo')?.value || 'percentual', valor: parseFloat(document.getElementById('pag-desc-personalizar-valor')?.value) || 0 }
       : null;
@@ -7714,14 +7722,14 @@ async function salvarNovoPagamento() {
   let descontoPersonalizadoTipo = null, descontoPersonalizadoValor = null;
   if (forma === 'Pix' || forma === 'Dinheiro' || forma === 'Débito') {
     const chkDesc = document.getElementById('pag-aplicar-desconto');
-    const aplicarDesconto = !chkDesc || chkDesc.checked;
     const chkPersonalizar = document.getElementById('pag-desc-personalizar');
     const personalizarAtivo = !!(chkPersonalizar && chkPersonalizar.checked);
+    const aplicarDesconto = personalizarAtivo || !chkDesc || chkDesc.checked;
     const descontoCustom = personalizarAtivo
       ? { tipo: document.getElementById('pag-desc-personalizar-tipo')?.value || 'percentual', valor: parseFloat(document.getElementById('pag-desc-personalizar-valor')?.value) || 0 }
       : null;
     liquido = calcLiquidoComDesconto(valor, forma, aplicarDesconto, descontoCustom);
-    if (aplicarDesconto && personalizarAtivo && descontoCustom.valor > 0) {
+    if (personalizarAtivo && descontoCustom.valor > 0) {
       descontoPersonalizadoTipo = descontoCustom.tipo;
       descontoPersonalizadoValor = descontoCustom.valor;
     }
