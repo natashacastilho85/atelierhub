@@ -1834,9 +1834,28 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
 
     <div class="field-group" id="pag-desc-grp" style="display:none">
       <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
-        <input type="checkbox" id="pag-aplicar-desconto" onchange="atualizarPreviewPag()" style="width:14px;height:14px;accent-color:var(--brown)">
+        <input type="checkbox" id="pag-aplicar-desconto" onchange="atualizarPagDescPersonalizarUI();atualizarPreviewPag()" style="width:14px;height:14px;accent-color:var(--brown)">
         Aplicar desconto padrão<span id="pag-desc-pct"></span>
       </label>
+      <label id="pag-desc-personalizar-label" style="display:none;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer;margin-top:0.4rem">
+        <input type="checkbox" id="pag-desc-personalizar" onchange="atualizarPagDescPersonalizarUI();atualizarPreviewPag()" style="width:14px;height:14px;accent-color:var(--brown)">
+        Personalizar desconto
+      </label>
+      <div id="pag-desc-personalizar-campos" style="display:none;margin-top:0.4rem">
+        <div style="display:flex;gap:0.5rem">
+          <div style="width:75px">
+            <label class="field-label">Tipo</label>
+            <select class="field-input" id="pag-desc-personalizar-tipo" onchange="atualizarPreviewPag()" style="width:100%">
+              <option value="percentual">%</option>
+              <option value="valor">R$</option>
+            </select>
+          </div>
+          <div style="flex:1">
+            <label class="field-label">Valor do desconto</label>
+            <input class="field-input" id="pag-desc-personalizar-valor" type="number" placeholder="0" step="0.01" min="0" oninput="atualizarPreviewPag()" style="width:100%">
+          </div>
+        </div>
+      </div>
     </div>
 
     <div id="pag-preview" style="font-size:0.7rem;color:var(--sage);margin-top:-0.4rem;margin-bottom:0.5rem;min-height:1.2em"></div>
@@ -6848,9 +6867,28 @@ function _renderModalPagamentoPeca() {
         </div>
         <div id="mpp-grp-desconto" style="display:none;margin-bottom:1rem">
           <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer">
-            <input type="checkbox" id="mpp-aplicar-desconto" style="width:14px;height:14px;accent-color:var(--brown)">
+            <input type="checkbox" id="mpp-aplicar-desconto" onchange="atualizarMppDescPersonalizarUI()" style="width:14px;height:14px;accent-color:var(--brown)">
             Aplicar desconto padrão<span id="mpp-desc-pct"></span>
           </label>
+          <label id="mpp-desc-personalizar-label" style="display:none;align-items:center;gap:0.4rem;font-size:0.78rem;color:var(--dark);cursor:pointer;margin-top:0.4rem">
+            <input type="checkbox" id="mpp-desc-personalizar" onchange="atualizarMppDescPersonalizarUI()" style="width:14px;height:14px;accent-color:var(--brown)">
+            Personalizar desconto
+          </label>
+          <div id="mpp-desc-personalizar-campos" style="display:none;margin-top:0.4rem">
+            <div style="display:flex;gap:0.5rem">
+              <div style="width:75px">
+                <label class="field-label">Tipo</label>
+                <select class="field-input" id="mpp-desc-personalizar-tipo" style="width:100%">
+                  <option value="percentual">%</option>
+                  <option value="valor">R$</option>
+                </select>
+              </div>
+              <div style="flex:1">
+                <label class="field-label">Valor do desconto</label>
+                <input class="field-input" id="mpp-desc-personalizar-valor" type="number" placeholder="0" step="0.01" min="0" style="width:100%">
+              </div>
+            </div>
+          </div>
         </div>
         <div style="margin-bottom:1rem">
           <label class="field-label">Data do pagamento</label>
@@ -6905,6 +6943,13 @@ function _selecionarFormaPagamentoPeca(forma) {
       const taxa = forma === 'Pix' ? getDescontoPix() : forma === 'Dinheiro' ? getDescontoDinheiro() : forma === 'Débito' ? getDescontoDebito() : 0;
       spanPct.textContent = _fmtDescontoLabel(taxa);
     }
+    const chkPersonalizarMpp = document.getElementById('mpp-desc-personalizar');
+    if (chkPersonalizarMpp) chkPersonalizarMpp.checked = false;
+    const tipoPersonalizarMpp = document.getElementById('mpp-desc-personalizar-tipo');
+    if (tipoPersonalizarMpp) tipoPersonalizarMpp.value = 'percentual';
+    const valorPersonalizarMpp = document.getElementById('mpp-desc-personalizar-valor');
+    if (valorPersonalizarMpp) valorPersonalizarMpp.value = '';
+    atualizarMppDescPersonalizarUI();
   }
 }
 
@@ -6935,9 +6980,15 @@ function _confirmarPagamentoPeca() {
     descontoCartaoValor = parseFloat(document.getElementById('mpp-cartao-desc-valor')?.value) || 0;
   }
   let aplicarDesconto = true;
+  let descontoPersonalizadoTipo = null, descontoPersonalizadoValor = null;
   if (_modalPecaTemp.forma === 'Pix' || _modalPecaTemp.forma === 'Dinheiro' || _modalPecaTemp.forma === 'Débito') {
     const chkDesc = document.getElementById('mpp-aplicar-desconto');
     aplicarDesconto = chkDesc ? chkDesc.checked : true;
+    const chkPersonalizarMpp = document.getElementById('mpp-desc-personalizar');
+    if (aplicarDesconto && chkPersonalizarMpp && chkPersonalizarMpp.checked) {
+      descontoPersonalizadoTipo = document.getElementById('mpp-desc-personalizar-tipo')?.value || 'percentual';
+      descontoPersonalizadoValor = parseFloat(document.getElementById('mpp-desc-personalizar-valor')?.value) || 0;
+    }
   }
   _aplicarEventoPecaEdit(_modalPecaTemp.linhaId, {
     valorTotalDelta: valorBase,
@@ -6948,6 +6999,8 @@ function _confirmarPagamentoPeca() {
     descontoCartaoAtivo,
     descontoCartaoTipo,
     descontoCartaoValor,
+    descontoPersonalizadoTipo,
+    descontoPersonalizadoValor,
     data,
     pecaLinhaId: _modalPecaTemp.pecaLinhaId || null
   });
@@ -6980,6 +7033,8 @@ function _aplicarEventoPecaEdit(linhaId, evento) {
       descontoCartaoAtivo: evento.descontoCartaoAtivo || false,
       descontoCartaoTipo: evento.descontoCartaoTipo || null,
       descontoCartaoValor: evento.descontoCartaoValor || null,
+      descontoPersonalizadoTipo: evento.descontoPersonalizadoTipo || null,
+      descontoPersonalizadoValor: evento.descontoPersonalizadoValor || null,
       data: evento.data,
       pecaLinhaId: evento.pecaLinhaId || null
     });
@@ -7109,8 +7164,13 @@ async function saveEditContrato() {
       let liquido = referencia;
       let brutoFinal = referencia;
       let descTipoPeca = null, descValorPeca = null;
+      let descPersonalizadoTipoPeca = null, descPersonalizadoValorPeca = null;
       if (ev.forma === 'Pix' || ev.forma === 'Dinheiro' || ev.forma === 'Débito') {
-        liquido = calcLiquidoComDesconto(referencia, ev.forma, ev.aplicarDesconto !== false);
+        const descontoCustomPeca = ev.descontoPersonalizadoValor > 0
+          ? { tipo: ev.descontoPersonalizadoTipo, valor: ev.descontoPersonalizadoValor }
+          : null;
+        liquido = calcLiquidoComDesconto(referencia, ev.forma, ev.aplicarDesconto !== false, descontoCustomPeca);
+        if (descontoCustomPeca) { descPersonalizadoTipoPeca = descontoCustomPeca.tipo; descPersonalizadoValorPeca = descontoCustomPeca.valor; }
       } else if (ev.forma === 'Cartão') {
         const rPeca = calcCartao(referencia, ev.descontoCartaoAtivo, ev.descontoCartaoTipo, ev.descontoCartaoValor, ev.parcelas || 1);
         liquido = rPeca.liquido;
@@ -7120,6 +7180,7 @@ async function saveEditContrato() {
       const novoPag = { data: ev.data, valor: liquido, bruto: brutoFinal, forma: ev.forma, status: 'Realizado', origemPeca: true };
       if (ev.forma === 'Cartão' && ev.parcelas) novoPag.parcelas = ev.parcelas;
       if (descTipoPeca) { novoPag.descontoCartaoTipo = descTipoPeca; novoPag.descontoCartaoValor = descValorPeca; }
+      if (descPersonalizadoTipoPeca) { novoPag.descontoPersonalizadoTipo = descPersonalizadoTipoPeca; novoPag.descontoPersonalizadoValor = descPersonalizadoValorPeca; }
       if (ev.pecaLinhaId) novoPag.pecaLinhaId = ev.pecaLinhaId;
       pagamentosFinal.push(novoPag);
       pagamentosMudaram = true;
@@ -7239,6 +7300,12 @@ function openNovoPagamento(contratoId) {
   if (tipoCartaoReset) tipoCartaoReset.value = 'percentual';
   const valorCartaoReset = document.getElementById('pag-cartao-desc-valor');
   if (valorCartaoReset) valorCartaoReset.value = '';
+  const chkPersonalizarReset = document.getElementById('pag-desc-personalizar');
+  if (chkPersonalizarReset) chkPersonalizarReset.checked = false;
+  const tipoPersonalizarReset = document.getElementById('pag-desc-personalizar-tipo');
+  if (tipoPersonalizarReset) tipoPersonalizarReset.value = 'percentual';
+  const valorPersonalizarReset = document.getElementById('pag-desc-personalizar-valor');
+  if (valorPersonalizarReset) valorPersonalizarReset.value = '';
   // Default forma baseado na forma de pagamento do contrato
   const formaDefault = c.formaPag === 'misto' ? 'Pix' : c.formaPag === 'credito' ? 'Cartão' : c.formaPag === 'debito' ? 'Débito' : c.formaPag === 'dinheiro' ? 'Dinheiro' : 'Pix';
   document.getElementById('pag-forma').innerHTML = getOpcoesFormaPagamentoHTML(formaDefault);
@@ -7492,6 +7559,32 @@ function atualizarCartaoDescUI(prefixo) {
   if (campos) campos.style.display = (chk && chk.checked) ? '' : 'none';
 }
 
+// "Personalizar desconto" só faz sentido — e só aparece — quando "Aplicar desconto padrão" está
+// marcado; sem desconto nenhum, não há o que personalizar. Desmarcar o padrão esconde e desmarca
+// a personalização junto, evitando um estado inconsistente (personalizado marcado, padrão não).
+function atualizarPagDescPersonalizarUI() {
+  const chkPadrao = document.getElementById('pag-aplicar-desconto');
+  const labelPersonalizar = document.getElementById('pag-desc-personalizar-label');
+  const chkPersonalizar = document.getElementById('pag-desc-personalizar');
+  const campos = document.getElementById('pag-desc-personalizar-campos');
+  const mostraPersonalizarOpcao = !!(chkPadrao && chkPadrao.checked);
+  if (labelPersonalizar) labelPersonalizar.style.display = mostraPersonalizarOpcao ? 'flex' : 'none';
+  if (!mostraPersonalizarOpcao && chkPersonalizar) chkPersonalizar.checked = false;
+  if (campos) campos.style.display = (mostraPersonalizarOpcao && chkPersonalizar && chkPersonalizar.checked) ? '' : 'none';
+}
+
+// Equivalente de atualizarPagDescPersonalizarUI, para o modal de pagamento por peça (prefixo mpp-).
+function atualizarMppDescPersonalizarUI() {
+  const chkPadrao = document.getElementById('mpp-aplicar-desconto');
+  const labelPersonalizar = document.getElementById('mpp-desc-personalizar-label');
+  const chkPersonalizar = document.getElementById('mpp-desc-personalizar');
+  const campos = document.getElementById('mpp-desc-personalizar-campos');
+  const mostraPersonalizarOpcao = !!(chkPadrao && chkPadrao.checked);
+  if (labelPersonalizar) labelPersonalizar.style.display = mostraPersonalizarOpcao ? 'flex' : 'none';
+  if (!mostraPersonalizarOpcao && chkPersonalizar) chkPersonalizar.checked = false;
+  if (campos) campos.style.display = (mostraPersonalizarOpcao && chkPersonalizar && chkPersonalizar.checked) ? '' : 'none';
+}
+
 function atualizarPagFormaUI() {
   const forma = document.getElementById('pag-forma').value;
   const grpParc = document.getElementById('pag-parc-grp');
@@ -7535,6 +7628,7 @@ function atualizarPagFormaUI() {
         spanPct.textContent = _fmtDescontoLabel(taxa);
       }
     }
+    atualizarPagDescPersonalizarUI();
   }
 }
 
@@ -7549,9 +7643,17 @@ function atualizarPreviewPag() {
   if (forma === 'Pix' || forma === 'Dinheiro' || forma === 'Débito') {
     const chkDesc = document.getElementById('pag-aplicar-desconto');
     const aplicarDesconto = !chkDesc || chkDesc.checked;
-    const liquido = calcLiquidoComDesconto(valor, forma, aplicarDesconto);
+    const chkPersonalizar = document.getElementById('pag-desc-personalizar');
+    const personalizarAtivo = !!(chkPersonalizar && chkPersonalizar.checked);
+    const descontoCustom = personalizarAtivo
+      ? { tipo: document.getElementById('pag-desc-personalizar-tipo')?.value || 'percentual', valor: parseFloat(document.getElementById('pag-desc-personalizar-valor')?.value) || 0 }
+      : null;
+    const liquido = calcLiquidoComDesconto(valor, forma, aplicarDesconto, descontoCustom);
     if (!aplicarDesconto) {
       el.textContent = `→ entra no caixa: ${fmt(liquido)} (sem desconto)`;
+    } else if (personalizarAtivo && descontoCustom.valor > 0) {
+      const descLabel = descontoCustom.tipo === 'valor' ? fmt(descontoCustom.valor) : descontoCustom.valor + '%';
+      el.textContent = `→ entra no caixa: ${fmt(liquido)} (desconto personalizado de ${descLabel})`;
     } else {
       const taxaAtual = forma === 'Pix' ? getDescontoPix() : forma === 'Dinheiro' ? getDescontoDinheiro() : getDescontoDebito();
       if (taxaAtual > 0) {
@@ -7609,10 +7711,20 @@ async function salvarNovoPagamento() {
   let parcelas = null;
   let brutoFinal = round2(valor);
   let descontoCartaoTipo = null, descontoCartaoValor = null;
+  let descontoPersonalizadoTipo = null, descontoPersonalizadoValor = null;
   if (forma === 'Pix' || forma === 'Dinheiro' || forma === 'Débito') {
     const chkDesc = document.getElementById('pag-aplicar-desconto');
     const aplicarDesconto = !chkDesc || chkDesc.checked;
-    liquido = calcLiquidoComDesconto(valor, forma, aplicarDesconto);
+    const chkPersonalizar = document.getElementById('pag-desc-personalizar');
+    const personalizarAtivo = !!(chkPersonalizar && chkPersonalizar.checked);
+    const descontoCustom = personalizarAtivo
+      ? { tipo: document.getElementById('pag-desc-personalizar-tipo')?.value || 'percentual', valor: parseFloat(document.getElementById('pag-desc-personalizar-valor')?.value) || 0 }
+      : null;
+    liquido = calcLiquidoComDesconto(valor, forma, aplicarDesconto, descontoCustom);
+    if (aplicarDesconto && personalizarAtivo && descontoCustom.valor > 0) {
+      descontoPersonalizadoTipo = descontoCustom.tipo;
+      descontoPersonalizadoValor = descontoCustom.valor;
+    }
   } else if (forma === 'Cartão') {
     parcelas = parseInt(document.getElementById('pag-parcelas').value) || 1;
     const chkCartaoDesc = document.getElementById('pag-cartao-aplicar-desconto');
@@ -7628,6 +7740,7 @@ async function salvarNovoPagamento() {
   const novoPag = { data, valor: liquido, bruto: brutoFinal, forma };
   if (parcelas) novoPag.parcelas = parcelas;
   if (descontoCartaoTipo) { novoPag.descontoCartaoTipo = descontoCartaoTipo; novoPag.descontoCartaoValor = descontoCartaoValor; }
+  if (descontoPersonalizadoTipo) { novoPag.descontoPersonalizadoTipo = descontoPersonalizadoTipo; novoPag.descontoPersonalizadoValor = descontoPersonalizadoValor; }
 
   const estaEditando = pagamentoEditandoIdx !== null;
   let novosPags;
@@ -8196,9 +8309,18 @@ function getDescontoDebito() {
 // Reserva/Entrega+Prazo/Misto, onde o padrão é não descontar).
 // aplicarDesconto !== false (true, undefined, etc.) -> aplica o desconto configurado pra essa forma.
 // Chamada de todo lugar que precisa desse cálculo, pra nunca duas fórmulas divergirem.
-function calcLiquidoComDesconto(bruto, forma, aplicarDesconto) {
+// descontoCustom (opcional): { tipo: 'percentual'|'valor', valor: number } — quando informado,
+// substitui a taxa configurada em Configurações para ESTE pagamento específico, sem alterar a
+// taxa padrão nem outros pagamentos já registrados. Omitido (undefined/null): comportamento
+// inalterado, usa a taxa padrão de getDescontoPix/Dinheiro/Debito como sempre foi.
+function calcLiquidoComDesconto(bruto, forma, aplicarDesconto, descontoCustom) {
   const b = round2(parseFloat(bruto) || 0);
   if (aplicarDesconto === false) return b;
+  if (descontoCustom && descontoCustom.valor > 0) {
+    const dv = parseFloat(descontoCustom.valor) || 0;
+    const liquidoCustom = descontoCustom.tipo === 'valor' ? round2(b - dv) : round2(b * (1 - dv / 100));
+    return liquidoCustom < 0 ? 0 : liquidoCustom; // segurança: desconto não deixa o líquido negativo
+  }
   let taxa = 0;
   if (forma === 'Pix') taxa = getDescontoPix();
   else if (forma === 'Dinheiro') taxa = getDescontoDinheiro();
