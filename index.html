@@ -821,6 +821,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
+<div id="aviso-ambiente-dev" style="position:fixed;top:0;right:0;z-index:2147483647;background:#7b2d29;color:white;padding:6px 11px;font:700 12px system-ui,sans-serif;border-bottom-left-radius:8px;box-shadow:0 1px 5px #0003;pointer-events:none">AMBIENTE DE TESTES</div>
 
 <!-- PAYWALL — fora do #app para position:fixed funcionar corretamente no mobile -->
 <div id="paywall" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#fdf8f2;z-index:99999;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1.5rem;overflow-y:auto;box-sizing:border-box">
@@ -830,8 +831,8 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     <div style="font-size:2.2rem;margin-bottom:1rem">🌸</div>
     <div id="paywall-msg" style="font-size:1.1rem;color:#2a1a0e;margin-bottom:0.5rem;font-weight:600;line-height:1.4"></div>
     <div id="paywall-sub" style="font-size:0.9rem;color:#9a7d65;margin-bottom:1.5rem;line-height:1.5"></div>
-    <button onclick="window.open('https://buy.stripe.com/6oU6oA1LE7qIfnM8Gi2Nq00','_blank')" style="width:100%;background:#5c3318;color:white;border:none;border-radius:10px;padding:0.9rem;font-size:0.95rem;font-weight:600;cursor:pointer;margin-bottom:0.6rem;letter-spacing:0.02em">Assinar mensal — R$97/mês →</button>
-    <button onclick="window.open('https://buy.stripe.com/bJe14gfCu7qIa3s09M2Nq01','_blank')" style="width:100%;background:#fdf8f2;border:1.5px solid #5c3318;border-radius:10px;padding:0.75rem;font-size:0.88rem;color:#5c3318;cursor:pointer;margin-bottom:0.8rem;font-weight:600">Assinar anual — R$897/ano <span style="font-size:0.75rem;color:#6b8f71"> · economize R$267</span></button>
+    <button onclick="alert('Cobranças desativadas neste ambiente de testes.')" style="width:100%;background:#5c3318;color:white;border:none;border-radius:10px;padding:0.9rem;font-size:0.95rem;font-weight:600;cursor:pointer;margin-bottom:0.6rem;letter-spacing:0.02em">Assinar mensal — R$97/mês →</button>
+    <button onclick="alert('Cobranças desativadas neste ambiente de testes.')" style="width:100%;background:#fdf8f2;border:1.5px solid #5c3318;border-radius:10px;padding:0.75rem;font-size:0.88rem;color:#5c3318;cursor:pointer;margin-bottom:0.8rem;font-weight:600">Assinar anual — R$897/ano <span style="font-size:0.75rem;color:#6b8f71"> · economize R$267</span></button>
     <button onclick="(async()=>{try{const sb=getSupabase();if(sb)await sb.auth.signOut();}catch(e){}location.reload();})()" style="width:100%;background:transparent;border:1px solid rgba(184,134,42,0.2);border-radius:10px;padding:0.65rem;font-size:0.82rem;color:#9a7d65;cursor:pointer">Sair da conta</button>
     <div style="font-size:0.75rem;color:#9a7d65;margin-top:1.3rem">Dúvidas? <a href="mailto:contato@atelierhub.com.br" style="color:#5c3318">contato@atelierhub.com.br</a></div>
   </div>
@@ -919,7 +920,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
   <!-- BANNER TRIAL -->
   <div id="banner-trial" style="display:none;background:var(--bordeaux);color:white;padding:0.45rem 1rem;font-size:0.78rem;align-items:center;justify-content:center;gap:0.4rem;text-align:center;flex-wrap:wrap;line-height:1.6">
     ⏳ Trial gratuito: <strong id="trial-dias"></strong> restante(s) &nbsp;·&nbsp;
-    <a href="https://buy.stripe.com/6oU6oA1LE7qIfnM8Gi2Nq00" target="_blank" style="color:white;font-weight:700;text-decoration:underline">Assinar agora →</a>
+    <a href="#" onclick="event.preventDefault();alert('Cobranças desativadas neste ambiente de testes.')" style="color:white;font-weight:700;text-decoration:underline">Assinar agora →</a>
   </div>
 
   <main class="app-content">
@@ -2378,8 +2379,8 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
 <script>
 
 // ── SUPABASE ──
-const SUPA_URL = 'https://fvjoerdktscnyxvlgljx.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2am9lcmRrdHNjbnl4dmxnbGp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2OTM2MzIsImV4cCI6MjA5NjI2OTYzMn0.SH3F2qg_nJA_2LSpPcq5kC-XlOoUCZ5sUxVYZR9FvFk';
+const SUPA_URL = 'https://fvjzeadaigppkuyixwrg.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2anplYWRhaWdwcGt1eWl4d3JnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQwOTI0NDQsImV4cCI6MjEwOTY2ODQ0NH0.4DKvyIKQNzVJ77PajA_VXH_arHHfct2beRVfb3aJACc';
 
 // ── AVISO ATUAL (comunicado 📢 no header) ──
 // Pra publicar um aviso novo: edite texto/expiraEm/ativo abaixo e suba no GitHub — vale pra
