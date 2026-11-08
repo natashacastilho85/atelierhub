@@ -10940,7 +10940,7 @@ async function criarConta() {
   const { data, error } = await sb.auth.signUp({
     email,
     password: senha,
-    options: { data: { full_name: nome } }
+    options: { data: { full_name: nome }, emailRedirectTo: 'https://atelierhub-dev.onrender.com/' }
   });
   if (error) { setLoginMsg(traduzirErroAuth(error.message)); return; }
   if (data.user && !data.session) {
