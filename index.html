@@ -864,6 +864,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     </button>
     <button onclick="showLoginTab('criar')" style="background:none;border:none;font-size:0.72rem;color:var(--muted);cursor:pointer;padding:0.3rem;font-family:Calibri,sans-serif">Não tem conta? Criar agora</button>
     <button onclick="mostrarRecuperarSenha()" style="background:none;border:none;font-size:0.68rem;color:var(--muted-light);cursor:pointer;padding:0.2rem;font-family:Calibri,sans-serif">Esqueci minha senha</button>
+    <button type="button" onclick="reenviarConfirmacaoEmail()" style="background:none;border:none;font-size:0.75rem;color:var(--brown);text-decoration:underline;cursor:pointer;padding:0.5rem;font-family:Calibri,sans-serif">Não recebeu a confirmação? Reenviar e-mail</button>
   </div>
 
   <!-- FORMULÁRIO CRIAR CONTA -->
@@ -880,6 +881,7 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
     </div>
     <div id="login-msg-criar" style="font-size:0.8rem;color:var(--bordeaux);text-align:center;max-width:300px;min-height:1.2em;display:none;padding:0.4rem 0"></div>
     <button class="login-btn" onclick="criarConta()">Criar conta</button>
+    <button type="button" onclick="reenviarConfirmacaoEmail()" style="background:none;border:none;font-size:0.75rem;color:var(--brown);text-decoration:underline;cursor:pointer;padding:0.5rem;font-family:Calibri,sans-serif">Não recebeu a confirmação? Reenviar e-mail</button>
     <button class="login-btn" onclick="loginGoogle()" style="background:white;color:var(--dark);border:1px solid rgba(184,134,42,0.3);display:flex;align-items:center;justify-content:center;gap:0.6rem">
       <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
       Continuar com Google
@@ -10911,6 +10913,43 @@ function toggleSenha(id, btn) {
 
 function mostrarRecuperarSenha() {
   showLoginTab('recuperar');
+}
+
+async function reenviarConfirmacaoEmail() {
+  const formCriar = document.getElementById('form-criar');
+  const naCriacao = formCriar && formCriar.style.display !== 'none';
+  const campo = document.getElementById(naCriacao ? 'criar-email' : 'login-email');
+  const email = (campo?.value || '').trim();
+  if (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+    setLoginMsg('Informe um e-mail válido no campo acima para reenviar a confirmação.');
+    campo?.focus();
+    return;
+  }
+  const sb = getSupabase();
+  if (!sb) { setLoginMsg('Não foi possível iniciar o reenvio.'); return; }
+  const formulario = document.getElementById(naCriacao ? 'form-criar' : 'form-entrar');
+  const botoes = [...formulario.querySelectorAll('button')].filter(b => b.textContent.includes('Reenviar e-mail'));
+  botoes.forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
+  setLoginMsg('Solicitando novo e-mail...', 'var(--muted)');
+  try {
+    const { error } = await sb.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: 'https://atelierhub-dev.onrender.com/' }
+    });
+    if (error) {
+      const msg = /rate limit|too many|security purposes|after \d+ seconds/i.test(error.message)
+        ? 'Muitas tentativas. Aguarde alguns minutos antes de solicitar novamente.'
+        : 'Não foi possível solicitar o reenvio: ' + traduzirErroAuth(error.message);
+      setLoginMsg(msg);
+    } else {
+      setLoginMsg('Solicitação recebida. Confira a caixa de entrada e o spam. O recebimento depende do serviço de e-mail.', 'var(--sage)');
+    }
+  } catch (e) {
+    setLoginMsg('Não foi possível solicitar o reenvio. Verifique sua conexão e tente novamente.');
+  } finally {
+    botoes.forEach(b => { b.disabled = false; b.style.opacity = ''; });
+  }
 }
 
 async function fazerLogin() {
