@@ -10920,7 +10920,7 @@ async function reenviarConfirmacaoEmail() {
   const naCriacao = formCriar && formCriar.style.display !== 'none';
   const campo = document.getElementById(naCriacao ? 'criar-email' : 'login-email');
   const email = (campo?.value || '').trim();
-  if (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     setLoginMsg('Informe um e-mail válido no campo acima para reenviar a confirmação.');
     campo?.focus();
     return;
