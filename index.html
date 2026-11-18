@@ -2380,6 +2380,14 @@ if (_vpBugDetectado() && _vpPodeRecarregar()) {
 
 <script>
 
+// Captura erros do retorno de e-mail antes que o SDK processe a URL.
+const _erroRetornoAuth = (() => {
+  const query = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  return query.get('error_code') || hash.get('error_code') ||
+         query.get('error_description') || hash.get('error_description') || '';
+})();
+
 // ── SUPABASE ──
 const SUPA_URL = 'https://fvjzeadaigppkuyixwrg.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2anplYWRhaWdwcGt1eWl4d3JnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQwOTI0NDQsImV4cCI6MjEwOTY2ODQ0NH0.4DKvyIKQNzVJ77PajA_VXH_arHHfct2beRVfb3aJACc';
@@ -11743,6 +11751,15 @@ async function iniciarAuth() {
   } catch (e) {
     await sb.auth.signOut();
     document.getElementById('login-screen').style.display = 'flex';
+  }
+
+  if (_erroRetornoAuth) {
+    const falhouPorExpiracao = /expired|otp_expired|invalid|access_denied/i.test(_erroRetornoAuth);
+    const aviso = falhouPorExpiracao
+      ? 'Este link de confirmação expirou ou não é mais válido. Informe seu e-mail abaixo e clique em "Reenviar e-mail".'
+      : 'Não foi possível validar o link de confirmação. Informe seu e-mail abaixo e solicite um novo link.';
+    document.getElementById('login-screen').style.display = 'flex';
+    setLoginMsg(aviso);
   }
 
   // Ouve mudanças de auth — login com email/senha e Google
