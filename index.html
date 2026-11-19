@@ -2446,7 +2446,7 @@ function _ehErroConexao(e) {
 async function _logErroSistema(contexto, e) {
   try {
     const msg = e && e.message ? String(e.message).slice(0, 2000) : String(e).slice(0, 2000);
-    await sbInsert('error_log', { contexto, mensagem: msg });
+    await sbFetch('error_log', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ user_id: _uid(), contexto, mensagem: msg }) });
   } catch (_) { /* nunca deixa o log de erro gerar outro erro visível */ }
 }
 
