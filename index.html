@@ -10989,7 +10989,9 @@ async function fazerLogin() {
   // onAuthStateChange dispara SIGNED_IN e chama onLoginSucesso — não chamar aqui para evitar dupla execução
 }
 
+let _cadastroEmAndamento = false;
 async function criarConta() {
+  if (_cadastroEmAndamento) return;
   const sb = getSupabase();
   if (!sb) { setLoginMsg('Erro de configuração — tente novamente.'); return; }
   const nome = document.getElementById('criar-nome').value.trim();
@@ -11000,7 +11002,11 @@ async function criarConta() {
   if (!email) { setLoginMsg('Informe o e-mail.'); return; }
   if (senha.length < 6) { setLoginMsg('A senha precisa ter pelo menos 6 caracteres.'); return; }
   if (senha !== senha2) { setLoginMsg('As senhas não coincidem.'); return; }
+  _cadastroEmAndamento = true;
+  const botaoCadastro = document.querySelector('#form-criar button[onclick="criarConta()"]');
+  if (botaoCadastro) { botaoCadastro.disabled = true; botaoCadastro.style.opacity = '0.6'; }
   setLoginMsg('Criando conta...', 'var(--muted)');
+  try {
   const { data, error } = await sb.auth.signUp({
     email,
     password: senha,
@@ -11013,6 +11019,12 @@ async function criarConta() {
     return;
   }
   // onAuthStateChange dispara SIGNED_IN e chama onLoginSucesso
+  } catch (e) {
+    setLoginMsg('Não foi possível concluir a solicitação. Confira sua conexão e tente entrar antes de cadastrar novamente.');
+  } finally {
+    _cadastroEmAndamento = false;
+    if (botaoCadastro) { botaoCadastro.disabled = false; botaoCadastro.style.opacity = ''; }
+  }
 }
 
 async function loginGoogle() {
