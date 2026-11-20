@@ -370,12 +370,6 @@ cron.schedule('0 11,14,17,20 * * *', verificarNotificacoes, { timezone: 'UTC' })
 // ── Health check ──
 app.get('/', (req, res) => res.send('AtelierHub Backend · OK'));
 
-// ── Endpoint para disparar manualmente (teste) ──
-app.get('/run-notif', async (req, res) => {
-  await verificarNotificacoes();
-  res.json({ ok: true, ran: new Date().toISOString() });
-});
-
 // ── Stripe webhook ──
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
